@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fameko Admin - Driver Details</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --card-border: 1px solid #E9ECEF;
+            --transition: all 0.2s ease-in-out;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --header-text: #1A202C;
+            --muted-text: #718096;
+            --border-color: #E2E8F0;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --header-text: #F7FAFC;
+            --muted-text: #9CA3AF;
+            --border-color: #374151;
+            --card-border: 1px solid #374151;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Sidebar - ClickUp Style */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--dark-text);
+            height: 100vh;
+            position: fixed;
+            padding-top: 10px;
+            border-right: 1px solid var(--border-color);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: background 0.3s, border 0.3s;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .sidebar-header i { font-size: 1.2rem; }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 12px;
+            width: 18px;
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-menu li.active {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 24px 32px;
+            max-width: 1400px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--header-text);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: var(--card-border);
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--dark-text);
+        }
+
+        .card-body { padding: 20px; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--muted-text);
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+        }
+
+        .info-item span {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--dark-text);
+        }
+
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .status-PENDING, .status-PENDING_DOCS { background: #FEF3C7; color: #92400E; }
+        .status-APPROVED { background: #D1FAE5; color: #065F46; }
+        .status-REJECTED { background: #FEE2E2; color: #991B1B; }
+        .status-SUSPENDED { background: #FFF4E6; color: #D9480F; }
+
+        .doc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .doc-card {
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .doc-label {
+            padding: 8px 12px;
+            background: var(--light-bg);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: var(--muted-text);
+        }
+
+        .doc-img-container {
+            height: 160px;
+            background: var(--light-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .doc-img-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .doc-img-container img:hover { transform: scale(1.05); }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.8rem;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .btn-approve { background-color: var(--secondary-color); color: white; }
+        .btn-reject { background-color: var(--danger-color); color: white; }
+        .btn-suspend { background-color: var(--warning-color); color: var(--dark-text); }
+        .btn-back { background-color: #EDF2F7; color: var(--muted-text); }
+
+        .btn:hover { transform: translateY(-1px); }
+
+        .action-buttons {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+            border-top: 1px solid #EDF2F7;
+            padding-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 4px 12px 4px 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .user-name { font-weight: 600; font-size: 0.8rem; }
+
+        .class-selector {
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+            text-align: center;
+            background: var(--card-bg);
+        }
+
+        .class-selector i { font-size: 1.2rem; color: var(--muted-text); }
+        .class-selector b { font-size: 0.9rem; color: var(--dark-text); }
+        .class-selector span { font-size: 0.7rem; color: var(--muted-text); }
+
+        .class-selector:hover { border-color: var(--primary-light); background: var(--light-bg); }
+        .class-selector.active {
+            border-color: var(--primary-color);
+            background: #EBF8FF;
+        }
+        .class-selector.active i { color: var(--primary-color); }
+        .class-selector.active b { color: var(--primary-color); }
+    </style>
+    <script>
+        //<![CDATA[
+        // Apply theme immediately
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        //]]>
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt"></i>
+            <h2 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">FAMEKO</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li th:class="${activePage == 'dashboard' ? 'active' : ''}" onclick="window.location='/admin/dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li th:class="${activePage == 'map' ? 'active' : ''}" onclick="window.location='/admin/map'"><i class="fas fa-map-location-dot"></i> Live Map</li>
+            <li th:class="${activePage == 'intelligence' ? 'active' : ''}" onclick="window.location='/admin/intelligence'"><i class="fas fa-chart-pie"></i> Intelligence</li>
+            <li th:class="${activePage == 'drivers' ? 'active' : ''}" onclick="window.location='/admin/drivers'"><i class="fas fa-id-card"></i> Drivers</li>
+            <li th:class="${activePage == 'customers' ? 'active' : ''}" onclick="window.location='/admin/customers'"><i class="fas fa-user-group"></i> Customers</li>
+            <li th:class="${activePage == 'deliveries' ? 'active' : ''}" onclick="window.location='/admin/deliveries'"><i class="fas fa-route"></i> Deliveries</li>
+            <li th:class="${activePage == 'daily-payments' ? 'active' : ''}" onclick="window.location='/admin/daily-payments'"><i class="fas fa-money-check-dollar"></i> Daily Payments</li>
+            <li th:class="${activePage == 'rentals' ? 'active' : ''}" onclick="window.location='/admin/rentals'"><i class="fas fa-car-side"></i> Rental Requests</li>
+            <li th:class="${activePage == 'pricing' ? 'active' : ''}" onclick="window.location='/admin/pricing'"><i class="fas fa-tags"></i> Pricing</li>
+            <li th:class="${activePage == 'financials' ? 'active' : ''}" onclick="window.location='/admin/financials'"><i class="fas fa-chart-pie"></i> Analytics</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'database' ? 'active' : ''}" onclick="window.location='/admin/database'"><i class="fas fa-database"></i> Database</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'settings' ? 'active' : ''}" onclick="window.location='/admin/settings'"><i class="fas fa-gear"></i> Settings</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'admins' ? 'active' : ''}" onclick="window.location='/admin/admins'"><i class="fas fa-user-shield"></i> Regional Admins</li>
+            <li onclick="window.location='/admin/logout'"><i class="fas fa-right-from-bracket"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Driver Details</h1>
+
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <a href="/admin/drivers" class="btn btn-back">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+
+                <div class="user-profile">
+                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                    <div style="display:flex; flex-direction:column">
+                        <span class="user-name" th:text="${admin.username}">Administrator</span>
+                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${driver != null}" th:with="status=${driver['status'] != null ? #strings.toUpperCase(driver['status']) : 'UNKNOWN'}, isCar=${driver['vehicle_type'] != null and #strings.toLowerCase(driver['vehicle_type']) == 'car'}">
+            <!-- PERSONAL INFO -->
+            <div class="card">
+                <div class="card-header">Personal Information</div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Full Name</label>
+                            <span th:text="${driver['full_name']}">John Doe</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Status</label>
+                            <span th:class="${'status-badge status-' + status}" th:text="${status}">PENDING</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Email Address</label>
+                            <span th:text="${driver['email']}">john@example.com</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Phone Number</label>
+                            <span th:text="${driver['phone']}">0241234567</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Region</label>
+                            <span th:text="${driver['region']}">Greater Accra</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Vehicle</label>
+                            <span th:text="${driver['vehicle_type'] + ' (' + driver['vehicle_number'] + ')'}">Car (GW-123)</span>
+                        </div>
+                        <div class="info-item" th:if="${isCar}">
+                            <label>Car Category</label>
+                            <span th:text="${driver['vehicle_category'] != null ? driver['vehicle_category'] : 'Economy'}"
+                                  style="color: var(--primary-color); font-weight: 800;">Economy</span>
+                        </div>
+                        <div class="info-item" th:unless="${isCar}">
+                            <label>Vehicle Type</label>
+                            <span th:text="${driver['vehicle_type'] != null ? #strings.capitalize(driver['vehicle_type']) : 'N/A'}">Okada</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VEHICLE CLASSIFICATION (Cars Only) -->
+            <div class="card" th:if="${isCar}">
+                <div class="card-header">Vehicle Classification</div>
+                <div class="card-body">
+                    <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post">
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <p style="margin:0; font-size: 0.8rem; color: var(--muted-text); font-weight: 500;">
+                                Examine the vehicle details and photos below. Assign the appropriate ride class based on the vehicle quality.
+                            </p>
+                            <div style="display:flex; gap:16px;">
+                                <label style="flex:1; cursor:pointer;">
+                                    <input type="radio" name="category" value="Economy" th:checked="${driver['vehicle_category'] == 'Economy'}" style="display:none;" onchange="this.form.submit()"/>
+                                    <div class="class-selector" th:classappend="${driver['vehicle_category'] == 'Economy' ? 'active' : ''}">
+                                        <i class="fas fa-car"></i>
+                                        <b>Economy</b>
+                                        <span>Standard Class</span>
+                                    </div>
+                                </label>
+                                <label style="flex:1; cursor:pointer;">
+                                    <input type="radio" name="category" value="Comfort" th:checked="${driver['vehicle_category'] == 'Comfort'}" style="display:none;" onchange="this.form.submit()"/>
+                                    <div class="class-selector" th:classappend="${driver['vehicle_category'] == 'Comfort' ? 'active' : ''}">
+                                        <i class="fas fa-couch"></i>
+                                        <b>Comfort</b>
+                                        <span>Premium Class</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- DOCUMENTS -->
+            <div class="card">
+                <div class="card-header">Verification Documents</div>
+                <div class="card-body">
+                    <div class="doc-grid">
+                        <!-- Profile Picture -->
+                        <div class="doc-card">
+                            <div class="doc-label">Profile Picture</div>
+                            <div class="doc-img-container">
+                                <img th:if="${not #strings.isEmpty(driver['profile_picture']) and #strings.length(driver['profile_picture']) > 5}"
+                                     th:src="${driver['profile_picture']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(driver['profile_picture']) and #strings.length(driver['profile_picture']) > 5}"
+                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
+                            </div>
+                        </div>
+                        <!-- Driver License -->
+                        <div class="doc-card">
+                            <div class="doc-label">Driver License</div>
+                            <div class="doc-img-container">
+                                <img th:if="${not #strings.isEmpty(driver['license_image']) and #strings.length(driver['license_image']) > 5}"
+                                     th:src="${driver['license_image']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(driver['license_image']) and #strings.length(driver['license_image']) > 5}"
+                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
+                            </div>
+                        </div>
+                        <!-- Ghana Card -->
+                        <div class="doc-card">
+                            <div class="doc-label">Ghana Card</div>
+                            <div class="doc-img-container">
+                                <img th:if="${not #strings.isEmpty(driver['id_front_image']) and #strings.length(driver['id_front_image']) > 5}"
+                                     th:src="${driver['id_front_image']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(driver['id_front_image']) and #strings.length(driver['id_front_image']) > 5}"
+                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
+                            </div>
+                        </div>
+                        <!-- Insurance -->
+                        <div class="doc-card">
+                            <div class="doc-label">Insurance Cert</div>
+                            <div class="doc-img-container">
+                                <img th:if="${not #strings.isEmpty(driver['insurance_cert']) and #strings.length(driver['insurance_cert']) > 5}"
+                                     th:src="${driver['insurance_cert']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(driver['insurance_cert']) and #strings.length(driver['insurance_cert']) > 5}"
+                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
+                            </div>
+                        </div>
+                        <!-- Roadworthy -->
+                        <div class="doc-card">
+                            <div class="doc-label">Roadworthy Cert</div>
+                            <div class="doc-img-container">
+                                <img th:if="${not #strings.isEmpty(driver['roadworthy_cert']) and #strings.length(driver['roadworthy_cert']) > 5}"
+                                     th:src="${driver['roadworthy_cert']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(driver['roadworthy_cert']) and #strings.length(driver['roadworthy_cert']) > 5}"
+                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
+                            </div>
+                        </div>
+                        <!-- Vehicle Image -->
+                        <div class="doc-card">
+                            <div class="doc-label">Vehicle Image</div>
+                            <div class="doc-img-container">
+                                <img th:if="${not #strings.isEmpty(driver['vehicle_image']) and #strings.length(driver['vehicle_image']) > 5}"
+                                     th:src="${driver['vehicle_image']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(driver['vehicle_image']) and #strings.length(driver['vehicle_image']) > 5}"
+                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="action-buttons">
+                        <!-- PENDING / REJECTED / SUSPENDED -->
+                        <div th:if="${status == 'PENDING' or status == 'PENDING_DOCS' or status == 'REJECTED' or status == 'SUSPENDED'}" style="display:flex; flex-direction:column; gap:16px; width: 100%; max-width: 400px;">
+                            <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post" style="display:flex; flex-direction:column; gap:12px;">
+                                <!-- For cars, use current category. For others, use vehicle type as category -->
+                                <input type="hidden" name="category" th:value="${driver['vehicle_category'] != null ? driver['vehicle_category'] : driver['vehicle_type']}"/>
+
+                                <div style="display:flex; gap:12px;">
+                                    <button type="submit" class="btn btn-approve">
+                                        <i class="fas fa-check"></i>
+                                        <span th:text="${status == 'SUSPENDED' ? 'Re-activate Account' : 'Approve Driver'}">Approve Driver</span>
+                                    </button>
+                                    <button th:if="${status == 'PENDING' or status == 'PENDING_DOCS'}" type="button" class="btn btn-reject" onclick="document.getElementById('reject-form').submit()"><i class="fas fa-xmark"></i> Reject</button>
+                                </div>
+                            </form>
+
+                            <form id="reject-form" th:action="${'/admin/driver/reject/' + driver['id']}" method="post" style="display:none;"></form>
+                        </div>
+
+                        <!-- APPROVED -->
+                        <div th:if="${status == 'APPROVED'}" style="display:flex; gap:12px; align-items:center">
+                            <form th:action="${'/admin/driver/suspend/' + driver['id']}" method="post">
+                                <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Driver</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+</body>
+</html>
+

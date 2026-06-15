@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fameko Admin - Command Center</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --card-border: 1px solid #E9ECEF;
+            --transition: all 0.2s ease-in-out;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --header-text: #1A202C;
+            --border-color: #EDF2F7;
+            --muted-text: #718096;
+            --table-header-bg: #F7FAFC;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --header-text: #F7FAFC;
+            --border-color: #374151;
+            --muted-text: #9CA3AF;
+            --card-border: 1px solid #374151;
+            --table-header-bg: #1A202C;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Sidebar - ClickUp Style */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--dark-text);
+            height: 100vh;
+            position: fixed;
+            padding-top: 10px;
+            border-right: 1px solid var(--border-color);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: background 0.3s, border 0.3s;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .sidebar-header i { font-size: 1.2rem; }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 12px;
+            width: 18px;
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-menu li.active {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 24px 32px;
+            max-width: 1400px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--header-text);
+        }
+
+        .search-bar {
+            background: var(--card-bg);
+            padding: 6px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            width: 300px;
+            transition: background 0.3s, border 0.3s;
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            width: 100%;
+            margin-left: 8px;
+            font-size: 0.8rem;
+            background: transparent;
+            color: var(--dark-text);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            border: var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            border-color: #CBD5E0;
+            transform: translateY(-2px);
+        }
+
+        .stat-info { display: flex; flex-direction: column; }
+
+        .stat-card .label {
+            font-size: 0.7rem;
+            color: var(--muted-text);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--dark-text);
+        }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .icon-blue { background: #EBF8FF; color: #3182CE; }
+        .icon-green { background: #F0FFF4; color: #38A169; }
+        .icon-orange { background: #FFFAF0; color: #DD6B20; }
+        .icon-purple { background: #FAF5FF; color: #805AD5; }
+        .icon-red { background: #FEE2E2; color: #DC3545; }
+
+        [data-theme="dark"] .icon-blue { background: #1A365D; color: #63B3ED; }
+        [data-theme="dark"] .icon-green { background: #1C4532; color: #68D391; }
+        [data-theme="dark"] .icon-orange { background: #7B341E; color: #F6AD55; }
+        [data-theme="dark"] .icon-purple { background: #44337A; color: #B794F4; }
+        [data-theme="dark"] .icon-red { background: #742A2A; color: #FEB2B2; }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: var(--card-border);
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+            transition: background 0.3s, border 0.3s;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--dark-text);
+        }
+
+        .table-container { padding: 0; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 20px;
+            background: var(--table-header-bg);
+            font-weight: 600;
+            color: var(--muted-text);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        tr:hover td { background-color: var(--light-bg); }
+
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .status-PENDING, .status-PENDING_DOCS { background: #FEF3C7; color: #92400E; }
+        .status-APPROVED { background: #D1FAE5; color: #065F46; }
+        .status-REJECTED { background: #FEE2E2; color: #991B1B; }
+        .status-IN_TRANSIT { background: #E0F2FE; color: #075985; }
+
+        .btn {
+            padding: 5px 12px;
+            border-radius: 16px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-approve { background-color: #38A169; color: white; }
+        .btn-reject { background-color: #EDF2F7; color: #E53E3E; }
+        .btn:hover { transform: translateY(-1px); }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 4px 12px 4px 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .user-name { font-weight: 600; font-size: 0.8rem; color: var(--dark-text); }
+    </style>
+    <script>
+        // Apply theme immediately
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt"></i>
+            <h2 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">FAMEKO</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li th:class="${activePage == 'dashboard' ? 'active' : ''}" onclick="window.location='/admin/dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li th:class="${activePage == 'map' ? 'active' : ''}" onclick="window.location='/admin/map'"><i class="fas fa-map-location-dot"></i> Live Map</li>
+            <li th:class="${activePage == 'intelligence' ? 'active' : ''}" onclick="window.location='/admin/intelligence'"><i class="fas fa-chart-pie"></i> Intelligence</li>
+            <li th:class="${activePage == 'drivers' ? 'active' : ''}" onclick="window.location='/admin/drivers'"><i class="fas fa-id-card"></i> Drivers</li>
+            <li th:class="${activePage == 'customers' ? 'active' : ''}" onclick="window.location='/admin/customers'"><i class="fas fa-user-group"></i> Customers</li>
+            <li th:class="${activePage == 'deliveries' ? 'active' : ''}" onclick="window.location='/admin/deliveries'"><i class="fas fa-route"></i> Deliveries</li>
+            <li th:class="${activePage == 'daily-payments' ? 'active' : ''}" onclick="window.location='/admin/daily-payments'"><i class="fas fa-money-check-dollar"></i> Daily Payments</li>
+            <li th:class="${activePage == 'rentals' ? 'active' : ''}" onclick="window.location='/admin/rentals'"><i class="fas fa-car-side"></i> Rental Requests</li>
+            <li th:class="${activePage == 'pricing' ? 'active' : ''}" onclick="window.location='/admin/pricing'"><i class="fas fa-tags"></i> Pricing</li>
+            <li th:class="${activePage == 'financials' ? 'active' : ''}" onclick="window.location='/admin/financials'"><i class="fas fa-chart-pie"></i> Analytics</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'database' ? 'active' : ''}" onclick="window.location='/admin/database'"><i class="fas fa-database"></i> Database</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'settings' ? 'active' : ''}" onclick="window.location='/admin/settings'"><i class="fas fa-gear"></i> Settings</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'admins' ? 'active' : ''}" onclick="window.location='/admin/admins'"><i class="fas fa-user-shield"></i> Regional Admins</li>
+            <li onclick="window.location='/admin/logout'"><i class="fas fa-right-from-bracket"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Command Center</h1>
+
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div class="search-bar">
+                    <i class="fas fa-search" style="color: #adb5bd"></i>
+                    <input type="text" placeholder="Search drivers, orders, or customers..." aria-label="Search">
+                </div>
+
+                <div class="user-profile">
+                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                    <div style="display:flex; flex-direction:column">
+                        <span class="user-name" th:text="${admin.username}">Administrator</span>
+                        <span style="font-size:0.7rem; color:#6c757d; font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                    </div>
+                    <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #adb5bd"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="label">Total Drivers</span>
+                    <span class="value" data-th-text="${totalDrivers}">0</span>
+                </div>
+                <div class="stat-icon icon-blue">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="label">Live Deliveries</span>
+                    <span class="value" data-th-text="${totalDeliveries}">0</span>
+                </div>
+                <div class="stat-icon icon-purple">
+                    <i class="fas fa-truck-fast"></i>
+                </div>
+            </div>
+            <div class="stat-card" id="pending-stat-card" style="cursor:pointer" onclick="window.location='/admin/drivers?status=PENDING'">
+                <div class="stat-info">
+                    <span class="label">Pending Approvals</span>
+                    <span class="value" data-th-text="${pendingCount}">0</span>
+                </div>
+                <div class="stat-icon icon-orange">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="label">Active Online</span>
+                    <span class="value" data-th-text="${onlineCount}">0</span>
+                </div>
+                <div class="stat-icon icon-green">
+                    <i class="fas fa-satellite-dish"></i>
+                </div>
+            </div>
+            <div class="stat-card" style="cursor:pointer" onclick="window.location='/admin/rentals'">
+                <div class="stat-info">
+                    <span class="label">Pending Rentals</span>
+                    <span class="value" data-th-text="${pendingRentals}">0</span>
+                </div>
+                <div class="stat-icon icon-blue">
+                    <i class="fas fa-key"></i>
+                </div>
+            </div>
+            <div class="stat-card" style="cursor:pointer" onclick="window.location='/admin/map'" th:if="${activeSOSCount > 0}">
+                <div class="stat-info">
+                    <span class="label" style="color: var(--danger-color)">ACTIVE SOS</span>
+                    <span class="value" style="color: var(--danger-color)" data-th-text="${activeSOSCount}">0</span>
+                </div>
+                <div class="stat-icon icon-red">
+                    <i class="fas fa-triangle-exclamation"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-user-clock" style="color: var(--warning-color)"></i>
+                    Driver Registrations
+                </div>
+                <button class="btn" style="background: transparent; color: var(--primary-color)">View All</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Driver Information</th>
+                            <th>Region</th>
+                            <th>Vehicle Type</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-th-each="driver : ${drivers}">
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 12px">
+                                    <div class="user-avatar" style="width: 32px; height: 32px; font-size: 0.7rem; background: #f0f2f5; color: #666" data-th-text="${not #strings.isEmpty(driver['name']) ? #strings.substring(driver['name'], 0, 1) : 'D'}">J</div>
+                                    <div>
+                                        <div style="font-weight:700; font-size: 0.9rem" data-th-text="${driver['name']}">John Doe</div>
+                                        <div style="font-size:0.75rem; color:#6c757d" data-th-text="${driver['email']}">john@example.com</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight:600; font-size: 0.85rem; color: #4A5568" data-th-text="${driver['region']}">Accra</div>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.9rem">
+                                    <i th:class="${driver['vehicle'] == 'car' ? 'fas fa-car' : (driver['vehicle'] == 'okada' or driver['vehicle'] == 'bicycle' ? 'fas fa-motorcycle' : (driver['vehicle'] == 'truck' or driver['vehicle'] == 'aboboyaa' ? 'fas fa-truck' : 'fas fa-taxi'))}" style="color: #6c757d"></i>
+                                    <span th:text="${driver['vehicle'] != null ? #strings.capitalize(driver['vehicle']) : 'N/A'}">Car</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span data-th-class="${'status-badge status-' + driver['status']}" data-th-text="${driver['status']}">PENDING</span>
+                            </td>
+                            <td>
+                                <div data-th-if="${driver['status'] == 'PENDING' or driver['status'] == 'PENDING_DOCS'}" class="btn-group">
+                                    <form data-th-action="'/admin/driver/approve/' + ${driver['id']}" method="post">
+                                        <button type="submit" class="btn btn-approve">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                    </form>
+                                    <form data-th-action="'/admin/driver/reject/' + ${driver['id']}" method="post">
+                                        <button type="submit" class="btn btn-reject">
+                                            <i class="fas fa-xmark"></i> Reject
+                                        </button>
+                                    </form>
+                                </div>
+                                <div data-th-unless="${driver['status'] == 'PENDING' or driver['status'] == 'PENDING_DOCS'}">
+                                    <a data-th-href="${'/admin/driver/' + driver['id']}" class="btn" style="background: #f8f9fa; color: var(--primary-color); text-decoration: none; display: inline-block;">
+                                        <i class="fas fa-eye"></i> View Profile
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-tower-broadcast" style="color: var(--danger-color)"></i>
+                    Live Delivery Monitor
+                </div>
+                <div style="display: flex; gap: 10px">
+                    <span class="status-badge status-APPROVED" style="font-size: 0.65rem">System Online</span>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Route Details</th>
+                            <th>Progress</th>
+                            <th>Assigned Driver</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-th-each="delivery : ${deliveries}">
+                            <td style="font-weight: 700; color: var(--primary-color)" data-th-text="'#' + ${delivery['id']}">#101</td>
+                            <td>
+                                <div style="display: flex; flex-direction: column; gap: 4px">
+                                    <div style="font-weight:700; font-size: 0.85rem; display: flex; align-items: center; gap: 6px">
+                                        <i class="fas fa-location-dot" style="color: var(--secondary-color); font-size: 0.7rem"></i>
+                                        <span data-th-text="${delivery['pickup']}">Pickup</span>
+                                    </div>
+                                    <div style="font-weight:700; font-size: 0.85rem; display: flex; align-items: center; gap: 6px">
+                                        <i class="fas fa-location-arrow" style="color: var(--danger-color); font-size: 0.7rem"></i>
+                                        <span data-th-text="${delivery['dropoff']}">Destination</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-IN_TRANSIT" data-th-text="${delivery['status']}">IN_TRANSIT</span>
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px">
+                                    <i class="fas fa-user-circle" style="color: #dee2e6; font-size: 1.2rem"></i>
+                                    <span style="font-weight: 600; font-size: 0.85rem" data-th-text="${delivery['driver_name'] != null ? delivery['driver_name'] : 'Searching...'}">Unassigned</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dashboard specific scripts if any
+    </script>
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+</body>
+</html>
+
+

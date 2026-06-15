@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fameko Admin - Regional Admins</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --card-border: 1px solid #E9ECEF;
+            --transition: all 0.2s ease-in-out;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --header-text: #1A202C;
+            --muted-text: #718096;
+            --border-color: #E2E8F0;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --header-text: #F7FAFC;
+            --muted-text: #9CA3AF;
+            --border-color: #374151;
+            --card-border: 1px solid #374151;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Sidebar - ClickUp Style */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--dark-text);
+            height: 100vh;
+            position: fixed;
+            padding-top: 10px;
+            border-right: 1px solid var(--border-color);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: background 0.3s, border 0.3s;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .sidebar-header i { font-size: 1.2rem; }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 12px;
+            width: 18px;
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-menu li.active {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 24px 32px;
+            max-width: 1400px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--header-text);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: var(--card-border);
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--dark-text);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.75rem;
+            color: var(--muted-text);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            outline: none;
+            font-family: inherit;
+            font-size: 0.85rem;
+            background: var(--light-bg);
+            color: var(--dark-text);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            background-color: var(--primary-color);
+            color: white;
+            transition: var(--transition);
+        }
+
+        .btn:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-1px);
+        }
+
+        .table-container { padding: 0; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 20px;
+            background: var(--light-bg);
+            font-weight: 600;
+            color: var(--muted-text);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: var(--dark-text);
+        }
+
+        tr:hover td { background-color: var(--light-bg); }
+
+        .role-badge {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .role-SUPERADMIN { background: #EBF8FF; color: #004E89; }
+        .role-REGIONAL_ADMIN { background: #F0FFF4; color: #38A169; }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 4px 12px 4px 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .user-name { font-weight: 600; font-size: 0.8rem; color: var(--dark-text); }
+
+    </style>
+    <script>
+        // Apply theme immediately
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt"></i>
+            <h2 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">FAMEKO</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li th:class="${activePage == 'dashboard' ? 'active' : ''}" onclick="window.location='/admin/dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li th:class="${activePage == 'map' ? 'active' : ''}" onclick="window.location='/admin/map'"><i class="fas fa-map-location-dot"></i> Live Map</li>
+            <li th:class="${activePage == 'intelligence' ? 'active' : ''}" onclick="window.location='/admin/intelligence'"><i class="fas fa-chart-pie"></i> Intelligence</li>
+            <li th:class="${activePage == 'drivers' ? 'active' : ''}" onclick="window.location='/admin/drivers'"><i class="fas fa-id-card"></i> Drivers</li>
+            <li th:class="${activePage == 'customers' ? 'active' : ''}" onclick="window.location='/admin/customers'"><i class="fas fa-user-group"></i> Customers</li>
+            <li th:class="${activePage == 'deliveries' ? 'active' : ''}" onclick="window.location='/admin/deliveries'"><i class="fas fa-route"></i> Deliveries</li>
+            <li th:class="${activePage == 'daily-payments' ? 'active' : ''}" onclick="window.location='/admin/daily-payments'"><i class="fas fa-money-check-dollar"></i> Daily Payments</li>
+            <li th:class="${activePage == 'rentals' ? 'active' : ''}" onclick="window.location='/admin/rentals'"><i class="fas fa-car-side"></i> Rental Requests</li>
+            <li th:class="${activePage == 'pricing' ? 'active' : ''}" onclick="window.location='/admin/pricing'"><i class="fas fa-tags"></i> Pricing</li>
+            <li th:class="${activePage == 'financials' ? 'active' : ''}" onclick="window.location='/admin/financials'"><i class="fas fa-chart-pie"></i> Analytics</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'database' ? 'active' : ''}" onclick="window.location='/admin/database'"><i class="fas fa-database"></i> Database</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'settings' ? 'active' : ''}" onclick="window.location='/admin/settings'"><i class="fas fa-gear"></i> Settings</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'admins' ? 'active' : ''}" onclick="window.location='/admin/admins'"><i class="fas fa-user-shield"></i> Regional Admins</li>
+            <li onclick="window.location='/admin/logout'"><i class="fas fa-right-from-bracket"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Regional Admin Management</h1>
+
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div class="user-profile">
+                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                    <div style="display:flex; flex-direction:column">
+                        <span class="user-name" th:text="${admin.username}">Administrator</span>
+                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-user-plus" style="color: var(--primary-color)"></i> Add New Administrator
+                </div>
+            </div>
+            <form action="/admin/admins/create" method="post">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" name="email" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Initial Password</label>
+                        <input type="password" name="password" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Account Role</label>
+                        <select name="role">
+                            <option value="REGIONAL_ADMIN">Regional Administrator</option>
+                            <option value="SUPERADMIN">Super Administrator</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Assigned Region</label>
+                        <select name="region">
+                            <option value="">None (Nationwide)</option>
+                            <option value="Ahafo">Ahafo</option>
+                            <option value="Ashanti">Ashanti</option>
+                            <option value="Bono">Bono</option>
+                            <option value="Bono East">Bono East</option>
+                            <option value="Central">Central</option>
+                            <option value="Eastern">Eastern</option>
+                            <option value="Greater Accra">Greater Accra</option>
+                            <option value="Northern">Northern</option>
+                            <option value="North East">North East</option>
+                            <option value="Oti">Oti</option>
+                            <option value="Savannah">Savannah</option>
+                            <option value="Upper East">Upper East</option>
+                            <option value="Upper West">Upper West</option>
+                            <option value="Volta">Volta</option>
+                            <option value="Western">Western</option>
+                            <option value="Western North">Western North</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="padding: 0 20px 20px 20px">
+                    <button type="submit" class="btn">Create Account</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-users-gear" style="color: var(--primary-color)"></i> Existing Administrative Accounts
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Administrator</th>
+                            <th>Role</th>
+                            <th>Region</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="a : ${admins}">
+                            <td>
+                                <div style="font-weight:700; color: var(--dark-text)" th:text="${a.username}">Admin Name</div>
+                                <div style="font-size:0.75rem; color: var(--muted-text)" th:text="${a.email}">email@fameko.com</div>
+                            </td>
+                            <td><span th:class="'role-badge role-' + ${a.role}" th:text="${a.role}">ROLE</span></td>
+                            <td th:text="${a.region}" style="color: var(--dark-text)">Region</td>
+                            <td>
+                                <span th:class="${a.is_active ? 'status-badge status-APPROVED' : 'status-badge status-REJECTED'}"
+                                      th:text="${a.is_active ? 'Active' : 'Inactive'}">Active</span>
+                            </td>
+                            <td><button class="btn" style="background: var(--light-bg); color: var(--muted-text); font-size: 0.7rem;">Disable</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+</body>
+</html>
+
+
+
+

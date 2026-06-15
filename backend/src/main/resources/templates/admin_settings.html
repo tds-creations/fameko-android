@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fameko Admin - Settings</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --card-border: 1px solid #E9ECEF;
+            --transition: all 0.2s ease-in-out;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --input-bg: #FFFFFF;
+            --input-text: #2D333A;
+            --header-text: #1A202C;
+            --muted-text: #718096;
+            --border-color: #E2E8F0;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --input-bg: #374151;
+            --input-text: #F9FAFB;
+            --header-text: #F7FAFC;
+            --muted-text: #9CA3AF;
+            --border-color: #374151;
+            --card-border: 1px solid #374151;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Sidebar - ClickUp Style */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--dark-text);
+            height: 100vh;
+            position: fixed;
+            padding-top: 10px;
+            border-right: 1px solid var(--border-color);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: background 0.3s, border 0.3s;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .sidebar-header i { font-size: 1.2rem; }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 12px;
+            width: 18px;
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-menu li.active {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 24px 32px;
+            max-width: 1400px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--header-text);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: var(--card-border);
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+            max-width: 800px;
+            transition: background 0.3s, border 0.3s;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--dark-text);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            padding: 0 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.75rem;
+            color: var(--muted-text);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            outline: none;
+            font-family: inherit;
+            font-size: 0.85rem;
+            box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            transition: background 0.3s, border 0.3s, color 0.3s;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            background-color: var(--primary-color);
+            color: white;
+            transition: var(--transition);
+        }
+
+        .btn:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-1px);
+        }
+
+        .success-msg {
+            background-color: #D1FAE5;
+            color: #065F46;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            max-width: 800px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        [data-theme="dark"] .success-msg {
+            background-color: #064E3B;
+            color: #D1FAE5;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 4px 12px 4px 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .user-name { font-weight: 600; font-size: 0.8rem; color: var(--dark-text); }
+
+        /* Switch Toggle */
+        .theme-switch {
+            display: inline-block;
+            height: 24px;
+            position: relative;
+            width: 44px;
+        }
+
+        .theme-switch input {
+            display: none;
+        }
+
+        .slider {
+            background-color: #ccc;
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            background-color: #fff;
+            bottom: 4px;
+            content: "";
+            height: 16px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 16px;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+    </style>
+    <script>
+        // Apply theme immediately
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt"></i>
+            <h2 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">FAMEKO</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li th:class="${activePage == 'dashboard' ? 'active' : ''}" onclick="window.location='/admin/dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li th:class="${activePage == 'map' ? 'active' : ''}" onclick="window.location='/admin/map'"><i class="fas fa-map-location-dot"></i> Live Map</li>
+            <li th:class="${activePage == 'intelligence' ? 'active' : ''}" onclick="window.location='/admin/intelligence'"><i class="fas fa-chart-pie"></i> Intelligence</li>
+            <li th:class="${activePage == 'drivers' ? 'active' : ''}" onclick="window.location='/admin/drivers'"><i class="fas fa-id-card"></i> Drivers</li>
+            <li th:class="${activePage == 'customers' ? 'active' : ''}" onclick="window.location='/admin/customers'"><i class="fas fa-user-group"></i> Customers</li>
+            <li th:class="${activePage == 'deliveries' ? 'active' : ''}" onclick="window.location='/admin/deliveries'"><i class="fas fa-route"></i> Deliveries</li>
+            <li th:class="${activePage == 'daily-payments' ? 'active' : ''}" onclick="window.location='/admin/daily-payments'"><i class="fas fa-money-check-dollar"></i> Daily Payments</li>
+            <li th:class="${activePage == 'rentals' ? 'active' : ''}" onclick="window.location='/admin/rentals'"><i class="fas fa-car-side"></i> Rental Requests</li>
+            <li th:class="${activePage == 'pricing' ? 'active' : ''}" onclick="window.location='/admin/pricing'"><i class="fas fa-tags"></i> Pricing</li>
+            <li th:class="${activePage == 'financials' ? 'active' : ''}" onclick="window.location='/admin/financials'"><i class="fas fa-chart-pie"></i> Analytics</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'database' ? 'active' : ''}" onclick="window.location='/admin/database'"><i class="fas fa-database"></i> Database</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'settings' ? 'active' : ''}" onclick="window.location='/admin/settings'"><i class="fas fa-gear"></i> Settings</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'admins' ? 'active' : ''}" onclick="window.location='/admin/admins'"><i class="fas fa-user-shield"></i> Regional Admins</li>
+            <li onclick="window.location='/admin/logout'"><i class="fas fa-right-from-bracket"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>System Settings</h1>
+
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div class="user-profile">
+                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                    <div style="display:flex; flex-direction:column">
+                        <span class="user-name" th:text="${admin.username}">Administrator</span>
+                        <span style="font-size:0.7rem; color:var(--muted-text); font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                    </div>
+                    <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #adb5bd"></i>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${showSuccess}" class="success-msg">
+            <i class="fas fa-check-circle"></i> System settings updated successfully!
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-palette" style="color: var(--primary-color)"></i> Appearance
+                </div>
+            </div>
+            <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--dark-text);">Dark Mode</div>
+                    <div style="font-size: 0.75rem; color: var(--muted-text);">Toggle between light and dark system themes</div>
+                </div>
+                <label class="theme-switch">
+                    <input type="checkbox" id="dark-mode-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-headset" style="color: var(--primary-color)"></i> Support &amp; Contact Info
+                </div>
+            </div>
+            <form action="/admin/settings/update" method="post">
+                <div style="padding-top: 16px;">
+                    <div class="form-group">
+                        <label>Support Phone Number</label>
+                        <input type="text" th:value="${settings['support_phone']}" name="supportPhone"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Support Email Address</label>
+                        <input type="email" th:value="${settings['support_email']}" name="supportEmail"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Support WhatsApp Number</label>
+                        <input type="text" th:value="${settings['support_whatsapp']}" name="supportWhatsApp"/>
+                    </div>
+
+                    <div style="padding: 10px 20px; font-weight: 700; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--dark-text); margin-top: 10px;">
+                        <i class="fas fa-mobile-screen-button"></i> App Management
+                    </div>
+
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>Customer App Version</label>
+                        <input type="text" th:value="${settings['app_version_customer']}" name="versionCustomer"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Driver App Version</label>
+                        <input type="text" th:value="${settings['app_version_driver']}" name="versionDriver"/>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; padding-bottom: 10px;">
+                        <input type="checkbox" name="maintenanceMode" th:checked="${settings['maintenance_mode']}" id="maintenanceMode" style="width: auto;"/>
+                        <label for="maintenanceMode" style="margin-bottom: 0; cursor: pointer; text-transform: none; color: var(--dark-text); font-size: 0.85rem;">Enable Maintenance Mode</label>
+                    </div>
+
+                    <div style="padding: 10px 20px; font-weight: 700; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--dark-text); margin-top: 10px;">
+                        <i class="fas fa-credit-card"></i> Paystack Configuration
+                    </div>
+
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>Payment Mode</label>
+                        <select name="paystackMode" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--input-text);">
+                            <option value="TEST" th:selected="${settings['paystack_mode'] == 'TEST'}">TEST MODE</option>
+                            <option value="LIVE" th:selected="${settings['paystack_mode'] == 'LIVE'}">LIVE MODE</option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
+                        <div class="form-group">
+                            <label>Test Secret Key</label>
+                            <input type="password" th:value="${settings['paystack_test_secret']}" name="paystackTestSecret" placeholder="sk_test_..."/>
+                        </div>
+                        <div class="form-group">
+                            <label>Test Public Key</label>
+                            <input type="text" th:value="${settings['paystack_test_public']}" name="paystackTestPublic" placeholder="pk_test_..."/>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
+                        <div class="form-group">
+                            <label>Live Secret Key</label>
+                            <input type="password" th:value="${settings['paystack_live_secret']}" name="paystackLiveSecret" placeholder="sk_live_..."/>
+                        </div>
+                        <div class="form-group">
+                            <label>Live Public Key</label>
+                            <input type="text" th:value="${settings['paystack_live_public']}" name="paystackLivePublic" placeholder="pk_live_..."/>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="padding-top: 10px; padding-bottom: 20px;">
+                        <button type="submit" class="btn">Save Configuration</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const toggle = document.getElementById('dark-mode-toggle');
+        const currentTheme = localStorage.getItem('theme') || 'light';
+
+        if (currentTheme === 'dark') {
+            toggle.checked = true;
+        }
+
+        toggle.addEventListener('change', function() {
+            if (this.checked) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    </script>
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+</body>
+</html>
+
+
+

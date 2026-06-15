@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fameko Admin - Live Tracking Map</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --card-border: 1px solid #E2E8F0;
+            --transition: all 0.2s ease-in-out;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --header-text: #1A202C;
+            --muted-text: #718096;
+            --border-color: #E2E8F0;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --header-text: #F7FAFC;
+            --muted-text: #9CA3AF;
+            --border-color: #374151;
+            --card-border: 1px solid #374151;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Sidebar - ClickUp Style */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--dark-text);
+            height: 100vh;
+            position: fixed;
+            padding-top: 10px;
+            border-right: 1px solid var(--border-color);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: background 0.3s, border 0.3s;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .sidebar-header i { font-size: 1.2rem; }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 12px;
+            width: 18px;
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-menu li.active {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0;
+            color: #1A202C;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 4px 12px 4px 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 0.75rem;
+        }
+
+        .user-name { font-weight: 600; font-size: 0.8rem; }
+
+        /* Map Styles */
+        #live-map {
+            flex: 1;
+            width: 100%;
+            z-index: 1;
+        }
+
+        #sos-alert-container {
+            display: none;
+            position: absolute;
+            top: 80px;
+            right: 24px;
+            width: 360px;
+            background: var(--card-bg);
+            color: var(--dark-text);
+            padding: 0;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            z-index: 1001;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .sos-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #DC3545;
+            color: white;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sos-title {
+            font-size: 0.9rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sos-list {
+            display: flex;
+            flex-direction: column;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .sos-item {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .sos-item:last-child { border-bottom: none; }
+        .sos-item:hover { background: var(--light-bg); }
+
+        .sos-item.active-selection {
+            background: rgba(220, 53, 69, 0.05);
+            border-left: 4px solid #DC3545;
+        }
+
+        .sos-info b { font-size: 1.1rem; display: block; margin-bottom: 4px; color: #DC3545; }
+        .sos-info .sos-meta { font-size: 0.8rem; color: var(--muted-text); display: block; margin-bottom: 8px; font-weight: 500; }
+        .sos-info .sos-type {
+            display: inline-block;
+            background: #DC3545;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .sos-vehicle-info {
+            background: var(--light-bg);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin-bottom: 12px;
+            border: 1px dashed var(--border-color);
+        }
+
+        .sos-vehicle-info div { margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .sos-vehicle-info span { font-weight: 600; color: var(--dark-text); }
+        .sos-vehicle-info label { color: var(--muted-text); }
+
+        .sos-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-sos-action {
+            flex: 1;
+            background: var(--light-bg);
+            color: var(--dark-text);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-sos-action:hover {
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .btn-sos-action:active { transform: scale(0.97); }
+        .btn-sos-resolve { background: #28A745; color: white; border: none; }
+        .btn-sos-resolve:hover { background: #218838; }
+
+        .sos-mini-map-preview {
+            height: 120px;
+            background: #eee;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+
+        /* Pulsing Marker CSS */
+        .emergency-pulse {
+            box-shadow: 0 0 0 rgba(220, 53, 69, 0.4);
+            animation: pulse-sos 1.5s infinite;
+            border-color: #DC3545 !important;
+            background-color: #FEE2E2 !important;
+        }
+
+        @keyframes pulse-sos {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .map-stats-overlay {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            background: var(--card-bg);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            z-index: 1000;
+            display: flex;
+            gap: 24px;
+        }
+
+        .map-stat { display: flex; flex-direction: column; }
+        .map-stat .label { font-size: 0.65rem; color: #718096; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+        .map-stat .value { font-size: 1.1rem; font-weight: 800; color: var(--primary-color); }
+
+        .weather-widget {
+            position: absolute;
+            top: 80px;
+            left: 24px;
+            background: var(--card-bg);
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: var(--transition);
+        }
+
+        .weather-icon { font-size: 1.5rem; color: #FFC107; }
+        .weather-info { display: flex; flex-direction: column; }
+        .weather-temp { font-weight: 800; font-size: 1rem; color: var(--dark-text); }
+        .weather-desc { font-size: 0.7rem; color: var(--muted-text); text-transform: capitalize; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt"></i>
+            <h2 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">FAMEKO</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li th:class="${activePage == 'dashboard' ? 'active' : ''}" onclick="window.location='/admin/dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li th:class="${activePage == 'map' ? 'active' : ''}" onclick="window.location='/admin/map'"><i class="fas fa-map-location-dot"></i> Live Map</li>
+            <li th:class="${activePage == 'intelligence' ? 'active' : ''}" onclick="window.location='/admin/intelligence'"><i class="fas fa-chart-pie"></i> Intelligence</li>
+            <li th:class="${activePage == 'drivers' ? 'active' : ''}" onclick="window.location='/admin/drivers'"><i class="fas fa-id-card"></i> Drivers</li>
+            <li th:class="${activePage == 'customers' ? 'active' : ''}" onclick="window.location='/admin/customers'"><i class="fas fa-user-group"></i> Customers</li>
+            <li th:class="${activePage == 'deliveries' ? 'active' : ''}" onclick="window.location='/admin/deliveries'"><i class="fas fa-route"></i> Deliveries</li>
+            <li th:class="${activePage == 'daily-payments' ? 'active' : ''}" onclick="window.location='/admin/daily-payments'"><i class="fas fa-money-check-dollar"></i> Daily Payments</li>
+            <li th:class="${activePage == 'rentals' ? 'active' : ''}" onclick="window.location='/admin/rentals'"><i class="fas fa-car-side"></i> Rental Requests</li>
+            <li th:class="${activePage == 'pricing' ? 'active' : ''}" onclick="window.location='/admin/pricing'"><i class="fas fa-tags"></i> Pricing</li>
+            <li th:class="${activePage == 'financials' ? 'active' : ''}" onclick="window.location='/admin/financials'"><i class="fas fa-chart-pie"></i> Analytics</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'database' ? 'active' : ''}" onclick="window.location='/admin/database'"><i class="fas fa-database"></i> Database</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'settings' ? 'active' : ''}" onclick="window.location='/admin/settings'"><i class="fas fa-gear"></i> Settings</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'admins' ? 'active' : ''}" onclick="window.location='/admin/admins'"><i class="fas fa-user-shield"></i> Regional Admins</li>
+            <li onclick="window.location='/admin/logout'"><i class="fas fa-right-from-bracket"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Live Fleet Tracking</h1>
+
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div class="user-profile">
+                    <div class="user-avatar" th:text="${admin != null and admin.username != null and admin.username.length() > 0 ? admin.username.substring(0,1) : 'A'}">A</div>
+                    <div style="display:flex; flex-direction:column">
+                        <span class="user-name" th:text="${admin != null ? admin.username : 'Administrator'}">Administrator</span>
+                        <span style="font-size:0.7rem; color:#6c757d; font-weight:700" th:text="${admin != null ? admin.role : 'SUPERADMIN'}">SUPERADMIN</span>
+                    </div>
+                    <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #adb5bd"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="sos-alert-container">
+            <div class="sos-header">
+                <div class="sos-title">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    SOS ACTIVE
+                </div>
+            </div>
+            <div id="sos-list" class="sos-list"></div>
+        </div>
+
+        <div id="live-map"></div>
+
+        <div class="weather-widget" id="weather-widget" style="display:none">
+            <div id="weather-icon-container" class="weather-icon">
+                <i class="fas fa-cloud-sun"></i>
+            </div>
+            <div class="weather-info">
+                <span class="weather-temp" id="weather-temp">--°C</span>
+                <span class="weather-desc" id="weather-desc">Loading weather...</span>
+            </div>
+        </div>
+
+        <div class="map-stats-overlay">
+            <div class="map-stat">
+                <span class="label">Online Drivers</span>
+                <span class="value" id="online-drivers-count">0</span>
+            </div>
+            <div class="map-stat">
+                <span class="label">Active SOS</span>
+                <span class="value" id="active-sos-count" style="color: var(--danger-color)">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="none">
+        document.addEventListener('DOMContentLoaded', function() {
+            // Theme Setup
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+
+            // Map Layers Configuration
+            const osm = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            });
+
+            const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles © Esri'
+            });
+
+            const darkSimple = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            });
+
+            const precipitation = L.tileLayer('https://tilecache.rainviewer.com/v2/radar/{time}/256/{z}/{x}/{y}/2/1_1.png', {
+                maxZoom: 19,
+                attribution: 'Radar data &copy; RainViewer',
+                opacity: 0.7
+            });
+
+            const apiKey = "b03dab643348ea7b4c96676da9190314";
+            const clouds = L.tileLayer('https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+                maxZoom: 19,
+                attribution: 'Map data &copy; OpenWeatherMap'
+            });
+
+            // Initialize Map
+            const mapContainer = document.getElementById('live-map');
+            if (!mapContainer) {
+                console.error("Map container not found!");
+                return;
+            }
+
+            const map = L.map('live-map', {
+                center: [5.6037, -0.1870],
+                zoom: 12,
+                layers: [osm]
+            });
+
+            const baseMaps = {
+                "Standard View": osm,
+                "Satellite View": satellite,
+                "Dark Monitoring": darkSimple
+            };
+
+            const overlayMaps = {
+                "Cloud Cover": clouds,
+                "Live Rain Radar": precipitation
+            };
+
+            // Auto-select layer based on theme
+            if (savedTheme === 'dark') {
+                map.removeLayer(osm);
+                map.addLayer(darkSimple);
+            }
+
+            L.control.layers(baseMaps, overlayMaps, { position: 'topleft' }).addTo(map);
+
+            const markers = {};
+            let liveDriverData = {};
+            let activeSosDriverIds = new Set();
+            let lastSosCount = 0;
+
+            function updateRainRadar() {
+                fetch('https://api.rainviewer.com/public/weather-maps.json')
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data && data.radar && data.radar.past && data.radar.past.length > 0) {
+                            const latestTime = data.radar.past[data.radar.past.length - 1].time;
+                            precipitation.setUrl('https://tilecache.rainviewer.com/v2/radar/' + latestTime + '/256/{z}/{x}/{y}/2/1_1.png');
+
+                            setTimeout(function() {
+                                const container = precipitation.getContainer();
+                                if (container) {
+                                    container.style.filter = 'contrast(1.4) brightness(1.1) saturate(1.5)';
+                                }
+                            }, 1000);
+                        }
+                    })
+                    .catch(function(err) { console.error('RainViewer error:', err); });
+            }
+
+            updateRainRadar();
+            setInterval(updateRainRadar, 10 * 60 * 1000);
+
+            function updateWeather() {
+                const center = map.getCenter();
+                fetch('/api/weather?lat=' + center.lat + '&lon=' + center.lng)
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.main) {
+                            const widget = document.getElementById('weather-widget');
+                            if (widget) widget.style.display = 'flex';
+
+                            const tempEl = document.getElementById('weather-temp');
+                            if (tempEl) tempEl.innerText = Math.round(data.main.temp) + '°C';
+
+                            const descEl = document.getElementById('weather-desc');
+                            if (descEl) descEl.innerText = data.weather[0].description;
+
+                            const iconCode = data.weather[0].icon;
+                            const iconContainer = document.getElementById('weather-icon-container');
+                            if (iconContainer) {
+                                let iconHtml = '<i class="fas fa-cloud-sun"></i>';
+                                if (iconCode.includes('01')) iconHtml = '<i class="fas fa-sun"></i>';
+                                else if (iconCode.includes('02')) iconHtml = '<i class="fas fa-cloud-sun"></i>';
+                                else if (iconCode.includes('03') || iconCode.includes('04')) iconHtml = '<i class="fas fa-cloud"></i>';
+                                else if (iconCode.includes('09') || iconCode.includes('10')) iconHtml = '<i class="fas fa-cloud-showers-heavy"></i>';
+                                else if (iconCode.includes('11')) iconHtml = '<i class="fas fa-bolt"></i>';
+                                else if (iconCode.includes('13')) iconHtml = '<i class="fas fa-snowflake"></i>';
+                                else if (iconCode.includes('50')) iconHtml = '<i class="fas fa-smog"></i>';
+                                iconContainer.innerHTML = iconHtml;
+                            }
+                        }
+                    })
+                    .catch(function(err) { console.log('Weather fetch error:', err); });
+            }
+
+            map.on('moveend', updateWeather);
+            updateWeather();
+
+            window.resolveSOS = function(id) {
+                if (confirm("Are you sure you want to mark this SOS as resolved?")) {
+                    fetch('/admin/resolve-sos/' + id, { method: 'POST' }).then(() => updateSOSAlerts());
+                }
+            };
+
+            function updateSOSAlerts() {
+                fetch('/api/admin/active-sos')
+                    .then(r => r.json())
+                    .then(alerts => {
+                        const container = document.getElementById('sos-alert-container');
+                        const list = document.getElementById('sos-list');
+                        const countEl = document.getElementById('active-sos-count');
+                        if (countEl) countEl.innerText = alerts.length;
+
+                        activeSosDriverIds = new Set(alerts.map(a => a.driverId.toString()));
+
+                        if (alerts.length > 0) {
+                            if (container) container.style.display = 'block';
+
+                            if (alerts.length > lastSosCount) {
+                                const latest = alerts[alerts.length - 1];
+                                const driverId = latest.driverId.toString();
+
+                                if (liveDriverData[driverId]) {
+                                    map.setView([liveDriverData[driverId].lat, liveDriverData[driverId].lng], 16);
+                                } else if (latest.lat !== 0 || latest.lng !== 0) {
+                                    map.setView([latest.lat, latest.lng], 16);
+                                }
+                            }
+
+                            let listHtml = '';
+                            for (let i = 0; i < alerts.length; i++) {
+                                const a = alerts[i];
+                                listHtml += '<div class="sos-item" id="sos-item-' + a.id + '">' +
+                                    '<div class="sos-info">' +
+                                    '<span class="sos-type">' + (a.type || 'General') + '</span>' +
+                                    '<b>' + a.driverName + '</b>' +
+                                    '<span class="sos-meta"><i class="fas fa-phone"></i> ' + a.driverPhone + ' • ' + new Date(a.time).toLocaleTimeString() + '</span>' +
+                                    '</div>' +
+                                    '<div class="sos-vehicle-info">' +
+                                    '<div><label>Vehicle:</label> <span>' + (a.vehicleModel || 'Unknown') + '</span></div>' +
+                                    '<div><label>Plate:</label> <span>' + (a.plateNumber || 'Unknown') + '</span></div>' +
+                                    '</div>' +
+                                    '<div class="sos-actions">' +
+                                    '<button class="btn-sos-action" onclick="focusSOS(\'' + a.driverId + '\', ' + a.lat + ', ' + a.lng + ')">' +
+                                    '<i class="fas fa-location-crosshairs"></i> Locate' +
+                                    '</button>' +
+                                    '<button class="btn-sos-action btn-sos-resolve" onclick="resolveSOS(' + a.id + ')">' +
+                                    '<i class="fas fa-check"></i> Resolve' +
+                                    '</button>' +
+                                    '</div>' +
+                                    '</div>';
+                            }
+                            if (list) list.innerHTML = listHtml;
+                        } else {
+                            if (container) container.style.display = 'none';
+                        }
+                        lastSosCount = alerts.length;
+                    });
+            }
+
+            window.focusSOS = function(driverId, lat, lng) {
+                map.setView([lat, lng], 17);
+                if (markers[driverId]) markers[driverId].openPopup();
+            };
+
+            function updateLiveLocations() {
+                fetch('/api/admin/live-locations')
+                    .then(response => response.json())
+                    .then(drivers => {
+                        const countEl = document.getElementById('online-drivers-count');
+                        if (countEl) countEl.innerText = drivers.length;
+
+                        drivers.forEach(driver => {
+                            if (driver.lat === undefined || driver.lng === undefined || driver.lat === 0) return;
+
+                            liveDriverData[driver.id.toString()] = { lat: driver.lat, lng: driver.lng };
+
+                            let iconClass = 'fa-car';
+                            const v = (driver.vehicle || '').toLowerCase();
+                            if (v === 'okada' || v === 'bicycle' || v === 'bike') iconClass = 'fa-motorcycle';
+                            else if (v === 'truck' || v === 'aboboyaa') iconClass = 'fa-truck';
+                            else if (v === 'pragya') iconClass = 'fa-shuttle-van';
+
+                            const isEmergency = activeSosDriverIds.has(driver.id.toString());
+                            const color = isEmergency ? '#DC3545' : '#004E89';
+                            const bgColor = isEmergency ? '#FEE2E2' : 'white';
+
+                            const iconHtml = '<div class="' + (isEmergency ? 'emergency-pulse' : '') + '" style="background: ' + bgColor + '; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 2px solid ' + color + ';">' +
+                                    '<i class="fas ' + iconClass + '" style="color: ' + color + '; font-size: 0.75rem;"></i>' +
+                                    '</div>';
+                            const customIcon = L.divIcon({ html: iconHtml, className: 'custom-div-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
+
+                            if (markers[driver.id]) {
+                                markers[driver.id].setLatLng([driver.lat, driver.lng]);
+                                markers[driver.id].setIcon(customIcon);
+                            } else {
+                                markers[driver.id] = L.marker([driver.lat, driver.lng], {icon: customIcon})
+                                    .addTo(map)
+                                    .bindPopup('<b>' + driver.name + '</b><br>' + driver.vehicle + (isEmergency ? '<br><b style="color:red">EMERGENCY ACTIVE</b>' : ''));
+                            }
+                        });
+
+                        const driverIds = drivers.map(d => d.id);
+                        Object.keys(markers).forEach(id => {
+                            if (!driverIds.includes(parseInt(id))) {
+                                map.removeLayer(markers[id]);
+                                delete markers[id];
+                            }
+                        });
+                    });
+            }
+
+            updateLiveLocations();
+            updateSOSAlerts();
+            setInterval(updateLiveLocations, 5000);
+            setInterval(updateSOSAlerts, 3000);
+        });
+    </script>
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Fameko</string>
+    <string name="create_account">Create Account</string>
+    <string name="join_fameko_desc">Join Fameko and start tracking your deliveries</string>
+    <string name="hint_full_name">Full Name</string>
+    <string name="hint_email">Email Address</string>
+    <string name="hint_phone">Phone Number</string>
+    <string name="hint_select_region">Select Region</string>
+    <string name="hint_default_address">Default Address</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_confirm_password">Confirm Password</string>
+    <string name="agree_terms">I agree to the Terms and Conditions</string>
+    <string name="already_have_account">Already have an account? Login here</string>
+    <string name="msg_fill_required">Please fill in all required fields</string>
+    <string name="msg_valid_email">Please enter a valid email</string>
+    <string name="msg_password_mismatch">Passwords do not match</string>
+    <string name="msg_agree_terms">Please agree to the terms and conditions</string>
+    <string name="msg_account_created">Account created successfully! Logging in&#8230;</string>
+    <string name="msg_auto_login_failed">Auto-login failed: %s. Please login manually.</string>
+    <string name="msg_signup_failed">Signup failed: %s</string>
+</resources>

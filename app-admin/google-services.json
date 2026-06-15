@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "989048143840",
+    "project_id": "fameko-driver",
+    "storage_bucket": "fameko-driver.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989048143840:android:303c890919cd6afcdd7585",
+        "android_client_info": {
+          "package_name": "com.example.famekodriver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6C7dWCWT9SkmteFWIiWImb1VyZXCXQ4E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,137 @@
+<resources>
+    <string name="app_name">Fameko Driver</string>
+
+    <!-- General -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="later">Later</string>
+    <string name="ignore">Ignore</string>
+    <string name="action">Action</string>
+
+    <!-- Map Screen -->
+    <string name="menu">Menu</string>
+    <string name="sos">SOS</string>
+    <string name="my_location">My Location</string>
+    <string name="heading_to_pickup">Heading to Pickup</string>
+    <string name="heading_to_destination">Heading to Destination</string>
+    <string name="remaining">Remaining</string>
+    <string name="status_going_to_pickup">GOING TO PICKUP</string>
+    <string name="status_trip_in_progress">TRIP IN PROGRESS</string>
+    <string name="customer">Customer</string>
+    <string name="in_app_call">In-app Call</string>
+    <string name="chat">Chat</string>
+    <string name="share_trip">Share Trip</string>
+    <string name="navigate">Navigate</string>
+    <string name="pickup">Pickup</string>
+    <string name="destination">Destination</string>
+    <string name="btn_arrived_at_pickup">ARRIVED AT PICKUP</string>
+    <string name="btn_complete_trip">COMPLETE TRIP</string>
+    <string name="btn_continue">CONTINUE</string>
+    <string name="new_delivery_request">New Delivery Request</string>
+    <string name="estimated_earnings">Estimated Earnings</string>
+    <string name="min_away">%1$d min away</string>
+    <string name="btn_accept">ACCEPT</string>
+    <string name="btn_off">OFF</string>
+    <string name="btn_go">GO</string>
+
+    <!-- Map Screen Dialogs -->
+    <string name="dialog_battery_opt_title">Optimize Performance</string>
+    <string name="dialog_battery_opt_text">To ensure you receive orders even when the app is in the background, please disable battery optimization for this app.</string>
+    <string name="btn_disable_optimization">Disable Optimization</string>
+    <string name="btn_do_it_later">I\'ll do it later</string>
+
+    <string name="dialog_daily_fee_title">Activate Daily Service</string>
+    <string name="dialog_daily_fee_text">To go online today, a service fee of GHS %1$d is required via MTN MoMo.</string>
+    <string name="label_momo_number">MTN MoMo Number</string>
+    <string name="momo_prompt_notice">You will receive a prompt on your phone to enter your MoMo PIN.</string>
+    <string name="btn_pay_go_live">Pay &amp; Go Live</string>
+
+    <string name="dialog_incoming_call_title">Incoming Call</string>
+    <string name="dialog_incoming_call_text">Customer %1$s is calling you...</string>
+    <string name="btn_accept_call">Accept</string>
+    <string name="btn_reject_call">Reject</string>
+
+    <string name="dialog_pin_title">Enter Trip PIN</string>
+    <string name="dialog_pin_text">Ask the customer for the 4-digit PIN shown on their app to start the trip.</string>
+    <string name="label_4_digit_pin">4-Digit PIN</string>
+    <string name="btn_verify_start">Verify &amp; Start</string>
+
+    <string name="dialog_sos_title">Trigger Emergency SOS</string>
+    <string name="dialog_sos_text">Select emergency type. An alert and your location will be sent to Fameko HQ.</string>
+    <string name="label_select_type">Select Type</string>
+    <string name="label_other">Other</string>
+    <string name="label_specify_emergency">Specify Emergency</string>
+    <string name="btn_send_sos_now">SEND SOS NOW</string>
+
+    <!-- Call Overlay -->
+    <string name="connecting">Connecting...</string>
+    <string name="call_duration_format">In-app Call • %1$02d:%2$02d</string>
+    <string name="mute">Mute</string>
+    <string name="speaker">Speaker</string>
+
+    <!-- Registration Notices -->
+    <string name="notice_docs_required">Documents Required</string>
+    <string name="notice_suspended">Account Suspended</string>
+    <string name="notice_rejected">Account Rejected</string>
+    <string name="notice_pending_approval">Account Pending Approval</string>
+    <string name="msg_upload_docs">Please upload required documents.</string>
+    <string name="msg_contact_support">Contact support.</string>
+    <string name="msg_app_rejected">Application rejected.</string>
+    <string name="msg_under_review">Under review.</string>
+    <string name="btn_go_to_profile">Go to Profile</string>
+    <string name="btn_contact_support">Contact Support</string>
+
+    <!-- Wallet Screen -->
+    <string name="title_wallet">My Wallet</string>
+    <string name="label_total_balance">Total Balance</string>
+    <string name="btn_top_up">TOP UP</string>
+    <string name="btn_cash_out">CASH OUT</string>
+    <string name="title_transaction_history">Transaction History</string>
+    <string name="msg_no_transactions">No transactions yet</string>
+    <string name="dialog_top_up_title">Top Up Wallet</string>
+    <string name="top_up_step_1">1. Send MoMo to: 054 123 4567 (Fameko Ltd)</string>
+    <string name="top_up_step_2">2. Generate a reference code and use it for the transaction.</string>
+    <string name="label_amount_ghs">Amount (GHS)</string>
+    <string name="btn_generate_ref_code">GENERATE REFERENCE CODE</string>
+    <string name="label_your_ref_code">Your Reference Code:</string>
+    <string name="top_up_step_3">3. Click \'I HAVE PAID\' after completing the MoMo transaction.</string>
+    <string name="btn_i_have_paid">I HAVE PAID</string>
+
+    <!-- Fleet Management -->
+    <string name="title_fleet_management">Fleet Management</string>
+    <string name="btn_add_vehicle">Add Vehicle</string>
+    <string name="msg_no_vehicles">No vehicles in your fleet yet</string>
+    <string name="msg_add_first_vehicle">Add your first vehicle to start renting</string>
+    <string name="btn_edit_details">Edit Details</string>
+    <string name="status_available">AVAILABLE</string>
+    <string name="status_booked">BOOKED</string>
+    <string name="status_on_trip">ON TRIP</string>
+    <string name="status_maintenance">MAINTENANCE</string>
+
+    <!-- Driver Signup -->
+    <string name="hint_full_name">Full Name</string>
+    <string name="label_select_vehicle_type">Select Vehicle Type</string>
+    <string name="vehicle_car">Car</string>
+    <string name="vehicle_pragya">Pragya</string>
+    <string name="vehicle_bicycle">Bicycle</string>
+    <string name="vehicle_aboboyaa">Aboboyaa</string>
+    <string name="vehicle_okada">Okada</string>
+    <string name="vehicle_truck">Truck</string>
+    <string name="label_join_as">Join As</string>
+    <string name="role_driver">Driver</string>
+    <string name="role_fleet_owner">Fleet Owner</string>
+    <string name="role_both">Both</string>
+    <string name="hint_rental_company_name">Rental Company Name</string>
+    <string name="hint_registration_number">Registration Number</string>
+    <string name="hint_email_address">Email Address</string>
+    <string name="hint_phone_number">Phone Number</string>
+    <string name="hint_drivers_license_number">Driver\'s License Number</string>
+    <string name="hint_region_of_operation">Region of Operation</string>
+    <string name="label_emergency_contacts">Emergency Contacts</string>
+    <string name="hint_emergency_contact_1">Emergency Contact 1</string>
+    <string name="hint_emergency_contact_2">Emergency Contact 2</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_confirm_password">Confirm Password</string>
+    <string name="btn_create_account">Create Account</string>
+    <string name="tv_already_driver_login">Already a driver? Login here</string>
+</resources>

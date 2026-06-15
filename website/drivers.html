@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive with Fameko - Keep 100% of Your Fares</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#004E89',
+                        secondary: '#FF6B35',
+                        accent: '#2ecc71',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <div class="flex items-center">
+                    <a href="index.html" class="text-3xl font-black text-primary tracking-tighter">FAMEKO</a>
+                </div>
+                <div class="hidden md:flex space-x-8 font-medium">
+                    <a href="index.html" class="hover:text-secondary transition">Home</a>
+                    <a href="drivers.html" class="text-secondary font-bold">Drivers</a>
+                    <a href="riders.html" class="hover:text-secondary transition">Riders</a>
+                    <a href="contact.html" class="hover:text-secondary transition">Support</a>
+                    <a href="index.html#download" class="bg-primary text-white px-6 py-2 rounded-full hover:bg-opacity-90 transition shadow-lg">Download App</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-primary text-2xl focus:outline-none">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <header class="pt-32 pb-16 bg-primary text-white text-center">
+        <div class="max-w-4xl mx-auto px-4">
+            <h1 class="text-4xl md:text-6xl font-black mb-6">Be Your Own Boss</h1>
+            <p class="text-xl text-blue-100">Join Ghana's first 0% commission ride-hailing platform. Pay a small daily fee and keep everything you earn.</p>
+        </div>
+    </header>
+
+    <!-- Why Drive Section -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-primary mb-8">Why drive for Fameko?</h2>
+                    <div class="space-y-8">
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 w-12 h-12 bg-secondary/10 text-secondary rounded-xl flex items-center justify-center">
+                                <i class="fas fa-coins text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">0% Commission</h3>
+                                <p class="text-gray-600">We don't take a percentage of your hard work. Every cedi from every trip belongs to you.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+                                <i class="fas fa-bolt text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">Instant Payouts</h3>
+                                <p class="text-gray-600">Customers pay you directly via cash or mobile money. No waiting for weekly payouts.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 w-12 h-12 bg-accent/10 text-accent rounded-xl flex items-center justify-center">
+                                <i class="fas fa-calendar-check text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">Daily Flexibility</h3>
+                                <p class="text-gray-600">Only pay the small service fee on days you want to work. No monthly commitments.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-100 p-8 rounded-3xl">
+                    <h3 class="text-2xl font-bold mb-6 text-center">Income Projection</h3>
+                    <div class="space-y-4">
+                        <div class="bg-white p-4 rounded-xl flex justify-between shadow-sm">
+                            <span class="text-gray-500">Avg. Daily Revenue</span>
+                            <span class="font-bold">₵450.00</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl flex justify-between shadow-sm border-l-4 border-secondary">
+                            <span class="text-gray-500">Daily Service Fee</span>
+                            <span class="font-bold text-secondary">- ₵10.00</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl flex justify-between shadow-sm border-l-4 border-accent">
+                            <span class="text-gray-500">Your Take Home</span>
+                            <span class="font-bold text-accent text-xl">₵440.00</span>
+                        </div>
+                        <p class="text-xs text-gray-400 text-center italic">*Based on average driver activity in Accra</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Requirements Section -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-16">Registration Requirements</h2>
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm text-center">
+                    <i class="fas fa-id-card text-primary text-3xl mb-4"></i>
+                    <h4 class="font-bold mb-2">Driver's License</h4>
+                    <p class="text-sm text-gray-500">Valid Ghanaian DVLA License</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm text-center">
+                    <i class="fas fa-car-side text-primary text-3xl mb-4"></i>
+                    <h4 class="font-bold mb-2">Roadworthy</h4>
+                    <p class="text-sm text-gray-500">Valid DVLA Roadworthy Certificate</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm text-center">
+                    <i class="fas fa-file-contract text-primary text-3xl mb-4"></i>
+                    <h4 class="font-bold mb-2">Insurance</h4>
+                    <p class="text-sm text-gray-500">Current Vehicle Insurance Cover</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm text-center">
+                    <i class="fas fa-address-card text-primary text-3xl mb-4"></i>
+                    <h4 class="font-bold mb-2">Ghana Card</h4>
+                    <p class="text-sm text-gray-500">For Identity Verification</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-20 bg-white text-center">
+        <div class="max-w-3xl mx-auto px-4">
+            <h2 class="text-3xl font-bold mb-6">Ready to maximize your earnings?</h2>
+            <p class="text-lg text-gray-600 mb-10">Download the Fameko Driver app today and complete your profile in less than 10 minutes.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#" class="bg-primary text-white px-10 py-4 rounded-xl font-bold hover:bg-opacity-90 transition">Download Driver APK</a>
+                <a href="contact.html" class="border-2 border-primary text-primary px-10 py-4 rounded-xl font-bold hover:bg-primary hover:text-white transition">Visit Support Center</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-20">
+        <div class="max-w-7xl mx-auto px-4 grid md:grid-cols-4 gap-12">
+            <div>
+                <h4 class="text-2xl font-black text-white mb-6 tracking-tighter">FAMEKO</h4>
+                <p class="text-sm leading-relaxed">The most transparent ride-hailing and logistics platform in Ghana. Built for fairness, speed, and safety.</p>
+            </div>
+            <div>
+                <h5 class="text-white font-bold mb-6">Quick Links</h5>
+                <ul class="space-y-4 text-sm">
+                    <li><a href="index.html" class="hover:text-white transition">Home</a></li>
+                    <li><a href="drivers.html" class="hover:text-white transition">Drivers Hub</a></li>
+                    <li><a href="riders.html" class="hover:text-white transition">Rider Services</a></li>
+                    <li><a href="contact.html" class="hover:text-white transition">Support</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="text-white font-bold mb-6">Contact Us</h5>
+                <ul class="space-y-4 text-sm">
+                    <li><i class="fas fa-phone mr-2"></i> +233 24 123 4567</li>
+                    <li><i class="fas fa-envelope mr-2"></i> support@fameko.com</li>
+                    <li><i class="fas fa-map-marker-alt mr-2"></i> Accra, Ghana</li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="text-white font-bold mb-6">Follow Us</h5>
+                <div class="flex space-x-4">
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary hover:text-white transition"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-primary hover:text-white transition"><i class="fab fa-tiktok"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 mt-20 pt-8 border-t border-gray-800 text-center text-xs">
+            <p>&copy; 2026 Fameko Logistics. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

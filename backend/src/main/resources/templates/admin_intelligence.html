@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fameko Admin - Intelligence &amp; Simulation</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --card-border: 1px solid #E9ECEF;
+            --transition: all 0.2s ease-in-out;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --header-text: #1A202C;
+            --muted-text: #718096;
+            --border-color: #E2E8F0;
+            --input-bg: #FFFFFF;
+            --input-text: #2D333A;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --header-text: #F7FAFC;
+            --muted-text: #9CA3AF;
+            --border-color: #374151;
+            --card-border: 1px solid #374151;
+            --input-bg: #374151;
+            --input-text: #F9FAFB;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Sidebar - ClickUp Style */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--dark-text);
+            height: 100vh;
+            position: fixed;
+            padding-top: 10px;
+            border-right: 1px solid var(--border-color);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: background 0.3s, border 0.3s;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .sidebar-header i { font-size: 1.2rem; }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 12px;
+            width: 18px;
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-menu li.active {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 24px 32px;
+            max-width: 1400px;
+        }
+
+        .tabs { display: flex; gap: 20px; border-bottom: 2px solid var(--border-color); margin-bottom: 24px; }
+        .tab { padding: 12px 20px; cursor: pointer; font-weight: 600; color: var(--muted-text); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card { background: var(--card-bg); border-radius: 12px; border: var(--card-border); padding: 20px; margin-bottom: 20px; transition: background 0.3s, border 0.3s; position: relative; }
+
+        #map { height: 600px; border-radius: 12px; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: var(--muted-text); }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; background-color: var(--input-bg); color: var(--input-text); }
+
+        .btn-run { background: var(--primary-color); color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 700; margin-top: 10px; }
+
+        .result-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .result-label { color: var(--muted-text); font-size: 0.9rem; }
+        .result-value { font-weight: 700; color: var(--dark-text); }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 4px 12px 4px 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .user-name { font-weight: 600; font-size: 0.8rem; color: var(--dark-text); }
+
+        .tag { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .tag-danger { background: rgba(220, 53, 69, 0.1); color: #C53030; }
+
+        .stat-card { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--primary-color); display: block; }
+        .stat-label { font-size: 0.75rem; color: var(--muted-text); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        canvas { max-height: 250px; }
+    </style>
+
+    <script>
+        // Apply theme immediately
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt"></i>
+            <h2 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">FAMEKO</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li onclick="window.location='/admin/dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li onclick="window.location='/admin/map'"><i class="fas fa-map-location-dot"></i> Live Map</li>
+            <li class="active"><i class="fas fa-chart-pie"></i> Intelligence</li>
+            <li onclick="window.location='/admin/drivers'"><i class="fas fa-id-card"></i> Drivers</li>
+            <li onclick="window.location='/admin/customers'"><i class="fas fa-user-group"></i> Customers</li>
+            <li onclick="window.location='/admin/deliveries'"><i class="fas fa-route"></i> Deliveries</li>
+            <li onclick="window.location='/admin/daily-payments'"><i class="fas fa-money-check-dollar"></i> Daily Payments</li>
+            <li onclick="window.location='/admin/rentals'"><i class="fas fa-car-side"></i> Rental Requests</li>
+            <li onclick="window.location='/admin/pricing'"><i class="fas fa-tags"></i> Pricing</li>
+            <li onclick="window.location='/admin/financials'"><i class="fas fa-chart-pie"></i> Analytics</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" onclick="window.location='/admin/database'"><i class="fas fa-database"></i> Database</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" onclick="window.location='/admin/settings'"><i class="fas fa-gear"></i> Settings</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" onclick="window.location='/admin/admins'"><i class="fas fa-user-shield"></i> Regional Admins</li>
+            <li onclick="window.location='/admin/logout'"><i class="fas fa-right-from-bracket"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h1 style="margin:0; font-size: 1.5rem; color: var(--header-text);">Intelligence &amp; Simulation</h1>
+
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div style="font-size: 0.85rem; color: var(--muted-text);">
+                    System Status: <span class="tag" style="background: #C6F6D5; color: #22543D;">Analyzing Data</span>
+                </div>
+
+                <div class="user-profile">
+                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                    <div style="display:flex; flex-direction:column">
+                        <span class="user-name" th:text="${admin.username}">Administrator</span>
+                        <span style="font-size:0.7rem; color:var(--muted-text); font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="movement" onclick="switchTab('movement')">Movement History</div>
+            <div class="tab" data-tab="simulation" onclick="switchTab('simulation')">Market Simulation</div>
+            <div class="tab" data-tab="analytics" onclick="switchTab('analytics')">ML Analytics</div>
+        </div>
+
+        <!-- Tab: Movement History -->
+        <div id="movement" class="tab-content active">
+            <div class="grid-3" style="margin-bottom: 20px;">
+                <div class="card stat-card">
+                    <span class="stat-label">Movement Nodes</span>
+                    <span class="stat-value" th:text="${report.totalLogs}">0</span>
+                </div>
+                <div class="card stat-card">
+                    <span class="stat-label">Active Drivers</span>
+                    <span class="stat-value" th:text="${report.distribution != null ? report.distribution['DRIVER'] : 0}">0</span>
+                </div>
+                <div class="card stat-card">
+                    <span class="stat-label">Active Customers</span>
+                    <span class="stat-value" th:text="${report.distribution != null ? report.distribution['CUSTOMER'] : 0}">0</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div id="map"></div>
+                <div style="margin-top: 15px; display: flex; gap: 20px; align-items: center;">
+                    <button class="btn-run" style="width: auto; padding: 8px 20px;" onclick="loadMovementHistory()">
+                        <i class="fas fa-sync"></i> Refresh Data
+                    </button>
+                    <span id="movement-stats" style="font-size: 0.85rem; color: #718096;">Aggregating latest movement trends across the platform</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Simulation -->
+        <div id="simulation" class="tab-content">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 style="margin-top:0">Simulation Parameters</h3>
+                    <form id="simulationForm">
+                        <div class="form-group">
+                            <label>Simulated Drivers (Supply)</label>
+                            <input type="number" name="driverCount" value="25" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Simulated Customers (Demand)</label>
+                            <input type="number" name="customerCount" value="100" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Weather Condition</label>
+                            <select name="weather">
+                                <option value="CLEAR">Clear Sky</option>
+                                <option value="RAIN">Heavy Rain</option>
+                                <option value="STORM">Storm / Flooding</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Time of Day</label>
+                            <select name="timeOfDay">
+                                <option value="MORNING">Morning Rush (7am - 9am)</option>
+                                <option value="AFTERNOON">Afternoon Steady (12pm - 3pm)</option>
+                                <option value="EVENING" selected>Evening Rush (5pm - 8pm)</option>
+                                <option value="NIGHT">Late Night (11pm+)</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn-run" onclick="runSimulation()">RUN SIMULATION</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-top:0">Projected Results</h3>
+                    <div id="simulationResults" style="display:none">
+                        <div class="result-item">
+                            <span class="result-label">Estimated Revenue</span>
+                            <span class="result-value" id="resRevenue">₵0.00</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Average ETA</span>
+                            <span class="result-value" id="resETA">0.0 min</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Demand Coverage</span>
+                            <span class="result-value" id="resCoverage">0%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Auto-Surge Recommendation</span>
+                            <span class="result-value" id="resSurge">1.0x</span>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <h4 style="margin-bottom:10px; font-size: 0.85rem; color: var(--danger-color);">Potential Bottlenecks</h4>
+                            <div id="bottleneckList" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <!-- Tags will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div id="simPlaceholder" style="text-align:center; padding: 40px; color: #A0AEC0;">
+                        <i class="fas fa-robot" style="font-size: 3rem; opacity: 0.2; margin-bottom: 10px;"></i>
+                        <p>Configure parameters and run to generate predictions.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Analytics -->
+        <div id="analytics" class="tab-content">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 style="margin-top:0">Busy Hours (Historical)</h3>
+                    <canvas id="hoursChart"></canvas>
+                </div>
+                <div class="card">
+                    <h3 style="margin-top:0">Revenue Trend (Last 7 Days)</h3>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="card">
+                    <h3 style="margin-top:0">Entity Distribution</h3>
+                    <div style="display: flex; justify-content: center;">
+                        <div style="width: 250px;">
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-top:0">Actions & Export</h3>
+                    <div class="result-item">
+                        <span class="result-label">Active Training Models</span>
+                        <span class="result-value">Demand_v1.0 (Alpha)</span>
+                    </div>
+
+                    <button class="btn-run" style="background: #2D333A; margin-top: 20px;" onclick="window.location='/admin/intelligence/export'">
+                        <i class="fas fa-file-csv"></i> DOWNLOAD DATA FOR ML TRAINING
+                    </button>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #EBF8FF; border-radius: 8px;">
+                        <p style="margin:0; font-size: 0.8rem; color: #2B6CB0;">
+                            <i class="fas fa-info-circle"></i>
+                            Historical movement and payment data is used to automatically adjust the global `peak_multiplier`.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Inlining Block -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const reportData = [[${report}]];
+        /*]]>*/
+    </script>
+
+    <script th:inline="none">
+        const map = L.map('map').setView([5.6037, -0.1870], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+        }).addTo(map);
+
+        let markers = [];
+        let currentMovementData = [];
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            const activeTab = document.querySelector('.tab[data-tab="' + tabId + '"]');
+            if (activeTab) activeTab.classList.add('active');
+
+            if(tabId === 'movement') {
+                setTimeout(() => {
+                    map.invalidateSize();
+                    renderMapData(currentMovementData);
+                }, 200);
+            }
+        }
+
+        async function loadMovementHistory() {
+            const btn = document.querySelector('.btn-run[onclick="loadMovementHistory()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/admin/intelligence/movement');
+                currentMovementData = await res.json();
+                renderMapData(currentMovementData);
+            } catch (e) {
+                console.error("Failed to load movement history:", e);
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        function renderMapData(data) {
+            // 1. Clear existing markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            // 2. Add individual markers
+            data.forEach(log => {
+                const color = log.entity_type === 'DRIVER' ? '#004E89' : '#DC3545';
+                const circle = L.circleMarker([log.lat, log.lng], {
+                    radius: 3,
+                    fillColor: color,
+                    color: "white",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                markers.push(circle);
+            });
+
+            // 3. Auto-adjust bounds if needed
+            if(data.length > 0 && markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds());
+            }
+        }
+
+        async function runSimulation() {
+            const formData = new FormData(document.getElementById('simulationForm'));
+            const params = new URLSearchParams(formData);
+
+            const btn = document.querySelector('.btn-run');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> CALCULATING...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/admin/intelligence/simulate', {
+                    method: 'POST',
+                    body: params
+                });
+                const data = await res.json();
+
+                document.getElementById('simPlaceholder').style.display = 'none';
+                document.getElementById('simulationResults').style.display = 'block';
+
+                document.getElementById('resRevenue').innerText = '₵' + data.estimatedRevenue.toFixed(2);
+                document.getElementById('resETA').innerText = data.averageETA.toFixed(1) + ' min';
+                document.getElementById('resCoverage').innerText = data.demandCoverage.toFixed(0) + '%';
+                document.getElementById('resSurge').innerText = data.recommendedSurge.toFixed(1) + 'x';
+
+                const list = document.getElementById('bottleneckList');
+                list.innerHTML = '';
+                data.bottleneckAreas.forEach(function(area) {
+                    const tag = document.createElement('span');
+                    tag.className = 'tag tag-danger';
+                    tag.innerText = area;
+                    list.appendChild(tag);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        // Initialize Charts
+        if (typeof reportData !== 'undefined') {
+            // 1. Busy Hours Chart
+            const ctxHours = document.getElementById('hoursChart').getContext('2d');
+            new Chart(ctxHours, {
+                type: 'line',
+                data: {
+                    labels: reportData.busyHours.map(h => h.hour + ':00'),
+                    datasets: [{
+                        label: 'Platform Activity',
+                        data: reportData.busyHours.map(h => h.count),
+                        backgroundColor: 'rgba(0, 78, 137, 0.1)',
+                        borderColor: '#004E89',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
+
+            // 2. Revenue Trend Chart
+            const ctxRev = document.getElementById('revenueChart').getContext('2d');
+            new Chart(ctxRev, {
+                type: 'bar',
+                data: {
+                    labels: reportData.revenueTrend.map(r => r.date),
+                    datasets: [{
+                        label: 'Daily Revenue (₵)',
+                        data: reportData.revenueTrend.map(r => r.total),
+                        backgroundColor: '#28A745',
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
+
+            // 3. Distribution Chart
+            const ctxDist = document.getElementById('distributionChart').getContext('2d');
+            new Chart(ctxDist, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Drivers', 'Customers'],
+                    datasets: [{
+                        data: [reportData.distribution['DRIVER'] || 0, reportData.distribution['CUSTOMER'] || 0],
+                        backgroundColor: ['#004E89', '#DC3545'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        loadMovementHistory();
+    </script>
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+</body>
+</html>

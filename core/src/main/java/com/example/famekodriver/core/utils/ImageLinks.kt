@@ -1,0 +1,17 @@
+package com.example.famekodriver.core.utils
+
+object ImageLinks {
+    const val ANI_SIGNUP = "https://i.postimg.cc/QtcVL4Vw/ani-signup.png"
+    const val DELIVERY = "https://i.postimg.cc/VNrdgL8p/delivery.jpg"
+    const val IC_ABOBOYAA = "https://i.postimg.cc/W1fd0qQB/ic-aboboyaa.jpg"
+    const val IC_BICYCLE = "https://i.postimg.cc/vZS45xJG/ic-bicycle.jpg"
+    const val IC_CAR_SALOON = "https://i.postimg.cc/Mprn1fCS/ic-car-saloon.png"
+    const val IC_FAMEKO_LOGO = "https://i.postimg.cc/wBy72Tpn/ic-fameko-logo.png"
+    const val IC_OKADA = "https://i.postimg.cc/PqpPyrHj/ic-okada.jpg"
+    const val IC_PRAGYA = "https://i.postimg.cc/1znfB5S1/ic-praggia.jpg"
+    const val IC_TRUCK = "https://i.postimg.cc/cJgrh4WN/ic-truck.jpg"
+    const val DRIVER_SIGNUP_BG = "https://i.postimg.cc/dtpd96tY/driver-signup.png"
+    const val MILLIE_LOGIN = "https://i.postimg.cc/pTKyNGyS/millie-login.png"
+    const val RENTAL = "https://i.postimg.cc/5tY6gNJ2/rental.jpg"
+    const val RIDE = "https://i.postimg.cc/CKBz7L0R/ride.jpg"
+}

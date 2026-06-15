@@ -1,0 +1,166 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="sos_notifier">
+    <!-- Shared SOS Notifier Fragment -->
+    <div id="global-sos-notifier" style="display: none; position: fixed; top: 20px; right: 20px; width: 320px; background: #DC3545; color: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 9999; overflow: hidden; font-family: 'Inter', sans-serif;">
+        <div style="padding: 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2);">
+            <div style="display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 1px; font-size: 0.9rem;">
+                <i class="fas fa-triangle-exclamation"></i> SOS ACTIVE
+            </div>
+            <button onclick="muteGlobalSOS()" id="global-mute-btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; cursor: pointer;">MUTE</button>
+        </div>
+        <div id="global-sos-content" style="padding: 15px;">
+            <!-- SOS Info will be injected here -->
+        </div>
+        <div style="padding: 10px 15px; background: rgba(0,0,0,0.1); display: flex; gap: 10px;">
+            <button onclick="window.location='/admin/map'" style="flex: 1; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">GO TO MAP</button>
+        </div>
+    </div>
+
+    <!-- Sound Elements -->
+    <audio id="audio-sos-general" loop><source src="https://www.soundjay.com/buttons/beep-01a.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-sos-accident" loop><source src="https://www.soundjay.com/mechanical/siren-1.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-sos-robbery" loop><source src="https://www.soundjay.com/communication/pager-beeps-1.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-sos-medical" loop><source src="https://www.soundjay.com/mechanical/siren-2.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-sos-breakdown" loop><source src="https://www.soundjay.com/communication/electronic-chime-01.mp3" type="audio/mpeg"></audio>
+
+    <script th:inline="none">
+        /*<![CDATA[*/
+        (function() {
+            let activeGlobalAlarms = [];
+            let isGlobalMuted = false;
+            let sosWs;
+            let fallbackPollInterval;
+
+            if (typeof Notification !== 'undefined' && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+
+            window.showWebNotification = function(alert) {
+                if (typeof Notification !== 'undefined' && Notification.permission === "granted") {
+                    const n = new Notification("Fameko SOS: " + alert.type, {
+                        body: alert.driverName + ' is requesting emergency assistance!',
+                        icon: "/static/img/logo.png"
+                    });
+                    n.onclick = function() {
+                        window.focus();
+                        window.location.href = "/admin/map";
+                    };
+                }
+            };
+
+            window.muteGlobalSOS = function() {
+                isGlobalMuted = !isGlobalMuted;
+                const btn = document.getElementById('global-mute-btn');
+                if (btn) btn.innerText = isGlobalMuted ? "UNMUTE" : "MUTE";
+
+                if (isGlobalMuted) {
+                    stopAllGlobalSounds();
+                } else {
+                    fetch('/api/admin/active-sos')
+                        .then(function(r) { return r.json(); })
+                        .then(function(alerts) {
+                            if (alerts.length > 0) playGlobalSound(alerts[alerts.length - 1].type);
+                        });
+                }
+            };
+
+            function stopAllGlobalSounds() {
+                const types = ['general', 'accident', 'robbery', 'medical', 'breakdown'];
+                for (let i = 0; i < types.length; i++) {
+                    const el = document.getElementById('audio-sos-' + types[i]);
+                    if (el) {
+                        el.pause();
+                        el.currentTime = 0;
+                    }
+                }
+            }
+
+            function playGlobalSound(type) {
+                if (isGlobalMuted) return;
+
+                let audioId = "audio-sos-general";
+                const t = (type || "").toLowerCase();
+
+                if (t.indexOf("accident") !== -1) audioId = "audio-sos-accident";
+                else if (t.indexOf("robbery") !== -1 || t.indexOf("threat") !== -1) audioId = "audio-sos-robbery";
+                else if (t.indexOf("medical") !== -1) audioId = "audio-sos-medical";
+                else if (t.indexOf("breakdown") !== -1) audioId = "audio-sos-breakdown";
+
+                const audio = document.getElementById(audioId);
+                if (audio && audio.paused) {
+                    audio.play().catch(function(e) { console.log("Autoplay blocked"); });
+                }
+            }
+
+            function connectSOSWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = protocol + '//' + window.location.host + '/admin/ws-sos';
+
+                sosWs = new WebSocket(wsUrl);
+
+                sosWs.onopen = function() {
+                    console.log("Admin SOS WebSocket Connected");
+                    if (fallbackPollInterval) clearInterval(fallbackPollInterval);
+                };
+
+                sosWs.onmessage = function(event) {
+                    try {
+                        const alert = JSON.parse(event.data);
+                        handleNewSOS(alert);
+                    } catch(e) {}
+                };
+
+                sosWs.onclose = function() {
+                    console.log("Admin SOS WebSocket Closed. Falling back to polling.");
+                    startFallbackPolling();
+                    setTimeout(connectSOSWebSocket, 5000);
+                };
+            }
+
+            function handleNewSOS(alert) {
+                const notifier = document.getElementById('global-sos-notifier');
+                const content = document.getElementById('global-sos-content');
+
+                if (notifier && content) {
+                    notifier.style.display = 'block';
+                    content.innerHTML =
+                        '<div style="font-weight: 700; font-size: 1rem; margin-bottom: 5px;">' + alert.driverName + '</div>' +
+                        '<div style="font-size: 0.8rem; opacity: 0.9; margin-bottom: 10px;">' + alert.driverPhone + '</div>' +
+                        '<div style="background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; display: inline-block; text-transform: uppercase;">' +
+                            alert.type +
+                        '</div>';
+                }
+
+                playGlobalSound(alert.type);
+                showWebNotification(alert);
+            }
+
+            function startFallbackPolling() {
+                if (fallbackPollInterval) return;
+                fallbackPollInterval = setInterval(function() {
+                    fetch('/api/admin/active-sos')
+                        .then(function(r) { return r.json(); })
+                        .then(function(alerts) {
+                            const notifier = document.getElementById('global-sos-notifier');
+                            if (alerts.length > 0) {
+                                if (notifier) notifier.style.display = 'block';
+                            } else {
+                                if (notifier) notifier.style.display = 'none';
+                                stopAllGlobalSounds();
+                            }
+                        });
+                }, 5000);
+            }
+
+            fetch('/api/admin/active-sos')
+                .then(function(r) { return r.json(); })
+                .then(function(alerts) {
+                    if (alerts.length > 0) {
+                        handleNewSOS(alerts[alerts.length - 1]);
+                    }
+                });
+
+            connectSOSWebSocket();
+        })();
+        /*]]>*/
+    </script>
+</div>

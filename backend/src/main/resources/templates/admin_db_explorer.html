@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fameko Admin - Database Explorer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --card-border: 1px solid #E9ECEF;
+            --transition: all 0.2s ease-in-out;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --header-text: #1A202C;
+            --border-color: #EDF2F7;
+            --muted-text: #718096;
+            --table-header-bg: #F7FAFC;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --header-text: #F7FAFC;
+            --border-color: #374151;
+            --muted-text: #9CA3AF;
+            --card-border: 1px solid #374151;
+            --table-header-bg: #1A202C;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--dark-text);
+            height: 100vh;
+            position: fixed;
+            padding-top: 10px;
+            border-right: 1px solid var(--border-color);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            color: var(--primary-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0 10px;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            margin-bottom: 2px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .sidebar-menu li:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 12px;
+            width: 18px;
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-menu li.active {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: 600;
+            opacity: 1;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 24px 32px;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--header-text);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: var(--card-border);
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--dark-text);
+        }
+
+        .table-container {
+            padding: 0;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            white-space: nowrap;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 20px;
+            background: var(--table-header-bg);
+            font-weight: 600;
+            color: var(--muted-text);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.8rem;
+        }
+
+        tr:hover td { background-color: var(--light-bg); }
+
+        .db-sidebar {
+            width: 200px;
+            border-right: 1px solid var(--border-color);
+            padding-right: 10px;
+        }
+
+        .db-layout {
+            display: flex;
+            gap: 20px;
+        }
+
+        .table-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .table-list li {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .table-list li:hover {
+            background: var(--light-bg);
+        }
+
+        .table-list li.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .table-list li a {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            margin: 100px auto;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt"></i>
+            <h2 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">FAMEKO</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li onclick="window.location='/admin/dashboard'"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li onclick="window.location='/admin/map'"><i class="fas fa-map-location-dot"></i> Live Map</li>
+            <li onclick="window.location='/admin/intelligence'"><i class="fas fa-chart-pie"></i> Intelligence</li>
+            <li onclick="window.location='/admin/drivers'"><i class="fas fa-id-card"></i> Drivers</li>
+            <li onclick="window.location='/admin/customers'"><i class="fas fa-user-group"></i> Customers</li>
+            <li onclick="window.location='/admin/deliveries'"><i class="fas fa-route"></i> Deliveries</li>
+            <li onclick="window.location='/admin/daily-payments'"><i class="fas fa-money-check-dollar"></i> Daily Payments</li>
+            <li onclick="window.location='/admin/rentals'"><i class="fas fa-car-side"></i> Rental Requests</li>
+            <li onclick="window.location='/admin/pricing'"><i class="fas fa-tags"></i> Pricing</li>
+            <li onclick="window.location='/admin/financials'"><i class="fas fa-chart-pie"></i> Analytics</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" class="active" onclick="window.location='/admin/database'"><i class="fas fa-database"></i> Database</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" onclick="window.location='/admin/settings'"><i class="fas fa-gear"></i> Settings</li>
+            <li th:if="${admin.role == 'SUPERADMIN'}" onclick="window.location='/admin/admins'"><i class="fas fa-user-shield"></i> Regional Admins</li>
+            <li onclick="window.location='/admin/logout'"><i class="fas fa-right-from-bracket"></i> Logout</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1 id="page-title" th:text="${selectedTable != null ? 'Database: ' + selectedTable : 'Database Explorer'}">Database Explorer</h1>
+        </div>
+
+        <div class="db-layout">
+            <div class="db-sidebar">
+                <div style="font-size: 0.7rem; font-weight: 700; color: var(--muted-text); text-transform: uppercase; margin-bottom: 10px; padding-left: 12px;">Tables</div>
+                <ul class="table-list">
+                    <li th:each="table : ${tables}" th:class="${selectedTable == table ? 'active' : ''}" th:id="'table-item-' + ${table}">
+                        <a href="#" th:data-table="${table}" onclick="event.preventDefault(); loadTableData(this.getAttribute('data-table'))" th:text="${table}">table_name</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div style="flex: 1; min-width: 0;">
+                <div id="loading-spinner" class="spinner"></div>
+
+                <div id="welcome-content" th:style="${selectedTable == null ? 'display: block' : 'display: none'}" class="card" style="padding: 40px; text-align: center; color: var(--muted-text);">
+                    <i class="fas fa-database" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.2;"></i>
+                    <p>Select a table from the list to view its contents.</p>
+                </div>
+
+                <div id="table-card" th:style="${selectedTable != null ? 'display: block' : 'display: none'}" class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-table"></i>
+                            <span id="display-table-name" th:text="${selectedTable != null ? selectedTable : ''}">Table Name</span>
+                            <span style="font-size: 0.75rem; font-weight: normal; color: var(--muted-text); margin-left: 10px;">(Showing top 100 rows)</span>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="data-table">
+                            <thead>
+                                <tr id="table-head">
+                                    <th th:each="col : ${columns}" th:text="${col}">Column</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <tr th:each="row : ${rows}">
+                                    <td th:each="val : ${row}" th:text="${val}">Value</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="none">
+        /*<![CDATA[*/
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        function loadTableData(tableName) {
+            const welcome = document.getElementById('welcome-content');
+            const card = document.getElementById('table-card');
+            const spinner = document.getElementById('loading-spinner');
+            const title = document.getElementById('page-title');
+            const displayTitle = document.getElementById('display-table-name');
+
+            if (welcome) welcome.style.display = 'none';
+            if (card) card.style.display = 'none';
+            if (spinner) spinner.style.display = 'block';
+            if (title) title.innerText = 'Database: ' + tableName;
+            if (displayTitle) displayTitle.innerText = tableName;
+
+            document.querySelectorAll('.table-list li').forEach(function(li) { li.classList.remove('active'); });
+            const item = document.getElementById('table-item-' + tableName);
+            if (item) item.classList.add('active');
+
+            fetch('/admin/api/database/' + tableName)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    renderTable(data);
+                    if (spinner) spinner.style.display = 'none';
+                    if (card) card.style.display = 'block';
+                    window.history.pushState({table: tableName}, '', '/admin/database/' + tableName);
+                })
+                .catch(function(err) {
+                    console.error('Error fetching table data:', err);
+                    alert('Failed to load table data.');
+                    if (spinner) spinner.style.display = 'none';
+                });
+        }
+
+        function renderTable(data) {
+            const head = document.getElementById('table-head');
+            const body = document.getElementById('table-body');
+
+            if (!data.columns || !data.rows || !head || !body) return;
+
+            let headHtml = '';
+            for (let i = 0; i < data.columns.length; i++) {
+                headHtml += '<th>' + data.columns[i] + '</th>';
+            }
+            head.innerHTML = headHtml;
+
+            let bodyHtml = '';
+            for (let i = 0; i < data.rows.length; i++) {
+                bodyHtml += '<tr>';
+                for (let j = 0; j < data.rows[i].length; j++) {
+                    const val = data.rows[i][j];
+                    const displayVal = (val === null) ? '<span style="color:#ccc">null</span>' : val;
+                    bodyHtml += '<td>' + displayVal + '</td>';
+                }
+                bodyHtml += '</tr>';
+            }
+            body.innerHTML = bodyHtml;
+        }
+
+        window.onpopstate = function(event) {
+            if (event.state && event.state.table) {
+                loadTableData(event.state.table);
+            } else {
+                location.reload();
+            }
+        };
+        /*]]>*/
+    </script>
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+</body>
+</html>
