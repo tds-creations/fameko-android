@@ -45,3 +45,18 @@ backend/out/
 *.db-journal
 *.trace.db
 *.lock.db
+
+# Kotlin
+.kotlin/
+kotlin-js-store/
+
+# Android Studio / Artifacts
+.artifacts/
+
+# OS specific
+Thumbs.db
+
+# Temporary files
+*.swp
+*.bak
+*.tmp

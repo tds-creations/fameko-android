@@ -20,6 +20,7 @@ material = "1.12.0"
 constraintlayout = "2.2.0"
 playServicesLocation = "21.3.0"
 coreSplashscreen = "1.0.1"
+navigationCompose = "2.8.3"
 retrofit = "2.9.0"
 okhttp = "4.12.0"
 gson = "2.10.1"
@@ -93,6 +94,7 @@ postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "pos
 postgresql-android = { group = "org.postgresql", name = "postgresql", version.ref = "postgresqlAndroid" }
 webrtc = { group = "io.getstream", name = "stream-webrtc-android", version.ref = "webrtc" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }

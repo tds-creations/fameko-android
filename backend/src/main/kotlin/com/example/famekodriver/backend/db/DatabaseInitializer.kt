@@ -334,6 +334,19 @@ object DatabaseInitializer {
                 results TEXT, -- JSON string of results
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+            """.trimIndent(),
+            """
+            CREATE TABLE IF NOT EXISTS products (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                price NUMERIC(12, 2) NOT NULL,
+                category TEXT,
+                location TEXT,
+                images TEXT, -- comma separated
+                seller_id INTEGER REFERENCES drivers(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
             """.trimIndent()
         )
         conn.createStatement().use { stmt ->
@@ -431,6 +444,17 @@ object DatabaseInitializer {
             if (resSettings.next() && resSettings.getInt(1) == 0) {
                 conn.createStatement().execute("INSERT INTO system_settings (id, support_phone, support_email) VALUES (1, '+233 24 123 4567', 'support@fameko.com')")
                 println("System settings initialized.")
+            }
+
+            val resProducts = conn.createStatement().executeQuery("SELECT COUNT(*) FROM products")
+            if (resProducts.next() && resProducts.getInt(1) == 0) {
+                conn.createStatement().execute("""
+                    INSERT INTO products (name, description, price, category, location, images) VALUES 
+                    ('Smartphone X', 'Latest model with 5G', 2500.0, 'Electronics', 'Accra', 'phone1.jpg,phone2.jpg'),
+                    ('Leather Jacket', 'Genuine leather, black', 450.0, 'Fashion', 'Kumasi', 'jacket1.jpg'),
+                    ('Mountain Bike', '21 speed, all-terrain', 1200.0, 'Sports', 'Tema', 'bike1.jpg')
+                """.trimIndent())
+                println("Initial products seeded.")
             }
         } catch (e: Exception) {
             println("Seeding error: ${e.message}")

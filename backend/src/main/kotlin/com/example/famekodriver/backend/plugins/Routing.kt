@@ -11,6 +11,8 @@ import io.ktor.server.sessions.*
 import io.ktor.server.http.content.*
 import io.ktor.http.content.*
 import com.example.famekodriver.core.domain.model.*
+import com.example.famekodriver.backend.services.IntelligenceService
+import com.example.famekodriver.backend.services.SimulationParams
 import kotlinx.coroutines.runBlocking
 import com.example.famekodriver.backend.db.DatabaseInitializer
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -440,7 +442,7 @@ fun Application.configureRouting() {
                     val principal = call.principal<AdminPrincipal>()!!
                     if (!principal.canViewAnalytics) return@get call.respondRedirect("/admin/dashboard")
                     
-                    val report = com.example.famekodriver.backend.services.IntelligenceService.getAnalyticsReport()
+                    val report = IntelligenceService.getAnalyticsReport()
                     call.respond(ThymeleafContent("admin_intelligence", mapOf(
                         "activePage" to "intelligence",
                         "admin" to principal,
@@ -450,18 +452,18 @@ fun Application.configureRouting() {
 
                 post("/intelligence/simulate") {
                     val p = call.receiveParameters()
-                    val params = com.example.famekodriver.backend.services.SimulationParams(
+                    val params = SimulationParams(
                         driverCount = p["driverCount"]?.toIntOrNull() ?: 10,
                         customerCount = p["customerCount"]?.toIntOrNull() ?: 50,
                         weather = p["weather"] ?: "CLEAR",
                         timeOfDay = p["timeOfDay"] ?: "AFTERNOON"
                     )
-                    val result = com.example.famekodriver.backend.services.IntelligenceService.runSimulation(params)
+                    val result = IntelligenceService.runSimulation(params)
                     call.respond(result)
                 }
 
                 get("/intelligence/movement") {
-                    val history = com.example.famekodriver.backend.services.IntelligenceService.getMovementHistory()
+                    val history = IntelligenceService.getMovementHistory()
                     call.respond(history)
                 }
 
@@ -469,7 +471,7 @@ fun Application.configureRouting() {
                     val principal = call.principal<AdminPrincipal>()!!
                     if (!principal.canViewAnalytics) return@get call.respond(HttpStatusCode.Forbidden)
                     
-                    val logs = com.example.famekodriver.backend.services.IntelligenceService.getMovementHistory(5000)
+                    val logs = IntelligenceService.getMovementHistory(5000)
                     val csv = StringBuilder("ID,EntityID,Type,Lat,Lng,Timestamp\n")
                     logs.forEach { log ->
                         csv.append("${log["id"]},${log["entity_id"]},${log["entity_type"]},${log["lat"]},${log["lng"]},${log["created_at"]}\n")
@@ -739,6 +741,25 @@ fun Application.configureRouting() {
         }
 
         get("/pricing/config") { call.respond(getPricingConfigFromDb()) }
+
+        route("/api/v1") {
+            get("/products") {
+                call.respond(getAllProductsFromDb())
+            }
+            get("/products/{id}") {
+                val id = call.parameters["id"]?.toIntOrNull()
+                if (id == null) {
+                    call.respond(HttpStatusCode.BadRequest, "Invalid ID")
+                    return@get
+                }
+                val product = getProductFromDb(id)
+                if (product != null) {
+                    call.respond(product)
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Product not found")
+                }
+            }
+        }
 
         post("/orders/estimates") {
             val p = call.receiveParameters()
@@ -1277,9 +1298,9 @@ fun Application.configureRouting() {
             post("/submit-rating") {
                 val p = call.receiveParameters()
                 val driverId = p["driver_id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
-                val orderId = p["order_id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                val _orderId = p["order_id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
                 val rating = p["rating"]?.toFloatOrNull() ?: 5.0f
-                val comment = p["comment"] ?: ""
+                val _comment = p["comment"] ?: ""
 
                 DatabaseInitializer.getDataSource().connection.use { conn ->
                     // 1. Update driver's average rating
@@ -1290,6 +1311,7 @@ fun Application.configureRouting() {
                     stmt.executeUpdate()
                     
                     // 2. We could also store it in a ratings table for history
+                    // println("Rating for order $_orderId: $rating - $_comment")
                 }
                 call.respond(AuthResponse(true, "Rating submitted", null, null))
             }
@@ -1708,7 +1730,7 @@ fun Application.configureRouting() {
                 val mode = settings["paystack_mode"] as? String ?: "TEST"
                 
                 if (mode == "TEST" && type == "DAILY_FEE" && topupId != null) {
-                    approvePaymentInDb(topupId!!)
+                    approvePaymentInDb(topupId)
                     call.respond(AuthResponse(true, "Approved automatically (Test Mode)", null, null))
                 } else {
                     call.respond(AuthResponse(true, "Request submitted for approval", null, null))
@@ -2171,6 +2193,26 @@ private fun getAllDriversFromDb(region: String?): List<Map<String, Any>> {
         }
     }
     return list
+}
+
+
+private fun getProductFromDb(id: Int): Map<String, Any?>? {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        val rs = conn.prepareStatement("SELECT * FROM products WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+        if (rs.next()) {
+            return mapOf(
+                "id" to rs.getInt("id"),
+                "name" to rs.getString("name"),
+                "description" to rs.getString("description"),
+                "price" to rs.getDouble("price"),
+                "category" to rs.getString("category"),
+                "location" to rs.getString("location"),
+                "images" to (rs.getString("images")?.split(",")?.map { it.replace("\\", "/") } ?: emptyList<String>()),
+                "seller_id" to rs.getInt("seller_id")
+            )
+        }
+    }
+    return null
 }
 
 private fun getDriverDetailsFromDb(id: Int): Map<String, Any>? {
@@ -3041,4 +3083,24 @@ private fun getTableDataFromDb(tableName: String, limit: Int = 100): Pair<List<S
         }
     }
     return Pair(columns, rows)
+}
+
+private fun getAllProductsFromDb(): List<Map<String, Any?>> {
+    val list = mutableListOf<Map<String, Any?>>()
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        val rs = conn.createStatement().executeQuery("SELECT * FROM products ORDER BY id DESC")
+        while (rs.next()) {
+            list.add(mapOf(
+                "id" to rs.getInt("id"),
+                "name" to rs.getString("name"),
+                "description" to rs.getString("description"),
+                "price" to rs.getDouble("price"),
+                "category" to rs.getString("category"),
+                "location" to rs.getString("location"),
+                "images" to (rs.getString("images")?.split(",")?.map { it.replace("\\", "/") } ?: emptyList<String>()),
+                "seller_id" to rs.getInt("seller_id")
+            ))
+        }
+    }
+    return list
 }
