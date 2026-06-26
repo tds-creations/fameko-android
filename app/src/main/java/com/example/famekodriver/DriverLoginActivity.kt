@@ -127,7 +127,7 @@ class DriverLoginActivity : AppCompatActivity() {
                     crossfade(500)
                 }
                 currentIndex = (currentIndex + 1) % images.size
-                kotlinx.coroutines.delay(1500)
+                kotlinx.coroutines.delay(2500)
             }
         }
     }
