@@ -34,7 +34,6 @@ class CustomerLoginActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_customer_login)
 
-        findViewById<ImageView>(R.id.ivBackground).load(ImageLinks.CUSTOMER_SPLASH_SCREEN)
         findViewById<ImageView>(R.id.ivLogo).load(ImageLinks.IC_FAMEKO_LOGO)
 
         val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
@@ -68,12 +67,12 @@ class CustomerLoginActivity : AppCompatActivity() {
         }
 
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
-        val registerText = "New to Fameko? Create account"
+        val registerText = "Already have an account? Sign Up"
         val spannableRegister = android.text.SpannableString(registerText)
-        val blueColor = android.graphics.Color.parseColor("#004E89")
+        val blueColor = android.graphics.Color.parseColor("#0061A4")
         
-        // Find index of "Create account"
-        val startIndex = registerText.indexOf("Create account")
+        // Find index of "Sign Up"
+        val startIndex = registerText.indexOf("Sign Up")
         if (startIndex != -1) {
             spannableRegister.setSpan(
                 android.text.style.ForegroundColorSpan(blueColor),

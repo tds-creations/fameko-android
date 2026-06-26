@@ -35,7 +35,6 @@ class DriverLoginActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_driver_login)
 
-        findViewById<ImageView>(R.id.ivBackground).load(ImageLinks.DRIVER_SPLASH_SCREEN)
         findViewById<ImageView>(R.id.ivLogo).load(ImageLinks.IC_FAMEKO_DRIVER_LOGO)
 
         val etEmail = findViewById<TextInputEditText>(R.id.etEmail)

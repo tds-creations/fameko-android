@@ -14,6 +14,7 @@ object ImageLinks {
     const val DRIVER_SIGNUP_BG = "https://i.postimg.cc/dtpd96tY/driver-signup.png"
     const val DRIVER_SPLASH_SCREEN = "https://i.postimg.cc/Kvn5P3Gg/fameko-driver-splash-screen.jpg"
     const val CUSTOMER_SPLASH_SCREEN = "https://i.postimg.cc/xTtXV9gZ/fameko-splash-screen.jpg"
+    const val CUSTOMER_LOGIN_MOCKUP = "https://i.postimg.cc/HnvXLcfT/c1.jpg"
     const val MILLIE_LOGIN = "https://i.postimg.cc/pTKyNGyS/millie-login.png"
     const val RENTAL = "https://i.postimg.cc/5tY6gNJ2/rental.jpg"
     const val RIDE = "https://i.postimg.cc/CKBz7L0R/ride.jpg"

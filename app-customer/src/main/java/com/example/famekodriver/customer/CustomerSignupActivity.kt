@@ -22,7 +22,7 @@ class CustomerSignupActivity : AppCompatActivity() {
         setContentView(R.layout.activity_customer_signup)
         sessionManager = SessionManager(this)
 
-        findViewById<ImageView>(R.id.ivBackground).load("https://i.postimg.cc/QtcVL4Vw/ani-signup.png")
+        findViewById<ImageView>(R.id.ivLogo).load(ImageLinks.IC_FAMEKO_LOGO)
 
         // Fields from layout
         val etName = findViewById<TextInputEditText>(R.id.etName)
@@ -56,60 +56,54 @@ class CustomerSignupActivity : AppCompatActivity() {
             val confirmPassword = etConfirmPassword.text?.toString() ?: ""
 
             if (name.isEmpty() || email.isEmpty() || phone.isEmpty() || password.isEmpty() || region.isEmpty()) {
-                Toast.makeText(this, getString(R.string.msg_fill_required), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please fill all required fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                Toast.makeText(this, getString(R.string.msg_valid_email), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please enter a valid email", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             if (password != confirmPassword) {
-                Toast.makeText(this, getString(R.string.msg_password_mismatch), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             if (!cbTerms.isChecked) {
-                Toast.makeText(this, getString(R.string.msg_agree_terms), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please agree to terms and conditions", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             btnSignup.isEnabled = false
             lifecycleScope.launch {
-                println("Fameko: Starting registration for $email")
                 repository.customerRegister(name, email, phone, address, password, region = region)
                     .onSuccess {
-                        println("Fameko: Registration success, attempting auto-login")
-                        Toast.makeText(this@CustomerSignupActivity, getString(R.string.msg_account_created), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@CustomerSignupActivity, "Account created successfully", Toast.LENGTH_LONG).show()
                         
                         // Automatic login
                         repository.customerLogin(email, password).onSuccess { (id, customerName) ->
-                            println("Fameko: Auto-login success for $id")
                             sessionManager.saveSession(id, customerName)
                             val intent = Intent().setClassName(this@CustomerSignupActivity, "com.example.famekodriver.customer.CustomerMapActivity")
                             startActivity(intent)
                             finishAffinity()
                         }.onFailure { error ->
-                            println("Fameko: Auto-login failed: ${error.message}")
                             btnSignup.isEnabled = true
-                            Toast.makeText(this@CustomerSignupActivity, getString(R.string.msg_auto_login_failed, error.message), Toast.LENGTH_LONG).show()
-                            // Don't finish, let them try to login manually or see the error
+                            Toast.makeText(this@CustomerSignupActivity, "Auto-login failed: ${error.message}", Toast.LENGTH_LONG).show()
                         }
                     }
                     .onFailure { error ->
-                        println("Fameko: Registration failed: ${error.message}")
                         btnSignup.isEnabled = true
-                        Toast.makeText(this@CustomerSignupActivity, getString(R.string.msg_signup_failed, error.message), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@CustomerSignupActivity, "Signup failed: ${error.message}", Toast.LENGTH_LONG).show()
                     }
             }
         }
 
-        val loginText = getString(R.string.already_have_account)
+        val loginText = "Already have an account? Sign In"
         val spannableLogin = android.text.SpannableString(loginText)
-        val blueColor = android.graphics.Color.parseColor("#004E89")
+        val blueColor = android.graphics.Color.parseColor("#0061A4")
         
-        val loginStart = loginText.indexOf("Login here")
+        val loginStart = loginText.indexOf("Sign In")
         if (loginStart != -1) {
             spannableLogin.setSpan(
                 android.text.style.ForegroundColorSpan(blueColor),

@@ -21,8 +21,6 @@ class DriverSignupActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_driver_signup)
 
-        findViewById<ImageView>(R.id.ivBackground).load(ImageLinks.DRIVER_SIGNUP_BG)
-
         // Load vehicle icons from URLs
         findViewById<ImageView>(R.id.ivCar).load(ImageLinks.IC_CAR_SALOON)
         findViewById<ImageView>(R.id.ivPragya).load(ImageLinks.IC_PRAGYA)
