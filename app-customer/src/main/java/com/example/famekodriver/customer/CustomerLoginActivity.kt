@@ -34,7 +34,7 @@ class CustomerLoginActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_customer_login)
 
-        findViewById<ImageView>(R.id.ivBackground).load(ImageLinks.MILLIE_LOGIN)
+        findViewById<ImageView>(R.id.ivBackground).load(ImageLinks.CUSTOMER_SPLASH_SCREEN)
         findViewById<ImageView>(R.id.ivLogo).load(ImageLinks.IC_FAMEKO_LOGO)
 
         val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
