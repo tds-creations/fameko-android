@@ -22,7 +22,7 @@ class CustomerSignupActivity : AppCompatActivity() {
         setContentView(R.layout.activity_customer_signup)
         sessionManager = SessionManager(this)
 
-        findViewById<ImageView>(R.id.ivLogo).load(ImageLinks.IC_FAMEKO_LOGO)
+        setupCarousel()
 
         // Fields from layout
         val etName = findViewById<TextInputEditText>(R.id.etName)
@@ -121,6 +121,27 @@ class CustomerSignupActivity : AppCompatActivity() {
         tvLogin.text = spannableLogin
         tvLogin.setOnClickListener {
             finish()
+        }
+    }
+
+    private fun setupCarousel() {
+        val ivLogo = findViewById<ImageView>(R.id.ivLogo)
+        val images = listOf(
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_1,
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_2,
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_3
+        )
+
+        var currentIndex = 0
+        lifecycleScope.launch {
+            while (true) {
+                ivLogo.load(images[currentIndex]) {
+                    crossfade(true)
+                    crossfade(500)
+                }
+                currentIndex = (currentIndex + 1) % images.size
+                kotlinx.coroutines.delay(1500)
+            }
         }
     }
 }
