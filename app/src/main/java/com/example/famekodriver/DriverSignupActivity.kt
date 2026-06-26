@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
 import coil.load
 import com.example.famekodriver.core.data.repository.DriverRepository
@@ -11,7 +12,9 @@ import com.example.famekodriver.core.utils.ImageLinks
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class DriverSignupActivity : AppCompatActivity() {
     private val repository = DriverRepository()
@@ -84,7 +87,7 @@ class DriverSignupActivity : AppCompatActivity() {
         val tvLogin = findViewById<TextView>(R.id.tvLogin)
         val loginText = "Already a driver? Login here"
         val spannableLogin = android.text.SpannableString(loginText)
-        val orangeColor = android.graphics.Color.parseColor("#FF6B35")
+        val orangeColor = "#FF6B35".toColorInt()
         
         val loginStart = loginText.indexOf("Login here")
         if (loginStart != -1) {
@@ -248,7 +251,7 @@ class DriverSignupActivity : AppCompatActivity() {
                     crossfade(500)
                 }
                 currentIndex = (currentIndex + 1) % images.size
-                kotlinx.coroutines.delay(2500)
+                delay(2500.milliseconds)
             }
         }
     }

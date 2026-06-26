@@ -6,6 +6,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.toColorInt
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import coil.load
@@ -14,7 +15,9 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.utils.ImageLinks
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class CustomerLoginActivity : AppCompatActivity() {
     private lateinit var sessionManager: SessionManager
@@ -69,7 +72,7 @@ class CustomerLoginActivity : AppCompatActivity() {
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
         val registerText = "Already have an account? Sign Up"
         val spannableRegister = android.text.SpannableString(registerText)
-        val blueColor = android.graphics.Color.parseColor("#0061A4")
+        val blueColor = "#0061A4".toColorInt()
         
         // Find index of "Sign Up"
         val startIndex = registerText.indexOf("Sign Up")
@@ -114,7 +117,7 @@ class CustomerLoginActivity : AppCompatActivity() {
                     crossfade(500)
                 }
                 currentIndex = (currentIndex + 1) % images.size
-                kotlinx.coroutines.delay(2500)
+                delay(2500.milliseconds)
             }
         }
     }

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
 import coil.load
 import com.example.famekodriver.core.data.SessionManager
@@ -11,7 +12,9 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.utils.ImageLinks
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class CustomerSignupActivity : AppCompatActivity() {
     private lateinit var sessionManager: SessionManager
@@ -101,7 +104,7 @@ class CustomerSignupActivity : AppCompatActivity() {
 
         val loginText = "Already have an account? Sign In"
         val spannableLogin = android.text.SpannableString(loginText)
-        val blueColor = android.graphics.Color.parseColor("#0061A4")
+        val blueColor = "#0061A4".toColorInt()
         
         val loginStart = loginText.indexOf("Sign In")
         if (loginStart != -1) {
@@ -140,7 +143,7 @@ class CustomerSignupActivity : AppCompatActivity() {
                     crossfade(500)
                 }
                 currentIndex = (currentIndex + 1) % images.size
-                kotlinx.coroutines.delay(2500)
+                delay(2500.milliseconds)
             }
         }
     }

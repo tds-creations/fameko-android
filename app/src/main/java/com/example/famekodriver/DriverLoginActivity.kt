@@ -7,6 +7,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
 import coil.load
 import com.example.famekodriver.core.data.SessionManager
@@ -14,7 +15,9 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.utils.ImageLinks
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class DriverLoginActivity : AppCompatActivity() {
     private lateinit var sessionManager: SessionManager
@@ -43,7 +46,7 @@ class DriverLoginActivity : AppCompatActivity() {
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
         val registerText = "Don't have an account? Register here"
         val spannableRegister = android.text.SpannableString(registerText)
-        val orangeColor = android.graphics.Color.parseColor("#FF6B35")
+        val orangeColor = "#FF6B35".toColorInt()
         
         val regStart = registerText.indexOf("Register here")
         if (regStart != -1) {
@@ -127,7 +130,7 @@ class DriverLoginActivity : AppCompatActivity() {
                     crossfade(500)
                 }
                 currentIndex = (currentIndex + 1) % images.size
-                kotlinx.coroutines.delay(2500)
+                delay(2500.milliseconds)
             }
         }
     }
