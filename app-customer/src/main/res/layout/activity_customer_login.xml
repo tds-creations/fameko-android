@@ -9,18 +9,20 @@
 
     <ImageView
         android:id="@+id/ivLogo"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:layout_marginTop="48dp"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
         android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        app:layout_constraintHeight_percent="0.35"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="-40dp"
         app:cardBackgroundColor="#F8F9FB"
         app:cardCornerRadius="40dp"
         app:cardElevation="0dp"
