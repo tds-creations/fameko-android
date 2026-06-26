@@ -35,7 +35,7 @@ class DriverLoginActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_driver_login)
 
-        findViewById<ImageView>(R.id.ivLogo).load(ImageLinks.IC_FAMEKO_DRIVER_LOGO)
+        setupCarousel()
 
         val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
         val etPassword = findViewById<TextInputEditText>(R.id.etPassword)
@@ -108,6 +108,27 @@ class DriverLoginActivity : AppCompatActivity() {
         tvRegister.setOnClickListener {
             val intent = Intent(this, DriverSignupActivity::class.java)
             startActivity(intent)
+        }
+    }
+
+    private fun setupCarousel() {
+        val ivLogo = findViewById<ImageView>(R.id.ivLogo)
+        val images = listOf(
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_1,
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_2,
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_3
+        )
+
+        var currentIndex = 0
+        lifecycleScope.launch {
+            while (true) {
+                ivLogo.load(images[currentIndex]) {
+                    crossfade(true)
+                    crossfade(500)
+                }
+                currentIndex = (currentIndex + 1) % images.size
+                kotlinx.coroutines.delay(1500)
+            }
         }
     }
 }

@@ -21,6 +21,8 @@ class DriverSignupActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_driver_signup)
 
+        setupCarousel()
+
         // Load vehicle icons from URLs
         findViewById<ImageView>(R.id.ivCar).load(ImageLinks.IC_CAR_SALOON)
         findViewById<ImageView>(R.id.ivPragya).load(ImageLinks.IC_PRAGYA)
@@ -226,6 +228,27 @@ class DriverSignupActivity : AppCompatActivity() {
             }.onFailure {
                 findViewById<MaterialButton>(R.id.btnSubmit).isEnabled = true
                 Toast.makeText(this@DriverSignupActivity, "Error: ${it.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun setupCarousel() {
+        val ivLogo = findViewById<ImageView>(R.id.ivLogo)
+        val images = listOf(
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_1,
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_2,
+            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_3
+        )
+
+        var currentIndex = 0
+        lifecycleScope.launch {
+            while (true) {
+                ivLogo.load(images[currentIndex]) {
+                    crossfade(true)
+                    crossfade(500)
+                }
+                currentIndex = (currentIndex + 1) % images.size
+                kotlinx.coroutines.delay(1500)
             }
         }
     }

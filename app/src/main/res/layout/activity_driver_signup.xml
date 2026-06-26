@@ -4,46 +4,91 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="#1A1C1E"
     tools:context=".DriverSignupActivity">
 
-    <!-- Registration Form -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/scrollView"
+    <ImageView
+        android:id="@+id/ivLogo"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:fillViewport="true"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        app:layout_constraintHeight_percent="0.25"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="-40dp"
+        app:cardBackgroundColor="#F8F9FB"
+        app:cardCornerRadius="40dp"
+        app:cardElevation="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/ivLogo"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.LargeComponent.TopRounded">
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#FFFFFF"
                 android:orientation="vertical"
-                android:padding="24dp">
+                android:padding="32dp">
+
+                <TextView
+                    android:id="@+id/tvTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Create Driver Account"
+                    android:textColor="#1A1C1E"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Join the Fameko Fleet"
+                    android:textColor="#44474E"
+                    android:textSize="18sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/hint_full_name"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    android:layout_marginTop="24dp"
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Full Name"
                         android:inputType="textPersonName"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="@string/label_select_vehicle_type"
-                    android:textColor="#000000"
+                    android:text="Select Vehicle Type"
+                    android:textColor="#1A1C1E"
                     android:textStyle="bold" />
 
                 <HorizontalScrollView
@@ -74,13 +119,13 @@
                                 android:id="@+id/ivCar"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="@string/vehicle_car"
+                                android:contentDescription="Car"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="@string/vehicle_car"
+                                android:text="Car"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -101,13 +146,13 @@
                                 android:id="@+id/ivPragya"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="@string/vehicle_pragya"
+                                android:contentDescription="Pragya"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="@string/vehicle_pragya"
+                                android:text="Pragya"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -128,13 +173,13 @@
                                 android:id="@+id/ivBicycle"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="@string/vehicle_bicycle"
+                                android:contentDescription="Bicycle"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="@string/vehicle_bicycle"
+                                android:text="Bicycle"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -155,13 +200,13 @@
                                 android:id="@+id/ivAboboyaa"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="@string/vehicle_aboboyaa"
+                                android:contentDescription="Aboboyaa"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="@string/vehicle_aboboyaa"
+                                android:text="Aboboyaa"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -182,13 +227,13 @@
                                 android:id="@+id/ivOkada"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="@string/vehicle_okada"
+                                android:contentDescription="Okada"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="@string/vehicle_okada"
+                                android:text="Okada"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -209,13 +254,13 @@
                                 android:id="@+id/ivTruck"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="@string/vehicle_truck"
+                                android:contentDescription="Truck"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="@string/vehicle_truck"
+                                android:text="Truck"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -224,20 +269,11 @@
                     </LinearLayout>
                 </HorizontalScrollView>
 
-                <TextView
-                    android:id="@+id/tvJoinAsLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/label_join_as"
-                    android:textColor="#000000"
-                    android:textStyle="bold" />
-
                 <com.google.android.material.button.MaterialButtonToggleGroup
                     android:id="@+id/toggleRole"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="16dp"
                     app:singleSelection="true"
                     app:checkedButton="@+id/btnRoleDriver">
 
@@ -247,7 +283,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/role_driver"
+                        android:text="Driver"
                         android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
@@ -256,7 +292,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/role_fleet_owner"
+                        android:text="Fleet Owner"
                         android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
@@ -265,7 +301,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/role_both"
+                        android:text="Both"
                         android:textSize="12sp" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -274,16 +310,23 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_rental_company_name"
                     android:visibility="gone"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etCompanyName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="#000000" />
+                        android:hint="Company Name"
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -291,47 +334,68 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_registration_number"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etRegistrationNumber"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="#000000" />
+                        android:hint="Registration Number"
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_email_address"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Email Address"
                         android:inputType="textEmailAddress"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_phone_number"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPhone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Phone Number"
                         android:inputType="phone"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -339,15 +403,22 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_drivers_license_number"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etLicenseNumber"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="#000000" />
+                        android:hint="Driver\u0027s License Number"
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -356,103 +427,138 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_region_of_operation"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <AutoCompleteTextView
                         android:id="@+id/actRegion"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Select Region"
                         android:inputType="none"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
-                    android:id="@+id/tvEmergencyContactsLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="@string/label_emergency_contacts"
-                    android:textColor="#000000"
+                    android:text="Emergency Contacts"
+                    android:textColor="#1A1C1E"
                     android:textStyle="bold" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="@string/hint_emergency_contact_1"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmergency1"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Emergency Contact 1"
                         android:inputType="phone"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_emergency_contact_2"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000">
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmergency2"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Emergency Contact 2"
                         android:inputType="phone"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_password"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000"
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false"
                     app:passwordToggleEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Password"
                         android:inputType="textPassword"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/hint_confirm_password"
-                    app:boxStrokeColor="#000000"
-                    app:hintTextColor="#000000"
+                    app:boxBackgroundColor="#E1E2E8"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeWidth="0dp"
+                    app:boxStrokeWidthFocused="1dp"
+                    app:hintEnabled="false"
                     app:passwordToggleEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etConfirmPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="Confirm Password"
                         android:inputType="textPassword"
-                        android:textColor="#000000" />
+                        android:padding="16dp"
+                        android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSubmit"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="64dp"
                     android:layout_marginTop="24dp"
-                    android:padding="12dp"
-                    android:text="@string/btn_create_account"
+                    android:text="Create Account"
                     android:textAllCaps="false"
-                    app:backgroundTint="#004E89"
-                    app:cornerRadius="8dp" />
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="#FF6B35"
+                    app:cornerRadius="16dp" />
 
                 <TextView
                     android:id="@+id/tvLogin"
@@ -460,10 +566,12 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:layout_marginTop="16dp"
-                    android:text="@string/tv_already_driver_login"
-                    android:textColor="#666666" />
+                    android:text="Already a driver? Login here"
+                    android:textColor="#44474E" />
 
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
+
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
