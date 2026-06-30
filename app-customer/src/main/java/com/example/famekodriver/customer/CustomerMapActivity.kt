@@ -564,8 +564,9 @@ fun MainMapContent(
         if (!hasLocationPermission) launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
     LaunchedEffect(hasLocationPermission, viewModel.pickupLat, viewModel.pickupLng, isActive) {
-        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         while (isActive) {
             if (hasLocationPermission) {
                 val targetLat = viewModel.pickupLat
@@ -843,7 +844,14 @@ fun MainMapContent(
                                 ) {
                                     QuickShortcutItem("Home", Icons.Default.Home, BoltGreen) { 
                                         if (viewModel.savedPlaces.any { it.label.equals("Home", true) }) {
-                                            viewModel.applyShortcut("Home")
+                                            viewModel.applyShortcut("Home") {
+                                                if (hasLocationPermission) {
+                                                    @SuppressLint("MissingPermission")
+                                                    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                                                        location?.let { viewModel.useCurrentLocation(it, forPickup = true) }
+                                                    }
+                                                }
+                                            }
                                         } else {
                                             Toast.makeText(context, "Set your Home address first", Toast.LENGTH_SHORT).show()
                                             viewModel.navigateTo(CustomerScreen.RouteSelection)
@@ -852,7 +860,14 @@ fun MainMapContent(
                                     }
                                     QuickShortcutItem("Work", Icons.Default.Work, Color(0xFF3B82F6)) { 
                                         if (viewModel.savedPlaces.any { it.label.equals("Work", true) }) {
-                                            viewModel.applyShortcut("Work")
+                                            viewModel.applyShortcut("Work") {
+                                                if (hasLocationPermission) {
+                                                    @SuppressLint("MissingPermission")
+                                                    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                                                        location?.let { viewModel.useCurrentLocation(it, forPickup = true) }
+                                                    }
+                                                }
+                                            }
                                         } else {
                                             Toast.makeText(context, "Set your Work address first", Toast.LENGTH_SHORT).show()
                                             viewModel.navigateTo(CustomerScreen.RouteSelection)

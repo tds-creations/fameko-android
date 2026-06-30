@@ -377,6 +377,10 @@ class CustomerMapViewModel(
         }
     }
 
+    fun updateSaveSearchQuery(query: String) {
+        fetchDropOffSuggestions(query)
+    }
+
     private fun fetchDropOffSuggestions(query: String) {
         dropOffSearchJob?.cancel()
         if (query.isBlank()) {
@@ -404,10 +408,11 @@ class CustomerMapViewModel(
         }
     }
 
-    fun applyShortcut(label: String) {
+    fun applyShortcut(label: String, onGetCurrentLocation: (() -> Unit)? = null) {
         val place = savedPlaces.find { it.label.equals(label, ignoreCase = true) }
         if (place != null) {
             selectSavedPlace(place)
+            onGetCurrentLocation?.invoke()
         } else {
             isSearchMode = true
             // Could set a temporary hint or trigger focus
