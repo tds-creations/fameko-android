@@ -2269,27 +2269,32 @@ fun SaveLocationSearchScreen(
             )
         }
 
-        // Search Bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = {
-                searchQuery = it
-                viewModel.updateDropOffLocation(it)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            placeholder = { Text("Search location") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
-            trailingIcon = { Icon(Icons.Default.Map, contentDescription = null, tint = FamekoBlue) },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = FamekoBlue,
-                unfocusedBorderColor = Color.LightGray,
-                cursorColor = FamekoBlue
-            ),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
-        )
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = {
+                    searchQuery = it
+                    viewModel.updateDropOffLocation(it)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                placeholder = { Text("Search location", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+                trailingIcon = { 
+                    IconButton(onClick = { /* TODO: Pick on Map */ }) {
+                        Icon(Icons.Default.Map, contentDescription = "Pick on map", tint = Color(0xFF1B5E20))
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF1B5E20),
+                    unfocusedBorderColor = Color.LightGray,
+                    cursorColor = Color(0xFF1B5E20),
+                    focusedContainerColor = Color(0xFFF5F5F5),
+                    unfocusedContainerColor = Color(0xFFF5F5F5)
+                ),
+                shape = RoundedCornerShape(8.dp),
+                singleLine = true
+            )
 
         Spacer(modifier = Modifier.height(16.dp))
 
