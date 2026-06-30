@@ -884,6 +884,15 @@ class DriverRepository {
         }
     }
 
+    suspend fun getDriverProfile(id: String): Result<Map<String, Any>> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getDriverProfile(id)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun submitRating(driverId: String, orderId: Int, rating: Float, comment: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.submitRating(driverId, orderId, rating, comment)

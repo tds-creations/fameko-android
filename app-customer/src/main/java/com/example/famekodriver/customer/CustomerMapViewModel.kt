@@ -115,9 +115,11 @@ class CustomerMapViewModel(
 
     private fun loadCustomerProfile() {
         viewModelScope.launch {
-            val customerId = sessionManager.getDriverId() ?: return@launch
-            userRepository.getCustomerProfile(customerId).onSuccess {
-                customerProfile = it
+            val customerId = sessionManager.getCustomerId() ?: return@launch
+            userRepository.getCustomerProfile(customerId).onSuccess { profile ->
+                if (profile["success"] == true) {
+                    customerProfile = profile
+                }
             }
         }
     }
@@ -791,6 +793,17 @@ class CustomerMapViewModel(
         viewModelScope.launch {
             rentalRepository.cancelRental(id).onSuccess {
                 activeRental = null
+            }
+        }
+    }
+
+    fun deleteSavedPlace(id: Int) {
+        viewModelScope.launch {
+            userRepository.deleteSavedPlace(id).onSuccess { success ->
+                if (success) {
+                    val customerId = sessionManager.getDriverId() ?: "1"
+                    userRepository.getSavedPlaces(customerId).onSuccess { savedPlaces = it }
+                }
             }
         }
     }

@@ -500,7 +500,10 @@ fun CustomerMapScreen() {
                     CustomerSafetyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
                 CustomerScreen.SavedPlaces -> {
-                    CustomerSavedPlacesScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+                    CustomerSavedPlacesScreen(
+                        viewModel = mapViewModel,
+                        onBack = { mapViewModel.navigateTo(CustomerScreen.Account) }
+                    )
                 }
                 CustomerScreen.FamilyProfile -> {
                     CustomerFamilyProfileScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })

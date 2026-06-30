@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.famekodriver.customer.CustomerMapViewModel
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
 import com.example.famekodriver.customer.ui.theme.FamekoBlue
@@ -58,45 +59,51 @@ fun AccountDetailScreen(
 
 @Composable
 fun CustomerProfileScreen(profile: Map<String, Any>?, onBack: () -> Unit) {
-    val name = profile?.get("name")?.toString() ?: "User"
-    val email = profile?.get("email")?.toString() ?: "No email"
-    val phone = profile?.get("phone")?.toString() ?: "No phone"
-    val region = profile?.get("region")?.toString() ?: "N/A"
+    var name by remember(profile) { mutableStateOf(profile?.get("name")?.toString() ?: "") }
+    var email by remember(profile) { mutableStateOf(profile?.get("email")?.toString() ?: "") }
+    var phone by remember(profile) { mutableStateOf(profile?.get("phone")?.toString() ?: "") }
+    var region by remember(profile) { mutableStateOf(profile?.get("region")?.toString() ?: "") }
 
     AccountDetailScreen(title = "Profile", onBack = onBack) {
-        Spacer(modifier = Modifier.height(20.dp))
-        Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Surface(
-                shape = CircleShape,
-                color = BoltLightGray,
-                modifier = Modifier.size(100.dp)
-            ) {
-                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(20.dp), tint = Color.Gray)
+        if (profile == null) {
+            Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = FamekoBlue)
             }
-            Surface(
-                shape = CircleShape,
-                color = FamekoBlue,
-                modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-4).dp, y = (-4).dp),
-                border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.padding(6.dp))
+        } else {
+            Spacer(modifier = Modifier.height(20.dp))
+            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Surface(
+                    shape = CircleShape,
+                    color = BoltLightGray,
+                    modifier = Modifier.size(100.dp)
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(20.dp), tint = Color.Gray)
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = FamekoBlue,
+                    modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-4).dp, y = (-4).dp),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.padding(6.dp))
+                }
             }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        ProfileField(label = "Full Name", value = name)
-        ProfileField(label = "Phone Number", value = phone)
-        ProfileField(label = "Email", value = email)
-        ProfileField(label = "Region", value = region)
-        
-        Spacer(modifier = Modifier.height(40.dp))
-        Button(
-            onClick = { /* TODO: Save */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
-        ) {
-            Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            ProfileField(label = "Full Name", value = name)
+            ProfileField(label = "Phone Number", value = phone)
+            ProfileField(label = "Email", value = email)
+            ProfileField(label = "Region", value = region)
+            
+            Spacer(modifier = Modifier.height(40.dp))
+            Button(
+                onClick = { /* TODO: Save */ },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
+            ) {
+                Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
         }
     }
 }
@@ -195,14 +202,34 @@ fun SafetyFeatureItem(icon: ImageVector, title: String, description: String) {
 }
 
 @Composable
-fun CustomerSavedPlacesScreen(onBack: () -> Unit) {
+fun CustomerSavedPlacesScreen(viewModel: CustomerMapViewModel, onBack: () -> Unit) {
     AccountDetailScreen(title = "Saved Places", onBack = onBack) {
         Spacer(modifier = Modifier.height(24.dp))
-        SavedPlaceItem(icon = Icons.Default.Home, title = "Home", address = "Add home address")
-        SavedPlaceItem(icon = Icons.Default.Work, title = "Work", address = "Add work address")
+
+        if (viewModel.savedPlaces.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
+                Text("No saved places yet", color = Color.Gray)
+            }
+        }
+
+        viewModel.savedPlaces.forEach { place ->
+            SavedPlaceItem(
+                icon = when (place.label.lowercase()) {
+                    "home" -> Icons.Default.Home
+                    "work" -> Icons.Default.Work
+                    else -> Icons.Default.Star
+                },
+                title = place.label,
+                address = place.address,
+                onDelete = { viewModel.deleteSavedPlace(place.id) }
+            )
+        }
         
         Spacer(modifier = Modifier.height(32.dp))
-        TextButton(onClick = { /* TODO */ }) {
+        TextButton(onClick = { 
+            viewModel.navigateTo(com.example.famekodriver.customer.CustomerScreen.MainMap)
+            viewModel.isSearchMode = true
+        }) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Add new place", fontWeight = FontWeight.Bold)
@@ -211,16 +238,19 @@ fun CustomerSavedPlacesScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun SavedPlaceItem(icon: ImageVector, title: String, address: String) {
+fun SavedPlaceItem(icon: ImageVector, title: String, address: String, onDelete: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable { }.padding(vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Medium, color = BoltDark)
             Text(address, fontSize = 14.sp, color = FamekoBlue)
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.LightGray, modifier = Modifier.size(20.dp))
         }
     }
 }
