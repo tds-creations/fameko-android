@@ -853,9 +853,8 @@ fun MainMapContent(
                                                 }
                                             }
                                         } else {
-                                            Toast.makeText(context, "Set your Home address first", Toast.LENGTH_SHORT).show()
-                                            viewModel.navigateTo(CustomerScreen.RouteSelection)
-                                            viewModel.selectedTab = 1
+                                            Toast.makeText(context, "Please set your Home address in Saved Places", Toast.LENGTH_SHORT).show()
+                                            viewModel.navigateTo(CustomerScreen.SavedPlaces)
                                         }
                                     }
                                     QuickShortcutItem("Work", Icons.Default.Work, Color(0xFF3B82F6)) { 
@@ -869,9 +868,8 @@ fun MainMapContent(
                                                 }
                                             }
                                         } else {
-                                            Toast.makeText(context, "Set your Work address first", Toast.LENGTH_SHORT).show()
-                                            viewModel.navigateTo(CustomerScreen.RouteSelection)
-                                            viewModel.selectedTab = 1
+                                            Toast.makeText(context, "Please set your Work address in Saved Places", Toast.LENGTH_SHORT).show()
+                                            viewModel.navigateTo(CustomerScreen.SavedPlaces)
                                         }
                                     }
                                     QuickShortcutItem("Recent", Icons.Default.History, Color.Gray) { 

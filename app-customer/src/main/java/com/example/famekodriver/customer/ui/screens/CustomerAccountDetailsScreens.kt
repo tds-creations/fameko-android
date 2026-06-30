@@ -1,7 +1,9 @@
 package com.example.famekodriver.customer.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +27,7 @@ import com.example.famekodriver.customer.CustomerMapViewModel
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
 import com.example.famekodriver.customer.ui.theme.FamekoBlue
+import com.example.famekodriver.core.domain.model.SavedPlace
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,94 +211,117 @@ fun CustomerSavedPlacesScreen(
     onBack: () -> Unit,
     onAddPlace: (String) -> Unit
 ) {
-    val homePlace = viewModel.savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
-    val workPlace = viewModel.savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
-    val favorites = viewModel.savedPlaces.filter { 
-        !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
-    }
+    val savedPlaces = viewModel.savedPlaces
+    val homePlace = savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
+    val workPlace = savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
+    
+    var showDeleteDialog by remember { mutableStateOf<SavedPlace?>(null) }
 
     AccountDetailScreen(title = "Saved places", onBack = onBack) {
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Home
+        // Home Item
+        val homeSub = homePlace?.address ?: "Add home address"
         SavedPlaceActionItem(
             icon = Icons.Default.Home,
-            title = homePlace?.address ?: "Add home address",
+            title = "Home",
+            subtitle = homeSub,
+            onLongClick = { homePlace?.let { showDeleteDialog = it } },
             onClick = { onAddPlace("Home") }
         )
 
-        HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = BoltLightGray)
+        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
 
-        // Work
+        // Work Item
+        val workSub = workPlace?.address ?: "Add work address"
         SavedPlaceActionItem(
             icon = Icons.Default.Work,
-            title = workPlace?.address ?: "Add work address",
+            title = "Work",
+            subtitle = workSub,
+            onLongClick = { workPlace?.let { showDeleteDialog = it } },
             onClick = { onAddPlace("Work") }
         )
 
-        HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = BoltLightGray)
+        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
 
-        // Add a place
+        // General Add Item
         SavedPlaceActionItem(
             icon = Icons.Default.Add,
             title = "Add a place",
+            subtitle = null,
             onClick = { onAddPlace("Other") }
         )
 
-        if (favorites.isNotEmpty()) {
+        // List of other saved places (if any)
+        val otherPlaces = savedPlaces.filter { 
+            !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
+        }
+
+        if (otherPlaces.isNotEmpty()) {
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Favorites", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            favorites.forEach { place ->
-                SavedPlaceItem(
-                    icon = Icons.Default.Star,
+            Text("Other Places", style = MaterialTheme.typography.titleMedium)
+            otherPlaces.forEach { place ->
+                SavedPlaceActionItem(
+                    icon = Icons.Default.Place,
                     title = place.label,
-                    address = place.address,
-                    onDelete = { viewModel.deleteSavedPlace(place.id) }
+                    subtitle = place.address,
+                    onLongClick = { showDeleteDialog = place },
+                    onClick = { /* Could navigate to map with this location */ }
                 )
             }
         }
     }
-}
 
-@Composable
-fun SavedPlaceActionItem(icon: ImageVector, title: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(28.dp))
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            fontWeight = FontWeight.Medium,
-            color = BoltDark,
-            modifier = Modifier.weight(1f),
-            fontSize = 16.sp
+    if (showDeleteDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("Delete Saved Place") },
+            text = { Text("Are you sure you want to remove '${showDeleteDialog?.label}'?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog?.let { viewModel.deleteSavedPlace(it.id) }
+                    showDeleteDialog = null
+                }) {
+                    Text("Delete", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("Cancel")
+                }
+            }
         )
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.LightGray)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SavedPlaceItem(icon: ImageVector, title: String, address: String, onDelete: () -> Unit) {
+fun SavedPlaceActionItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String?,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Medium, color = BoltDark)
-            Text(address, fontSize = 14.sp, color = FamekoBlue)
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = if (subtitle.startsWith("Add")) FamekoBlue else Color.Gray)
+            }
         }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.LightGray, modifier = Modifier.size(20.dp))
-        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.LightGray)
     }
 }
 
