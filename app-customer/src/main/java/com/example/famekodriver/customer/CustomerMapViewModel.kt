@@ -11,7 +11,7 @@ import com.example.famekodriver.core.utils.RegionUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.osmdroid.util.GeoPoint
+import org.maplibre.android.geometry.LatLng
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -44,7 +44,7 @@ class CustomerMapViewModel(
     var rentalPickupLng by mutableStateOf<Double?>(null)
 
     // --- Ride & Pricing State ---
-    var polylinePoints by mutableStateOf<List<GeoPoint>>(emptyList())
+    var polylinePoints by mutableStateOf<List<LatLng>>(emptyList())
     var isLoading by mutableStateOf(false)
     var estimatedFare by mutableStateOf<Double?>(null)
     var rideEstimates by mutableStateOf<List<RideEstimateResponse>>(emptyList())
@@ -519,7 +519,7 @@ class CustomerMapViewModel(
         viewModelScope.launch {
             orderRepository.calculateRoute(RouteRequest(RouteLocation(pLat, pLng), RouteLocation(dLat, dLng), "car"))
                 .onSuccess { response ->
-                    polylinePoints = response.routeCoords.map { GeoPoint(it[1], it[0]) }
+                    polylinePoints = response.routeCoords.map { LatLng(it[1], it[0]) }
                     distanceKm = response.distanceM / 1000.0
                     durationMin = response.etaMin
                     updateEstimatedFare()
@@ -819,7 +819,11 @@ class CustomerMapViewModel(
             val label = customLabel ?: if (savedPlaces.none { it.label == "Home" }) "Home" else if (savedPlaces.none { it.label == "Work" }) "Work" else "Favorite"
             userRepository.savePlace(SavedPlace(customerId = cId, label = label, address = suggestion.displayName, latitude = suggestion.latitude.toDouble(), longitude = suggestion.longitude.toDouble()))
                 .onSuccess { 
-                    userRepository.getSavedPlaces(cId.toString()).onSuccess { savedPlaces = it }
+                    userRepository.getSavedPlaces(cId.toString()).onSuccess { 
+                        savedPlaces = it 
+                        // Clear suggestions after saving
+                        dropOffSuggestions = emptyList()
+                    }
                 }
         }
     }

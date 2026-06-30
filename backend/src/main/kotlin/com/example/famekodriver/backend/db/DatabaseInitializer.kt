@@ -348,6 +348,17 @@ object DatabaseInitializer {
                 seller_id INTEGER REFERENCES drivers(id),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+            """.trimIndent(),
+            """
+            CREATE TABLE IF NOT EXISTS saved_places (
+                id SERIAL PRIMARY KEY,
+                customer_id INTEGER REFERENCES customers(id) NOT NULL,
+                label TEXT NOT NULL,
+                address TEXT NOT NULL,
+                latitude DOUBLE PRECISION NOT NULL,
+                longitude DOUBLE PRECISION NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
             """.trimIndent()
         )
         conn.createStatement().use { stmt ->
@@ -415,7 +426,18 @@ object DatabaseInitializer {
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS scheduled_time TIMESTAMP;",
             "ALTER TABLE driver_stats ADD COLUMN IF NOT EXISTS h3_index TEXT;",
             "CREATE INDEX IF NOT EXISTS idx_driver_stats_h3 ON driver_stats(h3_index);",
-            "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);"
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);",
+            """
+            CREATE TABLE IF NOT EXISTS saved_places (
+                id SERIAL PRIMARY KEY,
+                customer_id INTEGER REFERENCES customers(id) NOT NULL,
+                label TEXT NOT NULL,
+                address TEXT NOT NULL,
+                latitude DOUBLE PRECISION NOT NULL,
+                longitude DOUBLE PRECISION NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 

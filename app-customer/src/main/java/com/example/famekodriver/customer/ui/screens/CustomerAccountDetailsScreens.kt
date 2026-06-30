@@ -239,7 +239,7 @@ fun CustomerSavedPlacesScreen(
         SavedPlaceActionItem(
             icon = Icons.Default.Add,
             title = "Add a place",
-            onClick = { onAddPlace("Favorite") }
+            onClick = { onAddPlace("Other") }
         )
 
         if (favorites.isNotEmpty()) {

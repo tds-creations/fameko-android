@@ -1079,7 +1079,7 @@ fun MainMapContent(
                                     if (m.title == "PICKUP" || m.title == "DROPOFF") map.removeMarker(m)
                                 }
                             } else {
-                                val points = viewModel.polylinePoints.map { LatLng(it.latitude, it.longitude) }
+                                val points = viewModel.polylinePoints
                                 activePolyline?.let { map.removePolyline(it) }
                                 activePolyline = map.addPolyline(PolylineOptions()
                                     .addAll(points)
