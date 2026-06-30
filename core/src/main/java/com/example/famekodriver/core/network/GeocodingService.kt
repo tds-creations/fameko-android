@@ -278,6 +278,9 @@ interface FamekoApiService {
     @GET("customer/rentals/{customerId}")
     suspend fun getCustomerRentals(@Path("customerId") customerId: String): List<Map<String, Any>>
 
+    @GET("customer/profile/{id}")
+    suspend fun getCustomerProfile(@Path("id") id: String): Map<String, Any>
+
     @POST("rentals/cancel/{id}")
     suspend fun cancelRental(@Path("id") id: Int): Map<String, Any>
 

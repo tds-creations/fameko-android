@@ -702,6 +702,29 @@ fun Application.configureRouting() {
             }
         }
 
+        get("/customer/profile/{id}") {
+            val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = "SELECT id, name, email, phone, region, profile_picture FROM customers WHERE id = ?"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setInt(1, id)
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    call.respond(mapOf(
+                        "success" to true,
+                        "id" to rs.getInt("id"),
+                        "name" to rs.getString("name"),
+                        "email" to rs.getString("email"),
+                        "phone" to rs.getString("phone"),
+                        "region" to rs.getString("region"),
+                        "profile_picture" to rs.getString("profile_picture")
+                    ))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, mapOf("success" to false, "message" to "Customer not found"))
+                }
+            }
+        }
+
         post("/driver/login") {
             val req = call.receive<LoginRequest>()
             val driver = loginDriverInDb(req.email, req.password)

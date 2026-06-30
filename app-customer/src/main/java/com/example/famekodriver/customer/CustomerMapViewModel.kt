@@ -69,6 +69,7 @@ class CustomerMapViewModel(
     var isServiceModeSelected by mutableStateOf(true)
     var isSearchMode by mutableStateOf(false)
     var activeRental by mutableStateOf<Map<String, Any>?>(null)
+    var customerProfile by mutableStateOf<Map<String, Any>?>(null)
     var savedPlaces by mutableStateOf<List<SavedPlace>>(emptyList())
     var recentPlaces by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var selectedTab by mutableIntStateOf(0) // 0 for Recent, 1 for Saved
@@ -106,9 +107,19 @@ class CustomerMapViewModel(
 
     init {
         loadInitialData()
+        loadCustomerProfile()
         startWebSocket()
         startActiveRentalPolling()
         startPricingPolling()
+    }
+
+    private fun loadCustomerProfile() {
+        viewModelScope.launch {
+            val customerId = sessionManager.getDriverId() ?: return@launch
+            userRepository.getCustomerProfile(customerId).onSuccess {
+                customerProfile = it
+            }
+        }
     }
 
     private fun startPricingPolling() {

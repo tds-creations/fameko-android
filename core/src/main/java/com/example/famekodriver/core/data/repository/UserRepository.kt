@@ -287,4 +287,13 @@ class UserRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun getCustomerProfile(id: String): Result<Map<String, Any>> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getCustomerProfile(id)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

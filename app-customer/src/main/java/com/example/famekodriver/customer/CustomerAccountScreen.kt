@@ -105,13 +105,13 @@ fun CustomerAccountScreen(
         AccountMenuItem(
             icon = Icons.Default.PersonOutline,
             title = "Profile",
-            onClick = { /* TODO: Profile */ }
+            onClick = { onNavigate(CustomerScreen.Profile) }
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
             icon = Icons.Default.Payment,
             title = "Payment",
-            onClick = { /* TODO: Payment */ }
+            onClick = { onNavigate(CustomerScreen.Payment) }
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
@@ -123,13 +123,13 @@ fun CustomerAccountScreen(
         AccountMenuItem(
             icon = Icons.Default.Security,
             title = "Safety",
-            onClick = { /* TODO: Safety */ }
+            onClick = { onNavigate(CustomerScreen.Safety) }
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
             icon = Icons.Default.LocationOn,
             title = "Saved places",
-            onClick = { /* TODO: Saved places */ }
+            onClick = { onNavigate(CustomerScreen.SavedPlaces) }
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
@@ -161,14 +161,14 @@ fun CustomerAccountScreen(
             icon = Icons.Default.Home,
             title = "Family Profile",
             subtitle = "Manage and pay for your family's rides",
-            onClick = { /* TODO: Family Profile */ }
+            onClick = { onNavigate(CustomerScreen.FamilyProfile) }
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
             icon = Icons.Default.BusinessCenter,
             title = "Work Profile",
             subtitle = "Expense your rides",
-            onClick = { /* TODO: Work Profile */ }
+            onClick = { onNavigate(CustomerScreen.WorkProfile) }
         )
 
         Spacer(modifier = Modifier.height(24.dp))

@@ -169,7 +169,7 @@ fun FamekoTheme(content: @Composable () -> Unit) {
         colorScheme = lightColorScheme(
             primary = FamekoBlue,
             onPrimary = Color.White,
-            secondary = BoltGreen,
+            secondary = FamekoGold,
             onSecondary = Color.White,
             surface = Color.White,
             onSurface = BoltDark,
@@ -216,6 +216,12 @@ sealed class CustomerScreen {
     data class RentalDetails(val rental: Map<String, Any>) : CustomerScreen()
     data class PaystackCheckout(val url: String) : CustomerScreen()
     object RouteSelection : CustomerScreen()
+    object Profile : CustomerScreen()
+    object Payment : CustomerScreen()
+    object Safety : CustomerScreen()
+    object SavedPlaces : CustomerScreen()
+    object FamilyProfile : CustomerScreen()
+    object WorkProfile : CustomerScreen()
 }
 
 
@@ -480,6 +486,27 @@ fun CustomerMapScreen() {
                             mapViewModel.navigateTo(CustomerScreen.MainMap)
                         }
                     )
+                }
+                CustomerScreen.Profile -> {
+                    CustomerProfileScreen(
+                        profile = mapViewModel.customerProfile,
+                        onBack = { mapViewModel.navigateTo(CustomerScreen.Account) }
+                    )
+                }
+                CustomerScreen.Payment -> {
+                    CustomerPaymentScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+                }
+                CustomerScreen.Safety -> {
+                    CustomerSafetyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+                }
+                CustomerScreen.SavedPlaces -> {
+                    CustomerSavedPlacesScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+                }
+                CustomerScreen.FamilyProfile -> {
+                    CustomerFamilyProfileScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+                }
+                CustomerScreen.WorkProfile -> {
+                    CustomerWorkProfileScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
             }
         }
@@ -868,6 +895,7 @@ fun MainMapContent(
                                 selectedType = viewModel.selectedVehicleType,
                                 onTypeSelected = { type, _ -> viewModel.setVehicleType(type) },
                                 onConfirm = { viewModel.confirmOrder() }, 
+                                onScheduleClick = { showDatePicker = true },
                                 isPlacing = viewModel.isOrderPlacing,
                                 onUnavailableClick = { _ ->
                                     // Temporarily disabled
@@ -1019,14 +1047,43 @@ fun MainMapContent(
                             if (viewModel.polylinePoints.isEmpty()) {
                                 activePolyline?.let { map.removePolyline(it) }
                                 activePolyline = null
+                                // Remove route markers
+                                map.markers.forEach { m -> 
+                                    if (m.title == "PICKUP" || m.title == "DROPOFF") map.removeMarker(m)
+                                }
                             } else {
                                 val points = viewModel.polylinePoints.map { LatLng(it.latitude, it.longitude) }
                                 activePolyline?.let { map.removePolyline(it) }
                                 activePolyline = map.addPolyline(PolylineOptions()
                                     .addAll(points)
-                                    .color(BoltGreen.toArgb())
+                                    .color(FamekoBlue.toArgb())
                                     .width(5f)
                                 )
+                                
+                                // Add Route Markers
+                                map.markers.forEach { m -> 
+                                    if (m.title == "PICKUP" || m.title == "DROPOFF") map.removeMarker(m)
+                                }
+                                
+                                val pickupPos = LatLng(viewModel.pickupLat ?: 0.0, viewModel.pickupLng ?: 0.0)
+                                val dropoffPos = LatLng(viewModel.dropOffLat ?: 0.0, viewModel.dropOffLng ?: 0.0)
+                                
+                        if (pickupPos.latitude != 0.0) {
+                                    map.addMarker(MarkerOptions()
+                                        .position(pickupPos)
+                                        .title("PICKUP")
+                                        .snippet("${viewModel.pickupEtaMin?.toInt() ?: 5} min")
+                                    )
+                                }
+                                if (dropoffPos.latitude != 0.0) {
+                                    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                    val dropoffTime = sdf.format(Date(System.currentTimeMillis() + (viewModel.durationMin * 60000).toLong()))
+                                    map.addMarker(MarkerOptions()
+                                        .position(dropoffPos)
+                                        .title("DROPOFF")
+                                        .snippet(dropoffTime)
+                                    )
+                                }
                             }
                         }
                     }
@@ -1040,32 +1097,52 @@ fun MainMapContent(
                             .padding(top = 16.dp, start = 16.dp, end = 16.dp)
                             .statusBarsPadding()
                     ) {
-                        // Floating Search Experience (Minimized for Main Map)
-                        if (currentSheetState == CustomerSheetState.IDLE) {
-                             Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp)
-                                    .clickable { 
-                                        viewModel.navigateTo(CustomerScreen.RouteSelection)
-                                    },
-                                shape = RoundedCornerShape(16.dp),
-                                color = Color.White,
-                                shadowElevation = 8.dp,
-                                border = BorderStroke(1.dp, BoltLightGray)
+                        // Floating Search Experience
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clickable { 
+                                    if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) {
+                                        viewModel.estimatedFare = null
+                                        viewModel.polylinePoints = emptyList()
+                                    }
+                                    viewModel.navigateTo(CustomerScreen.RouteSelection)
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            shadowElevation = 8.dp,
+                            border = BorderStroke(1.dp, BoltLightGray)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 20.dp)
-                                ) {
-                                    Icon(Icons.Default.Search, null, tint = FamekoBlue, modifier = Modifier.size(24.dp))
-                                    Spacer(Modifier.width(16.dp))
-                                    Text(
-                                        text = "Where to?",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = Color.Gray,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                IconButton(onClick = { 
+                                    if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) {
+                                        viewModel.estimatedFare = null
+                                        viewModel.polylinePoints = emptyList()
+                                    } else {
+                                        viewModel.navigateTo(CustomerScreen.Landing)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Close, null, tint = BoltDark, modifier = Modifier.size(24.dp))
+                                }
+                                
+                                Text(
+                                    text = if (viewModel.dropOffLocation.isNotEmpty()) {
+                                        "${viewModel.pickupLocation.split(",").first()} → ${viewModel.dropOffLocation.split(",").first()}"
+                                    } else "Where to?",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (viewModel.dropOffLocation.isNotEmpty()) FamekoBlue else Color.Gray,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                
+                                IconButton(onClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) }) {
+                                    Icon(Icons.Default.Add, null, tint = BoltDark, modifier = Modifier.size(24.dp))
                                 }
                             }
                         }
@@ -1844,6 +1921,7 @@ fun ServiceSelectionSheet(
     selectedType: String,
     onTypeSelected: (String, Double) -> Unit,
     onConfirm: () -> Unit,
+    onScheduleClick: () -> Unit,
     isPlacing: Boolean,
     onUnavailableClick: (String) -> Unit = {}
 ) {
@@ -1860,6 +1938,21 @@ fun ServiceSelectionSheet(
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        if (discountRate > 0) {
+            Surface(
+                color = FamekoBlue,
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                modifier = Modifier.fillMaxWidth().offset(y = (-8).dp)
+            ) {
+                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("$discountRate% promo applied", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                    Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.White, modifier = Modifier.size(16.dp).padding(start = 4.dp))
+                }
+            }
+        }
+        
         if (peakMultiplier > 1.0) {
             Surface(
                 color = BoltOrange.copy(alpha = 0.1f),
@@ -1874,13 +1967,9 @@ fun ServiceSelectionSheet(
             }
         }
         
-        val title = if (activeServiceMode == ServiceType.PACKAGE_DELIVERY) "Choose delivery type" else "Choose a ride"
-        Text(title, style = MaterialTheme.typography.titleLarge, color = BoltDark, fontWeight = FontWeight.ExtraBold)
-        Spacer(modifier = Modifier.height(16.dp))
-        
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.heightIn(max = 450.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.heightIn(max = 400.dp)
         ) {
             items(filteredEstimates) { estimate ->
                 ServiceItem(
@@ -1893,19 +1982,58 @@ fun ServiceSelectionSheet(
             }
         }
         
-        Spacer(modifier = Modifier.height(20.dp))
-        
-        Button(
-            onClick = onConfirm,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
-            enabled = !isPlacing && filteredEstimates.isNotEmpty()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isPlacing) {
-                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-            } else {
-                Text(if (activeServiceMode == ServiceType.PACKAGE_DELIVERY) "Confirm Delivery" else "Confirm $selectedType", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
+            Icon(Icons.Default.Money, null, tint = BoltGreen, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Cash", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = BoltDark)
+            Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.weight(1f).height(64.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
+                enabled = !isPlacing && filteredEstimates.isNotEmpty()
+            ) {
+                if (isPlacing) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Select $selectedType", fontWeight = FontWeight.Black, fontSize = 18.sp)
+                }
+            }
+
+            Box {
+                FloatingActionButton(
+                    onClick = onScheduleClick,
+                    containerColor = FamekoBlue,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(28.dp))
+                }
+                
+                // Tooltip mock
+                Surface(
+                    color = Color.Black,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.align(Alignment.TopCenter).offset(y = (-45).dp)
+                ) {
+                    Text("Schedule a ride", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
             }
         }
     }
@@ -1923,7 +2051,7 @@ fun ServiceItem(
 ) {
     val isAvailable = estimate.isAvailableInRegion
     val status = estimate.availabilityStatus
-    val backgroundColor = if (isSelected) FamekoBlue.copy(alpha = 0.05f) else if (!isAvailable) Color.Gray.copy(alpha = 0.05f) else Color.White
+    val backgroundColor = if (isSelected) Color.Transparent else Color.Transparent
     
     val finalFare = (estimate.fare * (100 - discountRate) / 100).toInt()
     val originalFare = estimate.fare.toInt()
@@ -1936,21 +2064,20 @@ fun ServiceItem(
                 onUnavailableClick(estimate.name)
             }
         },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = backgroundColor,
         border = if (isSelected) BorderStroke(2.dp, FamekoBlue) else null,
         modifier = Modifier.fillMaxWidth(),
         enabled = true
     ) {
         Row(
-            modifier = Modifier.padding(16.dp).alpha(if (isAvailable && status != "BUSY") 1f else 0.8f),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).alpha(if (isAvailable && status != "BUSY") 1f else 0.8f),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF3F4F6)),
+                    .size(64.dp)
+                    .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 val iconUrl = when(estimate.icon.lowercase()) {
@@ -1966,7 +2093,7 @@ fun ServiceItem(
                 AsyncImage(
                     model = iconUrl,
                     contentDescription = null,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(48.dp)
                 )
             }
             
@@ -1974,57 +2101,40 @@ fun ServiceItem(
             
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(estimate.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = BoltDark)
-                    Spacer(Modifier.width(8.dp))
-                    if (!isAvailable) {
-                        Surface(
-                            color = Color.Red.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text("UNAVAILABLE", color = Color.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
-                        }
-                    } else if (status == "BUSY") {
-                        Surface(
-                            color = BoltOrange.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text("BUSY", color = BoltOrange, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
-                        }
-                    } else if (estimate.pickupEtaMin <= 5) {
-                        Surface(
-                            color = BoltGreen.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text("FAST", color = BoltGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
-                        }
+                    Text(estimate.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+                    if (estimate.name == "Comfort") {
+                         Icon(Icons.Default.KeyboardDoubleArrowUp, null, tint = Color.Gray, modifier = Modifier.size(16.dp).padding(start = 4.dp))
                     }
                 }
-                Text(if (isAvailable) estimate.description else "Not registered in your region", fontSize = 12.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${estimate.pickupEtaMin} min", fontSize = 13.sp, color = Color.Gray)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Default.Person, null, modifier = Modifier.size(12.dp), tint = Color.Gray)
+                    Text(" 4", fontSize = 13.sp, color = Color.Gray)
+                }
+                
+                if (estimate.pickupEtaMin <= 5) {
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        color = FamekoBlue,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text("FASTER", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
             }
             
             Column(horizontalAlignment = Alignment.End) {
-                if (isAvailable) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (discountRate > 0) {
-                            Text(
-                                text = "₵$originalFare",
-                                style = TextStyle(
-                                    color = Color.Gray,
-                                    fontSize = 12.sp,
-                                    textDecoration = TextDecoration.LineThrough
-                                ),
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                        }
-                        Text("₵$finalFare", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = BoltDark)
-                    }
-                    if (status == "BUSY") {
-                        Text("High demand", fontSize = 12.sp, color = BoltOrange, fontWeight = FontWeight.Medium)
-                    } else {
-                        Text("${estimate.pickupEtaMin} min", fontSize = 12.sp, color = if (estimate.pickupEtaMin < 5) BoltGreen else Color.Gray, fontWeight = FontWeight.Medium)
-                    }
-                } else {
-                    Icon(Icons.Default.Block, null, tint = Color.LightGray)
+                Text("GH₵$finalFare", fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltDark)
+                if (discountRate > 0) {
+                    Text(
+                        text = "GH₵$originalFare",
+                        style = TextStyle(
+                            color = Color.Gray,
+                            fontSize = 14.sp,
+                            textDecoration = TextDecoration.LineThrough
+                        )
+                    )
                 }
             }
         }
