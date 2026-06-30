@@ -260,6 +260,7 @@ object DatabaseInitializer {
                 latitude DOUBLE PRECISION,
                 longitude DOUBLE PRECISION,
                 bearing REAL DEFAULT 0.0,
+                h3_index TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """.trimIndent(),
@@ -411,6 +412,9 @@ object DatabaseInitializer {
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS vehicle_category TEXT DEFAULT 'Economy';",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0;",
             "ALTER TABLE wallet_topups ADD COLUMN IF NOT EXISTS payment_type TEXT DEFAULT 'TOPUP';",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS scheduled_time TIMESTAMP;",
+            "ALTER TABLE driver_stats ADD COLUMN IF NOT EXISTS h3_index TEXT;",
+            "CREATE INDEX IF NOT EXISTS idx_driver_stats_h3 ON driver_stats(h3_index);",
             "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);"
         )
         conn.createStatement().use { stmt ->

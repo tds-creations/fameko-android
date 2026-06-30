@@ -7,7 +7,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.toColorInt
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import coil.load
 import com.example.famekodriver.core.data.SessionManager
@@ -24,16 +23,9 @@ class CustomerLoginActivity : AppCompatActivity() {
     private val repository = DriverRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         android.util.Log.d("Fameko", "CustomerLoginActivity onCreate")
         sessionManager = SessionManager(this)
-
-        // Check if already logged in as customer
-        if (sessionManager.isLoggedIn()) {
-            navigateToCustomerMap()
-            return
-        }
 
         setContentView(R.layout.activity_customer_login)
 

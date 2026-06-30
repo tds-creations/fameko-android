@@ -5,8 +5,9 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.famekodriver.core.data.SessionManager
-import com.example.famekodriver.core.data.repository.DriverRepository
+import com.example.famekodriver.core.data.repository.*
 import com.example.famekodriver.core.domain.model.*
+import com.example.famekodriver.core.utils.RegionUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -15,7 +16,10 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class CustomerMapViewModel(
-    private val repository: DriverRepository,
+    private val repository: DriverRepository, // Kept for WebSockets and general tasks
+    private val orderRepository: OrderRepository,
+    private val rentalRepository: RentalRepository,
+    private val userRepository: UserRepository,
     private val sessionManager: SessionManager,
 ) : ViewModel() {
 
@@ -52,6 +56,8 @@ class CustomerMapViewModel(
     var discountRate by mutableIntStateOf(0)
     var pricingConfig by mutableStateOf<PricingConfig?>(null)
     var rentalRates by mutableStateOf<List<Map<String, Any>>>(emptyList())
+    var scheduledRideTime by mutableStateOf<String?>(null)
+        private set
 
     // --- Order & Call State ---
     var currentOrderId by mutableStateOf(sessionManager.getActiveOrderId())
@@ -79,11 +85,24 @@ class CustomerMapViewModel(
     // --- Suggestions ---
     var pickupSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var dropOffSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
+    
+    var currentRegion by mutableStateOf<String?>(null)
+    var showRegionalError by mutableStateOf<String?>(null)
+    
+    var notifications by mutableStateOf<List<FamekoEvent.NotificationReceived>>(emptyList())
+    var lastTriggeredNotificationId by mutableIntStateOf(-1)
+    var isTimedOut by mutableStateOf(false)
+    var retryAttempt by mutableIntStateOf(0)
+    var maxRetryAttempts by mutableIntStateOf(3)
+    var searchRadiusKm by mutableDoubleStateOf(3.0)
+    var searchMessage by mutableStateOf("Connecting you to the nearest available Fameko")
+    var showCancelConfirmation by mutableStateOf(false)
 
     private var pollingJob: Job? = null
     private var rentalPollingJob: Job? = null
     private var pickupSearchJob: Job? = null
     private var dropOffSearchJob: Job? = null
+    private var isSelectingSuggestion = false
 
     init {
         loadInitialData()
@@ -96,7 +115,7 @@ class CustomerMapViewModel(
         viewModelScope.launch {
             while (true) {
                 if (estimatedFare != null && currentOrderId == null) {
-                    repository.getPricingConfig().onSuccess { newConfig ->
+                    orderRepository.getPricingConfig().onSuccess { newConfig ->
                         if (newConfig != pricingConfig) {
                             pricingConfig = newConfig
                             updateEstimatedFare()
@@ -111,12 +130,12 @@ class CustomerMapViewModel(
     private fun loadInitialData() {
         viewModelScope.launch {
             val customerId = sessionManager.getDriverId() ?: "1"
-            repository.getSavedPlaces(customerId).onSuccess { savedPlaces = it }
-            repository.getPricingConfig().onSuccess { pricingConfig = it }
-            repository.getRentalRates().onSuccess { rentalRates = it }
-            repository.getDiscountRate(customerId).onSuccess { discountRate = it }
+            userRepository.getSavedPlaces(customerId).onSuccess { savedPlaces = it }
+            orderRepository.getPricingConfig().onSuccess { pricingConfig = it }
+            rentalRepository.getRentalRates().onSuccess { rentalRates = it }
+            orderRepository.getDiscountRate(customerId).onSuccess { discountRate = it }
             
-            repository.getCustomerTrips(customerId).onSuccess { trips ->
+            orderRepository.getCustomerTrips(customerId).onSuccess { trips ->
                 recentPlaces = trips.mapNotNull { trip ->
                     val dropOffLabel = trip["dropoff"]?.toString()
                     val lat = trip["dropoff_lat"]?.toString()
@@ -128,7 +147,7 @@ class CustomerMapViewModel(
             }
 
             currentOrderId?.let { id ->
-                repository.getOrderStatus(id).onSuccess { response ->
+                orderRepository.getOrderStatus(id).onSuccess { response ->
                     orderStatusData = response
                     if (response.status != "DELIVERED" && response.status != "CANCELLED") {
                         currentScreen = CustomerScreen.MainMap
@@ -144,7 +163,7 @@ class CustomerMapViewModel(
         pollingJob = viewModelScope.launch {
             while (true) {
                 delay(5.seconds) // Poll every 5 seconds as fallback
-                repository.getOrderStatus(orderId).onSuccess { response ->
+                orderRepository.getOrderStatus(orderId).onSuccess { response ->
                     orderStatusData = response
                     if (response.status == "DELIVERED") {
                         ratingDriverId = response.driverId
@@ -185,7 +204,7 @@ class CustomerMapViewModel(
             }
             is FamekoEvent.OrderAccepted -> {
                 viewModelScope.launch {
-                    repository.getOrderStatus(event.orderId).onSuccess { response ->
+                    orderRepository.getOrderStatus(event.orderId).onSuccess { response ->
                         orderStatusData = response
                         currentOrderId = event.orderId
                         sessionManager.setActiveOrderId(event.orderId)
@@ -197,7 +216,7 @@ class CustomerMapViewModel(
                 val id = currentOrderId ?: (event as? FamekoEvent.OrderStatusUpdate)?.orderId
                 if (id != null) {
                     viewModelScope.launch {
-                        repository.getOrderStatus(id).onSuccess { response ->
+                        orderRepository.getOrderStatus(id).onSuccess { response ->
                             orderStatusData = response
                             if (response.status == "DELIVERED") {
                                 ratingDriverId = response.driverId
@@ -208,7 +227,14 @@ class CustomerMapViewModel(
                                 showTripSummary = true
                                 clearActiveOrder()
                             } else if (response.status == "CANCELLED") {
-                                clearActiveOrder()
+                                if (!isTimedOut) {
+                                    clearActiveOrder()
+                                } else {
+                                    // If timed out, we stop polling but keep isTimedOut true to show the screen
+                                    pollingJob?.cancel()
+                                    currentOrderId = null
+                                    sessionManager.setActiveOrderId(null)
+                                }
                             } else {
                                 startStatusPolling(id)
                             }
@@ -227,22 +253,42 @@ class CustomerMapViewModel(
                     )
                 }
             }
+            is FamekoEvent.NotificationReceived -> {
+                notifications = (listOf(event) + notifications).take(50)
+                if (event.type == "ORDER_TIMEOUT") {
+                    isTimedOut = true
+                    retryAttempt = 0
+                }
+            }
             is FamekoEvent.NearbyDriversUpdate -> {
                 if (currentOrderId == null) {
                     drivers = event.drivers
                 }
             }
-            else -> {}
+            // Using a generic handle for extra data from backend
+            else -> {
+                if (event is FamekoEvent.Unknown) {
+                    val type = event.data["type"]?.toString()
+                    if (type == "ORDER_RETRY") {
+                        retryAttempt = (event.data["attempt"] as? Double)?.toInt() ?: 0
+                        maxRetryAttempts = (event.data["maxAttempts"] as? Double)?.toInt() ?: 3
+                        searchRadiusKm = (event.data["radius"] as? Double) ?: searchRadiusKm
+                        searchMessage = event.data["message"]?.toString() ?: searchMessage
+                    }
+                }
+            }
         }
     }
 
-    private fun clearActiveOrder() {
+    fun clearActiveOrder() {
         pollingJob?.cancel()
         currentOrderId = null
         sessionManager.setActiveOrderId(null)
         polylinePoints = emptyList()
         estimatedFare = null
         orderStatusData = null
+        scheduledRideTime = null
+        isTimedOut = false
     }
 
     private fun startActiveRentalPolling() {
@@ -250,7 +296,7 @@ class CustomerMapViewModel(
         rentalPollingJob = viewModelScope.launch {
             val customerId = sessionManager.getDriverId() ?: "1"
             while (true) {
-                repository.getActiveRental(customerId.toInt()).onSuccess { activeRental = it }
+                rentalRepository.getActiveRental(customerId.toInt()).onSuccess { activeRental = it }
                 delay(10.seconds)
             }
         }
@@ -268,15 +314,20 @@ class CustomerMapViewModel(
             selectedVehicleType = "Okada" // Valid default for delivery
         } else if (mode == ServiceType.RIDE_HAILING) {
             selectedVehicleType = "Economy"
+        } else if (mode == ServiceType.RENTAL) {
+            scheduledRideTime = null
         }
     }
 
     fun updatePickupLocation(query: String) {
+        if (isSelectingSuggestion) return
         if (activeServiceMode == ServiceType.RENTAL) {
+            if (query == rentalPickupLocation) return
             rentalPickupLocation = query
             rentalPickupLat = null
             rentalPickupLng = null
         } else {
+            if (query == pickupLocation) return
             pickupLocation = query
             pickupLat = null
             pickupLng = null
@@ -287,6 +338,8 @@ class CustomerMapViewModel(
     }
 
     fun updateDropOffLocation(query: String) {
+        if (isSelectingSuggestion) return
+        if (query == dropOffLocation) return
         dropOffLocation = query
         dropOffLat = null
         dropOffLng = null
@@ -349,35 +402,53 @@ class CustomerMapViewModel(
     }
 
     fun selectSavedPlace(place: SavedPlace) {
+        isSelectingSuggestion = true
         dropOffLocation = place.address
         dropOffLat = place.latitude
         dropOffLng = place.longitude
         isSearchMode = false
         
+        viewModelScope.launch {
+            delay(500.milliseconds)
+            isSelectingSuggestion = false
+        }
+        
         if (pickupLat != null) {
             calculateRoute()
-        } else {
-            // If pickup is not set, maybe use current location automatically?
-            // For now, let the user set pickup if it's missing
         }
     }
 
     fun selectSuggestion(suggestion: LocationSuggestion, isPickup: Boolean) {
+        isSelectingSuggestion = true
+        if (isPickup) pickupSearchJob?.cancel() else dropOffSearchJob?.cancel()
+
+        val lat = suggestion.latitude.toDoubleOrNull() ?: 0.0
+        val lng = suggestion.longitude.toDoubleOrNull() ?: 0.0
+        
+        // Safety check: Avoid ocean (0,0) or invalid coords
+        if (lat == 0.0 && lng == 0.0) {
+            isSelectingSuggestion = false
+            return
+        }
+
+        val selectedText = suggestion.name ?: suggestion.displayName.split(",").firstOrNull() ?: suggestion.displayName
+
         if (isPickup) {
+            currentRegion = RegionUtils.extractRegion(suggestion.displayName)
             if (activeServiceMode == ServiceType.RENTAL) {
-                rentalPickupLocation = suggestion.displayName
-                rentalPickupLat = suggestion.latitude.toDoubleOrNull()
-                rentalPickupLng = suggestion.longitude.toDoubleOrNull()
+                rentalPickupLocation = selectedText
+                rentalPickupLat = lat
+                rentalPickupLng = lng
             } else {
-                pickupLocation = suggestion.displayName
-                pickupLat = suggestion.latitude.toDoubleOrNull()
-                pickupLng = suggestion.longitude.toDoubleOrNull()
+                pickupLocation = selectedText
+                pickupLat = lat
+                pickupLng = lng
             }
             pickupSuggestions = emptyList()
         } else {
-            dropOffLocation = suggestion.displayName
-            dropOffLat = suggestion.latitude.toDoubleOrNull()
-            dropOffLng = suggestion.longitude.toDoubleOrNull()
+            dropOffLocation = selectedText
+            dropOffLat = lat
+            dropOffLng = lng
             dropOffSuggestions = emptyList()
             
             if (activeRental != null) {
@@ -385,7 +456,13 @@ class CustomerMapViewModel(
             }
         }
         
-        if (pickupLat != null && dropOffLat != null && (activeServiceMode == ServiceType.RIDE_HAILING || activeServiceMode == ServiceType.PACKAGE_DELIVERY)) {
+        // Brief delay to allow keyboard "commit" events to be ignored
+        viewModelScope.launch {
+            delay(500.milliseconds)
+            isSelectingSuggestion = false
+        }
+        
+        if (pickupLat != null && (dropOffLat != null || (activeServiceMode == ServiceType.RENTAL)) && (activeServiceMode == ServiceType.RIDE_HAILING || activeServiceMode == ServiceType.PACKAGE_DELIVERY)) {
             calculateRoute()
         }
     }
@@ -393,45 +470,22 @@ class CustomerMapViewModel(
     private fun updateRentalDestinationInternal() {
         val rental = activeRental ?: return
         val id = (rental["id"] as? Double)?.toInt() ?: (rental["id"] as? Int) ?: 0
+        val dLat = dropOffLat ?: return
+        val dLng = dropOffLng ?: return
         val stopsStr = if (stops.isNotEmpty()) stops.filter { it.isNotBlank() }.joinToString("|") else null
         viewModelScope.launch {
-            repository.updateRentalDestination(id, dropOffLocation, dropOffLat!!, dropOffLng!!, stopsStr).onSuccess {
+            rentalRepository.updateRentalDestination(id, dropOffLocation, dLat, dLng, stopsStr).onSuccess {
                 isSearchMode = false
-                repository.getActiveRental(sessionManager.getDriverId()?.toIntOrNull() ?: 1).onSuccess { activeRental = it }
+                rentalRepository.getActiveRental(sessionManager.getDriverId()?.toIntOrNull() ?: 1).onSuccess { activeRental = it }
             }
         }
     }
 
     fun calculateRoute() {
         if (pickupLat == null || dropOffLat == null) {
-            // Attempt to resolve coordinates if missing
-            viewModelScope.launch {
-                isLoading = true
-                if (pickupLat == null && pickupLocation.isNotBlank()) {
-                    repository.getGeocodeSuggestions(pickupLocation).onSuccess { suggestions ->
-                        suggestions.firstOrNull()?.let {
-                            pickupLat = it.latitude.toDoubleOrNull()
-                            pickupLng = it.longitude.toDoubleOrNull()
-                        }
-                    }
-                }
-                if (dropOffLat == null && dropOffLocation.isNotBlank()) {
-                    repository.getGeocodeSuggestions(dropOffLocation).onSuccess { suggestions ->
-                        suggestions.firstOrNull()?.let {
-                            dropOffLat = it.latitude.toDoubleOrNull()
-                            dropOffLng = it.longitude.toDoubleOrNull()
-                        }
-                    }
-                }
-                
-                // Retry calculation if coordinates were found
-                if (pickupLat != null && dropOffLat != null) {
-                    performRouteCalculation()
-                } else {
-                    isLoading = false
-                    // Optionally show error: "Please select valid locations from the list"
-                }
-            }
+            // Requirement: Use suggested locations only. 
+            // Do not attempt to resolve coordinates from raw text.
+            isLoading = false
             return
         }
         performRouteCalculation()
@@ -445,7 +499,7 @@ class CustomerMapViewModel(
 
         isLoading = true
         viewModelScope.launch {
-            repository.calculateRoute(RouteRequest(RouteLocation(pLat, pLng), RouteLocation(dLat, dLng), "car"))
+            orderRepository.calculateRoute(RouteRequest(RouteLocation(pLat, pLng), RouteLocation(dLat, dLng), "car"))
                 .onSuccess { response ->
                     polylinePoints = response.routeCoords.map { GeoPoint(it[1], it[0]) }
                     distanceKm = response.distanceM / 1000.0
@@ -460,14 +514,31 @@ class CustomerMapViewModel(
     }
 
     private fun updateEstimatedFare() {
+        val pLat = pickupLat ?: return
+        val pLng = pickupLng ?: return
         isLoading = true
         viewModelScope.launch {
-            repository.getRideEstimates(pickupLat!!, pickupLng!!, distanceKm, durationMin)
+            // Be more flexible with regions: if extraction failed, try a wider search or just pass null to let backend decide
+            val regionToPass = currentRegion ?: "Nationwide" 
+            orderRepository.getRideEstimates(pLat, pLng, distanceKm, durationMin, regionToPass)
                 .onSuccess { list ->
                     rideEstimates = list
                     if (list.isNotEmpty()) {
-                        estimatedFare = list.find { it.serviceId == selectedVehicleType }?.fare ?: list[0].fare
-                        pickupEtaMin = list.find { it.serviceId == selectedVehicleType }?.pickupEtaMin?.toDouble() ?: list[0].pickupEtaMin.toDouble()
+                        // Find the selected vehicle in the new list
+                        val currentSelected = list.find { it.serviceId == selectedVehicleType }
+                        
+                        if (currentSelected != null) {
+                            estimatedFare = currentSelected.fare
+                            pickupEtaMin = currentSelected.pickupEtaMin.toDouble()
+                        } else {
+                            // If current selection is unavailable, pick the first available one
+                            val firstAvailable = list.firstOrNull()
+                            if (firstAvailable != null) {
+                                selectedVehicleType = firstAvailable.serviceId
+                                estimatedFare = firstAvailable.fare
+                                pickupEtaMin = firstAvailable.pickupEtaMin.toDouble()
+                            }
+                        }
                     }
                     isLoading = false
                 }
@@ -478,7 +549,11 @@ class CustomerMapViewModel(
     }
 
     fun confirmOrder() {
-        if (pickupLat == null || pickupLng == null || pickupLat == 0.0 || pickupLng == 0.0) {
+        val pLat = pickupLat
+        val pLng = pickupLng
+        val eFare = estimatedFare
+        
+        if (pLat == null || pLng == null || pLat == 0.0 || pLng == 0.0 || eFare == null) {
             // Should show error to user
             return
         }
@@ -488,21 +563,23 @@ class CustomerMapViewModel(
             
             // The estimatedFare already includes vehicle-specific multipliers from the backend.
             // We only need to apply the customer's personal discount rate here.
-            val finalFare = (estimatedFare!! * (100 - discountRate) / 100).toInt().toDouble()
+            val finalFare = (eFare * (100 - discountRate) / 100).toInt().toDouble()
             
             val serviceType = if (activeServiceMode == ServiceType.PACKAGE_DELIVERY) 
                 ServiceType.PACKAGE_DELIVERY else ServiceType.RIDE_HAILING
             
-            repository.createOrder(
+            orderRepository.createOrder(
                 customerId, pickupLocation, dropOffLocation,
-                pickupLat ?: 0.0, pickupLng ?: 0.0, dropOffLat ?: 0.0, dropOffLng ?: 0.0,
+                pLat, pLng, dropOffLat ?: 0.0, dropOffLng ?: 0.0,
                 distanceKm, finalFare, durationMin, serviceType,
-                selectedVehicleType
+                selectedVehicleType, scheduledRideTime
             ).onSuccess { orderIdStr ->
                 val newId = orderIdStr.toIntOrNull()
                 orderStatusData = OrderStatusResponse(success = true, status = "PENDING")
                 currentOrderId = newId
                 sessionManager.setActiveOrderId(newId)
+                scheduledRideTime = null
+                isTimedOut = false
             }.onFailure {
                 isOrderPlacing = false
             }
@@ -511,7 +588,7 @@ class CustomerMapViewModel(
 
     fun cancelOrder() {
         viewModelScope.launch {
-            currentOrderId?.let { repository.cancelOrder(it) }
+            currentOrderId?.let { orderRepository.cancelOrder(it) }
             clearActiveOrder()
         }
     }
@@ -524,7 +601,7 @@ class CustomerMapViewModel(
         val deliveryId = order.deliveryId?.toDoubleOrNull()?.toInt()?.toString() ?: order.deliveryId ?: driverId
         
         viewModelScope.launch {
-            repository.getShareableTripLink(driverId, deliveryId).onSuccess { response ->
+            orderRepository.getShareableTripLink(driverId, deliveryId).onSuccess { response ->
                 val sendIntent: android.content.Intent = android.content.Intent().apply {
                     action = android.content.Intent.ACTION_SEND
                     putExtra(android.content.Intent.EXTRA_TEXT, "I'm on a Fameko trip! Track my ride here: ${response.shareUrl}")
@@ -580,11 +657,15 @@ class CustomerMapViewModel(
         }
     }
 
+    fun updateScheduledRideTime(time: String?) {
+        scheduledRideTime = time
+    }
+
     fun submitRating(rating: Float, comment: String) {
         val dId = ratingDriverId ?: return
         val oId = ratingOrderId ?: return
         viewModelScope.launch {
-            repository.submitRating(dId, oId, rating, comment).onSuccess {
+            orderRepository.submitRating(dId, oId, rating, comment).onSuccess {
                 showRatingDialog = false
             }.onFailure {
                 // Show error?
@@ -594,7 +675,7 @@ class CustomerMapViewModel(
 
     fun updateNearbyDrivers(lat: Double, lng: Double) {
         viewModelScope.launch {
-            repository.getNearbyDrivers(lat, lng).onSuccess { list ->
+            orderRepository.getNearbyDrivers(lat, lng).onSuccess { list ->
                 drivers = list
                 pickupEtaMin = list.minOfOrNull { it.pickupEtaMin ?: 99.0 }
             }
@@ -603,8 +684,12 @@ class CustomerMapViewModel(
 
     fun useCurrentLocation(location: Location, forPickup: Boolean) {
         isLoading = true
+        isSelectingSuggestion = true
         viewModelScope.launch {
             repository.reverseGeocode(location.latitude, location.longitude).onSuccess { suggestion ->
+                if (forPickup || activeServiceMode == ServiceType.RENTAL) {
+                    currentRegion = RegionUtils.extractRegion(suggestion.displayName)
+                }
                 if (activeServiceMode == ServiceType.RENTAL) {
                     rentalPickupLocation = suggestion.displayName
                     rentalPickupLat = location.latitude
@@ -639,9 +724,30 @@ class CustomerMapViewModel(
                 }
             }
             isLoading = false
+            delay(500.milliseconds)
+            isSelectingSuggestion = false
+            
+            if (pickupLat != null && dropOffLat != null) {
+                calculateRoute()
+            }
         }
     }
     
+    fun addLocalNotification(title: String, message: String, type: String) {
+        val newNotif = FamekoEvent.NotificationReceived(
+            id = (System.currentTimeMillis() % 1000000).toInt(),
+            title = title,
+            message = message,
+            type = type,
+            createdAt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+        )
+        notifications = (listOf(newNotif) + notifications).take(50)
+    }
+
+    fun deleteNotification(id: Int) {
+        notifications = notifications.filter { it.id != id }
+    }
+
     fun sendAudioData(data: ByteArray) {
         repository.sendAudioData(data)
     }
@@ -672,7 +778,7 @@ class CustomerMapViewModel(
 
     fun cancelRental(id: Int) {
         viewModelScope.launch {
-            repository.cancelRental(id).onSuccess {
+            rentalRepository.cancelRental(id).onSuccess {
                 activeRental = null
             }
         }
@@ -682,9 +788,9 @@ class CustomerMapViewModel(
         viewModelScope.launch {
             val cId = sessionManager.getDriverId()?.toIntOrNull() ?: 1
             val label = if (savedPlaces.none { it.label == "Home" }) "Home" else if (savedPlaces.none { it.label == "Work" }) "Work" else "Favorite"
-            repository.savePlace(SavedPlace(customerId = cId, label = label, address = suggestion.displayName, latitude = suggestion.latitude.toDouble(), longitude = suggestion.longitude.toDouble()))
+            userRepository.savePlace(SavedPlace(customerId = cId, label = label, address = suggestion.displayName, latitude = suggestion.latitude.toDouble(), longitude = suggestion.longitude.toDouble()))
                 .onSuccess { 
-                    repository.getSavedPlaces(cId.toString()).onSuccess { savedPlaces = it }
+                    userRepository.getSavedPlaces(cId.toString()).onSuccess { savedPlaces = it }
                 }
         }
     }

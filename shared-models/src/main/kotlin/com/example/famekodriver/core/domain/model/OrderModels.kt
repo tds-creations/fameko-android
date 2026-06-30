@@ -38,7 +38,8 @@ data class OrderCreateRequest(
     val estimatedFare: Double,
     val durationMin: Double,
     val serviceType: ServiceType = ServiceType.RIDE_HAILING,
-    val requestedVehicleType: String? = null
+    val requestedVehicleType: String? = null,
+    val scheduledTime: String? = null
 )
 
 data class OrderStatusResponse(
@@ -66,5 +67,7 @@ data class RideEstimateResponse(
     val description: String,
     val fare: Double,
     val pickupEtaMin: Int,
-    val icon: String // Icon key
+    val icon: String, // Icon key
+    val isAvailableInRegion: Boolean = true,
+    val availabilityStatus: String = "AVAILABLE" // AVAILABLE, BUSY, UNAVAILABLE
 )

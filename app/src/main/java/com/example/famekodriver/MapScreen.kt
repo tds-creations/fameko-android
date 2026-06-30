@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -40,18 +41,21 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.ui.theme.*
+import com.example.famekodriver.core.network.NetworkClient
 import com.google.android.gms.location.LocationServices
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.*
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.CustomZoomButtonsController
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Polyline
-import org.osmdroid.views.overlay.Polygon
+import org.maplibre.android.MapLibre
+import org.maplibre.android.annotations.IconFactory
+import org.maplibre.android.annotations.Marker
+import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.annotations.PolylineOptions
+import org.maplibre.android.annotations.PolygonOptions
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,6 +95,12 @@ fun MapScreen(
         ActivityResultContracts.RequestPermission()
     ) { hasAudioPermission = it }
 
+    var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
+
+    LaunchedEffect(Unit) {
+        if (!hasLocationPermission) locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+
     LaunchedEffect(status) {
         if (status != "APPROVED" && viewModel.isOnline) {
             viewModel.toggleOnlineStatus(online = false)
@@ -101,7 +111,10 @@ fun MapScreen(
         if (hasLocationPermission) {
             @SuppressLint("MissingPermission")
             fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-                loc?.let { viewModel.driverLatLng = GeoPoint(it.latitude, it.longitude) }
+                loc?.let { 
+                    viewModel.driverLatLng = LatLng(it.latitude, it.longitude)
+                    mapLibreMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
+                }
             }
             
             val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
@@ -112,7 +125,7 @@ fun MapScreen(
                 locationRequest,
                 object : com.google.android.gms.location.LocationCallback() {
                     override fun onLocationResult(res: com.google.android.gms.location.LocationResult) {
-                        res.lastLocation?.let { viewModel.driverLatLng = GeoPoint(it.latitude, it.longitude) }
+                        res.lastLocation?.let { viewModel.driverLatLng = LatLng(it.latitude, it.longitude) }
                     }
                 },
                 context.mainLooper
@@ -172,9 +185,9 @@ fun MapScreen(
         val driverPos = viewModel.driverLatLng
         if (delivery != null && driverPos != null) {
             val dest = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                GeoPoint(delivery.pickupLat ?: 0.0, delivery.pickupLng ?: 0.0)
+                LatLng(delivery.pickupLat ?: 0.0, delivery.pickupLng ?: 0.0)
             } else {
-                GeoPoint(delivery.dropOffLat ?: 0.0, delivery.dropOffLng ?: 0.0)
+                LatLng(delivery.dropOffLat ?: 0.0, delivery.dropOffLng ?: 0.0)
             }
             if (dest.latitude != 0.0) {
                 viewModel.calculateRoute(driverPos, dest)
@@ -203,7 +216,9 @@ fun MapScreen(
                             @SuppressLint("MissingPermission")
                             fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
                                 loc?.let {
-                                    viewModel.driverLatLng = GeoPoint(it.latitude, it.longitude)
+                                    val pos = LatLng(it.latitude, it.longitude)
+                                    viewModel.driverLatLng = pos
+                                    mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLng(pos))
                                 }
                             }
                         },
@@ -220,47 +235,44 @@ fun MapScreen(
             AndroidView(
                 factory = { ctx ->
                     MapView(ctx).apply {
-                        setTileSource(TileSourceFactory.MAPNIK)
-                        setMultiTouchControls(true)
-                        zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-                        controller.setZoom(12.0)
-                        controller.setCenter(GeoPoint(5.6037, -0.1870))
-                        if (hasLocationPermission) {
-                            val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), this)
-                            locationOverlay.enableMyLocation()
-                            overlays.add(locationOverlay)
+                        val styleUrl = "https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBAZFVDV2NzZ09mRGhEaU9MdDsVGbKlskhOMbwzZ3vdhit8?key=${NetworkClient.TOMTOM_API_KEY}"
+                        getMapAsync { map ->
+                            mapLibreMap = map
+                            map.setStyle(styleUrl)
+                            map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(5.6037, -0.1870), 12.0))
                         }
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 update = { mv ->
-                    mv.overlays.removeAll { it is Polyline || (it is Marker && it.title != null) || it is Polygon }
+                    val map = mapLibreMap ?: return@AndroidView
+                    map.clear()
+                    
                     viewModel.heatmapPoints.forEach { point ->
-                        val circle = Polygon(mv)
-                        circle.points = Polygon.pointsAsCircle(GeoPoint(point.latitude, point.longitude), 300.0)
-                        circle.fillPaint.color = Color(1f, 0f, 0f, point.intensity.toFloat()).toArgb()
-                        circle.outlinePaint.strokeWidth = 0f
-                        mv.overlays.add(circle)
+                        val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude), 300.0)
+                        map.addPolygon(PolygonOptions()
+                            .addAll(circlePoints)
+                            .fillColor(Color(1f, 0f, 0f, (point.intensity * 0.5).toFloat()).toArgb())
+                            .strokeColor(Color.Transparent.toArgb())
+                        )
                     }
+
                     if (viewModel.navigationPath.isNotEmpty()) {
-                        val line = Polyline(mv).apply {
-                            setPoints(viewModel.navigationPath)
-                            outlinePaint.color = "#004E89".toColorInt()
-                            outlinePaint.strokeWidth = 12f
-                        }
-                        mv.overlays.add(line)
+                        map.addPolyline(PolylineOptions()
+                            .addAll(viewModel.navigationPath)
+                            .color("#004E89".toColorInt())
+                            .width(5f)
+                        )
                         
-                        val marker = Marker(mv).apply {
-                            position = viewModel.navigationPath.last()
-                            title = if (viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED) {
+                        map.addMarker(MarkerOptions()
+                            .position(viewModel.navigationPath.last())
+                            .title(if (viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED) {
                                 "Pickup"
                             } else {
                                 "Destination"
-                            }
-                        }
-                        mv.overlays.add(marker)
+                            })
+                        )
                     }
-                    mv.invalidate()
                 }
             )
 
@@ -269,7 +281,8 @@ fun MapScreen(
                 onClick = onNavigateToMenu,
                 modifier = Modifier
                     .padding(16.dp)
-                    .align(Alignment.TopStart),
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding(),
                 containerColor = Color.White,
                 contentColor = Color.DarkGray,
                 shape = CircleShape,
@@ -283,6 +296,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(16.dp)
+                    .statusBarsPadding()
                     .fillMaxWidth(0.9f),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -303,6 +317,7 @@ fun MapScreen(
                     onCall = { viewModel.initiateCall() },
                     onChat = { onNavigateToChat(delivery.orderId, delivery.customerName ?: "Customer") },
                     onStatusUpdate = { viewModel.updateDeliveryStatus(it) },
+                    onCancel = { viewModel.cancelActiveTrip() },
                     onArrived = { viewModel.showPinDialog = true }
                 )
             }
@@ -312,7 +327,7 @@ fun MapScreen(
                     request = request,
                     timerProgress = viewModel.requestTimer / 30f,
                     onAccept = { viewModel.acceptDelivery() },
-                    onIgnore = { viewModel.activeRequest = null },
+                    onCancel = { viewModel.rejectDelivery() },
                     isAccepting = viewModel.isAccepting
                 )
             }
@@ -424,6 +439,23 @@ fun MapScreen(
             }
         }
     }
+}
+
+private fun createCirclePoints(center: LatLng, radiusInMeters: Double): List<LatLng> {
+    val points = mutableListOf<LatLng>()
+    val distanceRadians = radiusInMeters / 6371000.0 // earth radius
+    val centerLatRadians = Math.toRadians(center.latitude)
+    val centerLonRadians = Math.toRadians(center.longitude)
+    for (i in 0 until 360 step 10) {
+        val bearingRadians = Math.toRadians(i.toDouble())
+        val pointLatRadians = Math.asin(Math.sin(centerLatRadians) * Math.cos(distanceRadians) +
+                Math.cos(centerLatRadians) * Math.sin(distanceRadians) * Math.cos(bearingRadians))
+        val pointLonRadians = centerLonRadians + Math.atan2(Math.sin(bearingRadians) * Math.sin(distanceRadians) * Math.cos(centerLatRadians),
+                Math.cos(distanceRadians) - Math.sin(centerLatRadians) * Math.sin(pointLatRadians))
+        points.add(LatLng(Math.toDegrees(pointLatRadians), Math.toDegrees(pointLonRadians)))
+    }
+    points.add(points[0])
+    return points
 }
 
 @Composable
@@ -579,6 +611,7 @@ fun DeliveryControlSheet(
     onCall: () -> Unit,
     onChat: () -> Unit,
     onStatusUpdate: (DeliveryStatus) -> Unit,
+    onCancel: () -> Unit,
     onArrived: () -> Unit
 ) {
     Card(
@@ -656,29 +689,40 @@ fun DeliveryControlSheet(
                 }
             }
             Spacer(modifier = Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    if (delivery.status == DeliveryStatus.ASSIGNED) {
-                        onArrived()
-                    } else {
-                        onStatusUpdate(DeliveryStatus.DELIVERED)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004E89))
-            ) {
-                Text(
-                    text = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                        stringResource(R.string.btn_arrived_at_pickup)
-                    } else {
-                        stringResource(R.string.btn_complete_trip)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                    border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.3f))
+                ) {
+                    Text("Cancel order", fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = {
+                        if (delivery.status == DeliveryStatus.ASSIGNED) {
+                            onArrived()
+                        } else {
+                            onStatusUpdate(DeliveryStatus.DELIVERED)
+                        }
                     },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                    modifier = Modifier
+                        .weight(1.5f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004E89))
+                ) {
+                    Text(
+                        text = if (delivery.status == DeliveryStatus.ASSIGNED) {
+                            stringResource(R.string.btn_arrived_at_pickup)
+                        } else {
+                            stringResource(R.string.btn_complete_trip)
+                        },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
             }
         }
     }
@@ -699,7 +743,7 @@ fun IncomingRequestSheet(
     request: Delivery,
     timerProgress: Float,
     onAccept: () -> Unit,
-    onIgnore: () -> Unit,
+    onCancel: () -> Unit,
     isAccepting: Boolean
 ) {
     Card(
@@ -721,7 +765,7 @@ fun IncomingRequestSheet(
                     .height(4.dp)
                     .padding(bottom = 12.dp),
                 color = Color(0xFFFF6B35),
-                trackColor = Color(0xFFF0F0F0)
+                trackColor = Color(0xFFF08035).copy(alpha = 0.1f)
             )
             Text(
                 text = stringResource(R.string.new_delivery_request),
@@ -790,18 +834,20 @@ fun IncomingRequestSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
-                    onClick = onIgnore,
+                    onClick = onCancel,
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                    border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f))
                 ) {
-                    Text(text = stringResource(R.string.ignore), color = Color.Gray)
+                    Text(text = "Cancel order", fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = onAccept,
                     modifier = Modifier
-                        .weight(1.5f)
+                        .weight(1f)
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745)),
@@ -811,7 +857,7 @@ fun IncomingRequestSheet(
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                     } else {
                         Text(
-                            text = stringResource(R.string.btn_accept),
+                            text = "Accept order",
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 18.sp
                         )

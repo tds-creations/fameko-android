@@ -259,7 +259,8 @@ interface FamekoApiService {
         @Field("lat") lat: Double,
         @Field("lng") lng: Double,
         @Field("dist") distance: Double,
-        @Field("dur") duration: Double
+        @Field("dur") duration: Double,
+        @Field("region") region: String? = null
     ): List<RideEstimateResponse>
 
     @GET("rentals/vehicles")

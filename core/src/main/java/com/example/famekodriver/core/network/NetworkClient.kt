@@ -85,6 +85,9 @@ object NetworkClient {
             .build()
     }
 
+    // TomTom API Key - Move to BuildConfig in production
+    const val TOMTOM_API_KEY = "hHWkdbEaHXN26BzptZvmEPwHFg6ymVTg"
+
     val famekoApi: FamekoApiService by lazy {
         retrofit.create(FamekoApiService::class.java)
     }
@@ -100,6 +103,15 @@ object NetworkClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(OpenStreetMapService::class.java)
+    }
+
+    val tomTomService: TomTomApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://api.tomtom.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(TomTomApiService::class.java)
     }
 
     fun getWebSocketUrl(userId: String): String {

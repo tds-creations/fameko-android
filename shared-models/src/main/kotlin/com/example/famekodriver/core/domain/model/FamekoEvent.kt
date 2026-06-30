@@ -17,6 +17,7 @@ sealed class FamekoEvent {
     data class AudioDataReceived(val data: ByteArray) : FamekoEvent()
     data class NotificationReceived(val id: Int, val title: String, val message: String, val type: String, val createdAt: String) : FamekoEvent()
     data class RentalDestinationUpdated(val rentalId: Int, val location: String) : FamekoEvent()
+    data class Unknown(val type: String, val data: Map<String, Any>) : FamekoEvent()
     data object Ping : FamekoEvent()
 }
 

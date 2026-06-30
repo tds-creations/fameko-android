@@ -8,5 +8,6 @@ data class DriverLocation(
     val isOnline: Boolean = true,
     val isAvailable: Boolean = true,
     val vehicleType: String? = null,
+    val vehicleCategory: String? = null,
     val pickupEtaMin: Double? = null
 )

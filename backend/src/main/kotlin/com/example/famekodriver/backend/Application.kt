@@ -33,4 +33,5 @@ fun Application.module() {
     configureSockets()
     configureRouting()
     configureRentalScheduler()
+    configureOrderScheduler()
 }

@@ -1,6 +1,7 @@
 package com.example.famekodriver.customer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +18,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,6 +44,7 @@ fun CustomerChatScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val repository = remember { DriverRepository() }
     val sessionManager = remember { SessionManager(context) }
     val scope = rememberCoroutineScope()
@@ -180,7 +184,12 @@ fun CustomerChatScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().background(Color.White),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White)
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { focusManager.clearFocus() })
+                        },
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     contentPadding = PaddingValues(16.dp)
                 ) {

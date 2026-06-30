@@ -6,7 +6,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
 import coil.load
@@ -24,17 +23,8 @@ class DriverLoginActivity : AppCompatActivity() {
     private val repository = DriverRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         sessionManager = SessionManager(this)
-
-        // Check if already logged in
-        if (sessionManager.isLoggedIn()) {
-            Toast.makeText(this, "Welcome back, ${sessionManager.getDriverName()}", Toast.LENGTH_SHORT).show()
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
 
         setContentView(R.layout.activity_driver_login)
 
@@ -117,9 +107,9 @@ class DriverLoginActivity : AppCompatActivity() {
     private fun setupCarousel() {
         val ivLogo = findViewById<ImageView>(R.id.ivLogo)
         val images = listOf(
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_1,
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_2,
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_3
+            ImageLinks.DRIVER_LOGIN_CAROUSEL_1,
+            ImageLinks.DRIVER_LOGIN_CAROUSEL_2,
+            ImageLinks.DRIVER_LOGIN_CAROUSEL_3
         )
 
         var currentIndex = 0

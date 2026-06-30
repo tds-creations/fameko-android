@@ -238,9 +238,9 @@ class DriverSignupActivity : AppCompatActivity() {
     private fun setupCarousel() {
         val ivLogo = findViewById<ImageView>(R.id.ivLogo)
         val images = listOf(
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_1,
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_2,
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_3
+            ImageLinks.DRIVER_LOGIN_CAROUSEL_1,
+            ImageLinks.DRIVER_LOGIN_CAROUSEL_2,
+            ImageLinks.DRIVER_LOGIN_CAROUSEL_3
         )
 
         var currentIndex = 0

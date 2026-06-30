@@ -12,7 +12,7 @@ import com.example.famekodriver.core.domain.model.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.osmdroid.util.GeoPoint
+import org.maplibre.android.geometry.LatLng
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -38,8 +38,8 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var incomingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
     var ongoingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
     var isAccepting by mutableStateOf(false)
-    var navigationPath by mutableStateOf<List<GeoPoint>>(emptyList())
-    var driverLatLng by mutableStateOf<GeoPoint?>(null)
+    var navigationPath by mutableStateOf<List<LatLng>>(emptyList())
+    var driverLatLng by mutableStateOf<LatLng?>(null)
     var heatmapPoints by mutableStateOf<List<HeatmapPoint>>(emptyList())
     var currentSurge by mutableStateOf<SurgeInfo?>(null)
     var requestTimer by mutableIntStateOf(30)
@@ -298,6 +298,21 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun rejectDelivery() {
+        activeRequest = null
+        timerJob?.cancel()
+    }
+
+    fun cancelActiveTrip() {
+        val delivery = currentDelivery ?: return
+        viewModelScope.launch {
+            repository.updateDeliveryStatus(delivery.id, DeliveryStatus.CANCELLED).onSuccess {
+                currentDelivery = null
+                navigationPath = emptyList()
+            }
+        }
+    }
+
     fun updateDeliveryStatus(nextStatus: DeliveryStatus) {
         val delivery = currentDelivery ?: return
         viewModelScope.launch {
@@ -404,11 +419,11 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         repository.sendAudioData(data)
     }
 
-    fun calculateRoute(start: GeoPoint, end: GeoPoint) {
+    fun calculateRoute(start: LatLng, end: LatLng) {
         viewModelScope.launch {
             repository.calculateRoute(RouteRequest(RouteLocation(start.latitude, start.longitude), RouteLocation(end.latitude, end.longitude)))
                 .onSuccess { response ->
-                    navigationPath = response.routeCoords.map { GeoPoint(it[1], it[0]) }
+                    navigationPath = response.routeCoords.map { LatLng(it[1], it[0]) }
                 }
         }
     }

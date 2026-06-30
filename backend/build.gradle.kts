@@ -29,6 +29,8 @@ dependencies {
     implementation(libs.hikaricp)
     implementation(libs.postgresql)
     implementation(libs.firebase.admin)
+    implementation(libs.h3)
+    implementation(libs.jedis)
 }
 
 kotlin {

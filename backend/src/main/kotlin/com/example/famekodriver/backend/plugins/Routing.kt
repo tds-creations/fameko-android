@@ -10,6 +10,10 @@ import io.ktor.server.thymeleaf.*
 import io.ktor.server.sessions.*
 import io.ktor.server.http.content.*
 import io.ktor.http.content.*
+import com.example.famekodriver.backend.services.H3Helper
+import com.example.famekodriver.backend.services.RedisManager
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.backend.services.IntelligenceService
 import com.example.famekodriver.backend.services.SimulationParams
@@ -775,23 +779,42 @@ fun Application.configureRouting() {
             val peak = config.peakMultiplier
             val minFare = config.minFare
 
-            // Find nearest drivers for each category to get ETAs
-            val nearby = getNearbyDriversFromDb(lat, lng, 10.0)
-            
-            fun getEta(vType: String?): Int {
-                val d = nearby.filter { it.vehicleType.equals(vType, ignoreCase = true) || vType == null }.minOfOrNull { it.pickupEtaMin ?: 99.0 }
-                return d?.toInt() ?: 5
-            }
-
-            val estimates = listOf(
-                RideEstimateResponse("Economy", "Economy", "Quick and affordable rides", max(minFare, (base + (dist * perKm) + (dur * perMin)) * peak), getEta("car"), "car"),
-                RideEstimateResponse("Comfort", "Comfort", "Newer cars, extra legroom", max(minFare, (base + (dist * perKm * 1.3) + (dur * perMin)) * peak), getEta("car"), "comfort"),
-                RideEstimateResponse("Pragya", "Pragya", "Local tricycle trips", max(minFare * 0.7, (base * 0.7 + (dist * perKm * 0.7) + (dur * perMin * 0.7)) * peak), getEta("pragya"), "pragya"),
-                RideEstimateResponse("Okada", "Okada", "Quickest bike trips", max(minFare * 0.6, (base * 0.6 + (dist * perKm * 0.6) + (dur * perMin * 0.6)) * peak), getEta("okada"), "okada"),
-                RideEstimateResponse("Aboboyaa", "Aboboyaa", "Heavy load/cargo transport", max(minFare * 0.8, (base * 0.8 + (dist * perKm * 0.8) + (dur * perMin * 0.8)) * peak), getEta("aboboyaa"), "aboboyaa"),
-                RideEstimateResponse("Truck", "Truck", "Large moving and hauling", max(minFare * 2.0, (base * 2.0 + (dist * perKm * 2.0) + (dur * perMin * 2.0)) * peak), getEta("truck"), "truck"),
-                RideEstimateResponse("Bicycle", "Bicycle", "Short distance eco deliveries", max(minFare * 0.4, (base * 0.4 + (dist * perKm * 0.4) + (dur * perMin * 0.4)) * peak), getEta("bicycle"), "bicycle")
+            val estimates = mutableListOf<RideEstimateResponse>()
+            val types = listOf(
+                Pair("Economy", "car"), 
+                Pair("Comfort", "car"), 
+                Pair("Pragya", "pragya"), 
+                Pair("Okada", "okada"), 
+                Pair("Aboboyaa", "aboboyaa"), 
+                Pair("Truck", "truck"), 
+                Pair("Bicycle", "bicycle")
             )
+
+            types.forEach { (name, internal) ->
+                val desc = when(name) {
+                    "Economy" -> "Quick and affordable rides"
+                    "Comfort" -> "Newer cars, extra legroom"
+                    "Pragya" -> "Local tricycle trips"
+                    "Okada" -> "Quickest bike trips"
+                    "Aboboyaa" -> "Heavy load/cargo transport"
+                    "Truck" -> "Large moving and hauling"
+                    "Bicycle" -> "Short distance eco deliveries"
+                    else -> ""
+                }
+                val multiplier = if (name == "Comfort") 1.3 else if (name == "Pragya" || name == "Okada") 0.7 else if (name == "Aboboyaa") 0.8 else if (name == "Truck") 2.0 else if (name == "Bicycle") 0.4 else 1.0
+                val finalMinFare = if (name == "Pragya") minFare * 0.7 else if (name == "Okada") minFare * 0.6 else if (name == "Aboboyaa") minFare * 0.8 else if (name == "Truck") minFare * 2.0 else if (name == "Bicycle") minFare * 0.4 else minFare
+
+                estimates.add(RideEstimateResponse(
+                    serviceId = name,
+                    name = name,
+                    description = desc,
+                    fare = max(finalMinFare, (base * multiplier + (dist * perKm * multiplier) + (dur * perMin)) * peak),
+                    pickupEtaMin = 5,
+                    icon = internal,
+                    isAvailableInRegion = true,
+                    availabilityStatus = "AVAILABLE"
+                ))
+            }
             
             call.respond(estimates)
         }
@@ -806,14 +829,30 @@ fun Application.configureRouting() {
                     DatabaseInitializer.getDataSource().connection.use { conn ->
                         conn.autoCommit = false
                         try {
+                            val isScheduled = !req.scheduledTime.isNullOrBlank()
+                            val initialStatus = if (isScheduled) "SCHEDULED" else "PENDING"
+                            
                             // 1. Create Order
-                            val orderSql = "INSERT INTO orders (customer_id, total_amount, status, pickup_location, dropoff_location, verification_pin) VALUES (?, ?, 'PENDING', ?, ?, ?) RETURNING id"
+                            val orderSql = "INSERT INTO orders (customer_id, total_amount, status, pickup_location, dropoff_location, verification_pin, scheduled_time) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id"
                             val orderStmt = conn.prepareStatement(orderSql)
                             orderStmt.setInt(1, req.customerId.toInt())
                             orderStmt.setDouble(2, req.estimatedFare)
-                            orderStmt.setString(3, req.pickupLocation)
-                            orderStmt.setString(4, req.dropOffLocation)
-                            orderStmt.setString(5, pin)
+                            orderStmt.setString(3, initialStatus)
+                            orderStmt.setString(4, req.pickupLocation)
+                            orderStmt.setString(5, req.dropOffLocation)
+                            orderStmt.setString(6, pin)
+                            
+                            if (isScheduled) {
+                                try {
+                                    val formatted = req.scheduledTime!!.replace("T", " ")
+                                    val finalTime = if (formatted.length == 16) "$formatted:00" else formatted
+                                    orderStmt.setTimestamp(7, java.sql.Timestamp.valueOf(finalTime))
+                                } catch (e: Exception) {
+                                    orderStmt.setNull(7, java.sql.Types.TIMESTAMP)
+                                }
+                            } else {
+                                orderStmt.setNull(7, java.sql.Types.TIMESTAMP)
+                            }
                             
                             val rs = orderStmt.executeQuery()
                             if (rs.next()) {
@@ -824,53 +863,101 @@ fun Application.configureRouting() {
                                 val commissionPercent = config.driverCommissionPercent
                                 val driverEarnings = req.estimatedFare * (1.0 - (commissionPercent / 100.0))
 
-                                val deliverySql = "INSERT INTO deliveries (order_id, pickup_location, dropoff_location, status, service_type, estimated_earnings, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km) VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                                val deliverySql = "INSERT INTO deliveries (order_id, pickup_location, dropoff_location, status, service_type, estimated_earnings, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                                 val delStmt = conn.prepareStatement(deliverySql)
                                 delStmt.setInt(1, orderId)
                                 delStmt.setString(2, req.pickupLocation)
                                 delStmt.setString(3, req.dropOffLocation)
-                                delStmt.setString(4, req.requestedVehicleType ?: req.serviceType.name)
-                                delStmt.setDouble(5, driverEarnings) 
-                                delStmt.setDouble(6, req.pickupLat)
-                                delStmt.setDouble(7, req.pickupLng)
-                                delStmt.setDouble(8, req.dropOffLat)
-                                delStmt.setDouble(9, req.dropOffLng)
-                                delStmt.setDouble(10, req.distanceKm)
+                                delStmt.setString(4, initialStatus)
+                                delStmt.setString(5, req.requestedVehicleType ?: req.serviceType.name)
+                                delStmt.setDouble(6, driverEarnings) 
+                                delStmt.setDouble(7, req.pickupLat)
+                                delStmt.setDouble(8, req.pickupLng)
+                                delStmt.setDouble(9, req.dropOffLat)
+                                delStmt.setDouble(10, req.dropOffLng)
+                                delStmt.setDouble(11, req.distanceKm)
                                 
                                 val rsDel = delStmt.executeQuery()
                                 if (rsDel.next()) {
                                     val deliveryId = rsDel.getInt(1)
                                     conn.commit()
 
-                                    // 3. Notify Nearby Drivers
-                                    val nearby = getNearbyDriversFromDb(req.pickupLat, req.pickupLng, 15.0, req.requestedVehicleType)
-                                    println("DEBUG: Found ${nearby.size} nearby drivers for order $orderId within 15km")
-                                    
-                                    val deliveryObj = Delivery(
-                                        id = deliveryId.toString(),
-                                        orderId = orderId,
-                                        driverId = null,
-                                        pickupLocation = req.pickupLocation,
-                                        dropOffLocation = req.dropOffLocation,
-                                        pickupLat = req.pickupLat,
-                                        pickupLng = req.pickupLng,
-                                        dropOffLat = req.dropOffLat,
-                                        dropOffLng = req.dropOffLng,
-                                        status = DeliveryStatus.PENDING,
-                                        distanceKm = req.distanceKm,
-                                        estimatedEarnings = driverEarnings,
-                                        pickupEtaMin = 5.0,
-                                        customerName = getCustomerName(req.customerId.toInt()) ?: "Customer",
-                                        customerPhone = getCustomerPhone(req.customerId.toInt()) ?: "",
-                                        totalFare = req.estimatedFare
-                                    )
+                                    // 3. Notify Nearby Drivers (Only if NOT scheduled)
+                                    if (!isScheduled) {
+                                        application.launch {
+                                            var attempt = 1
+                                            var currentRadius = 3.0 // Start small
+                                            val maxAttempts = 3
+                                            
+                                            while (attempt <= maxAttempts) {
+                                                println("DEBUG: Dispatch attempt $attempt for order $orderId (radius: ${currentRadius}km)")
+                                                val nearby = getNearbyDriversFromDb(req.pickupLat, req.pickupLng, currentRadius, req.requestedVehicleType)
+                                                
+                                                val deliveryObj = Delivery(
+                                                    id = deliveryId.toString(),
+                                                    orderId = orderId,
+                                                    driverId = null,
+                                                    pickupLocation = req.pickupLocation,
+                                                    dropOffLocation = req.dropOffLocation,
+                                                    pickupLat = req.pickupLat,
+                                                    pickupLng = req.pickupLng,
+                                                    dropOffLat = req.dropOffLat,
+                                                    dropOffLng = req.dropOffLng,
+                                                    status = DeliveryStatus.PENDING,
+                                                    distanceKm = req.distanceKm,
+                                                    estimatedEarnings = driverEarnings,
+                                                    pickupEtaMin = 5.0,
+                                                    customerName = getCustomerName(req.customerId.toInt()) ?: "Customer",
+                                                    customerPhone = getCustomerPhone(req.customerId.toInt()) ?: "",
+                                                    totalFare = req.estimatedFare
+                                                )
 
-                                    nearby.forEach { driver ->
-                                        println("DEBUG: Sending NEW_DELIVERY to DRIVER_${driver.id}")
-                                        sendToUser("DRIVER_${driver.id}", "NEW_DELIVERY", deliveryObj)
+                                                // Try to lock and offer to drivers
+                                                var offerSent = false
+                                                for (driver in nearby) {
+                                                    if (RedisManager.tryLockDriver(driver.id)) {
+                                                        println("DEBUG: Offering order $orderId to DRIVER_${driver.id}")
+                                                        sendToUser("DRIVER_${driver.id}", "NEW_DELIVERY", deliveryObj)
+                                                        offerSent = true
+                                                        // In a real system, we'd wait for acceptance or rejection here
+                                                        // For this simulation, we send to the first available and wait
+                                                        break 
+                                                    }
+                                                }
+
+                                                if (offerSent) {
+                                                    // Wait for driver response (15s timeout as in image)
+                                                    delay(15000)
+                                                    
+                                                    // Check if order is still PENDING
+                                                    val status = getOrderStatus(orderId)
+                                                    if (status != "PENDING") {
+                                                        println("DEBUG: Order $orderId no longer pending ($status). Dispatch finished.")
+                                                        break
+                                                    } else {
+                                                        println("DEBUG: Order $orderId still pending after 15s. Retrying...")
+                                                    }
+                                                }
+
+                                                attempt++
+                                                currentRadius += 5.0 // Expand search
+                                                sendToUser("CUSTOMER_${req.customerId}", "ORDER_RETRY", mapOf(
+                                                    "type" to "ORDER_RETRY",
+                                                    "attempt" to attempt - 1,
+                                                    "maxAttempts" to maxAttempts,
+                                                    "radius" to currentRadius,
+                                                    "message" to "Expanding search area..."
+                                                ))
+                                            }
+                                            
+                                            if (getOrderStatus(orderId) == "PENDING" && attempt > maxAttempts) {
+                                                println("DEBUG: Order $orderId timed out after $maxAttempts attempts.")
+                                                sendToUser("CUSTOMER_${req.customerId}", "ORDER_TIMEOUT", mapOf("orderId" to orderId))
+                                            }
+                                        }
                                     }
 
-                                    call.respond(mapOf("success" to true, "orderId" to orderId))
+                                    call.respond(mapOf("success" to true, "orderId" to orderId, "status" to initialStatus))
                                 } else {
                                     conn.rollback()
                                     call.respond(mapOf("success" to false, "message" to "Failed to create delivery record"))
@@ -1377,7 +1464,12 @@ fun Application.configureRouting() {
                 }
                 
                 if (deliveries.isEmpty()) {
-                    radius = 15.0 // Max expansion to 15km
+                    radius = 15.0 // Expand to 15km
+                    deliveries = getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory)
+                }
+
+                if (deliveries.isEmpty()) {
+                    radius = 50.0 // Max expansion to 50km for remote areas
                     deliveries = getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory)
                 }
                 
@@ -2626,42 +2718,43 @@ private fun getRentalRatesFromDb(): List<Map<String, Any>> {
     return list
 }
 
+private fun getOrderStatus(orderId: Int): String {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        val rs = conn.prepareStatement("SELECT status FROM orders WHERE id = ?").apply {
+            setInt(1, orderId)
+        }.executeQuery()
+        return if (rs.next()) rs.getString("status") else "NOT_FOUND"
+    }
+}
+
 private fun getNearbyDriversFromDb(lat: Double, lng: Double, radius: Double, vehicleType: String? = null): List<DriverLocation> {
     val list = mutableListOf<DriverLocation>()
     DatabaseInitializer.getDataSource().connection.use { conn ->
-        // DEBUG: Check all online drivers including those without coordinates
-        val checkSql = "SELECT d.id, d.full_name, d.vehicle_type, d.vehicle_category, d.status, ds.is_online, ds.latitude, ds.longitude FROM drivers d JOIN driver_stats ds ON d.id = ds.driver_id WHERE ds.is_online = true"
-        val rsCheck = conn.createStatement().executeQuery(checkSql)
-        println("DEBUG: Scanning all online drivers for matching:")
-        var onlineCount = 0
-        while (rsCheck.next()) {
-            onlineCount++
-            println("  - Driver ${rsCheck.getInt("id")} (${rsCheck.getString("full_name")}): Type=${rsCheck.getString("vehicle_type")}, Cat=${rsCheck.getString("vehicle_category")}, Status=${rsCheck.getString("status")}, Lat=${rsCheck.getDouble("latitude")}, Lng=${rsCheck.getDouble("longitude")}")
-        }
-        if (onlineCount == 0) {
-            println("  - No drivers are currently online in driver_stats.")
-        }
-
         // Match requested service type to registered vehicle type and admin-assigned category
         val vehicleFilter = if (vehicleType != null) {
             val vType = vehicleType.lowercase()
-            println("DEBUG: Filtering for vehicle request: $vehicleType (lower: $vType)")
             when {
-                vType.contains("economy") -> "AND d.vehicle_type ILIKE 'car' AND d.vehicle_category ILIKE 'Economy'"
-                vType.contains("comfort") -> "AND d.vehicle_type ILIKE 'car' AND d.vehicle_category ILIKE 'Comfort'"
-                vType.contains("car") -> "AND d.vehicle_type ILIKE 'car'"
-                vType.contains("okada") || vType.contains("bike") -> "AND d.vehicle_type ILIKE 'okada'"
-                vType.contains("pragya") -> "AND d.vehicle_type ILIKE 'pragya'"
-                vType.contains("aboboyaa") -> "AND d.vehicle_type ILIKE 'aboboyaa'"
-                vType.contains("truck") -> "AND d.vehicle_type ILIKE 'truck'"
-                vType.contains("bicycle") -> "AND d.vehicle_type ILIKE 'bicycle'"
-                else -> "AND d.vehicle_type ILIKE ?"
+                vType.contains("economy") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%economy%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%') AND (d.vehicle_category ILIKE 'Economy' OR d.vehicle_category IS NULL)"
+                vType.contains("comfort") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%comfort%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%') AND d.vehicle_category ILIKE 'Comfort'"
+                vType.contains("car") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%taxi%' OR d.vehicle_type ILIKE '%saloon%')"
+                vType.contains("okada") || vType.contains("bike") -> "AND (d.vehicle_type ILIKE '%okada%' OR d.vehicle_type ILIKE '%bike%')"
+                vType.contains("pragya") -> "AND (d.vehicle_type ILIKE '%pragya%' OR d.vehicle_type ILIKE '%tricycle%')"
+                vType.contains("aboboyaa") -> "AND d.vehicle_type ILIKE '%aboboyaa%'"
+                vType.contains("truck") -> "AND d.vehicle_type ILIKE '%truck%'"
+                vType.contains("bicycle") -> "AND d.vehicle_type ILIKE '%bicycle%'"
+                else -> "AND (d.vehicle_type ILIKE ? OR d.vehicle_category ILIKE ?)"
             }
         } else ""
 
+        // Use H3 for Geospatial Indexing
+        val h3Index = H3Helper.getIndex(lat, lng)
+        val neighbors = H3Helper.getNeighbors(h3Index)
+        val h3Filter = "AND ds.h3_index IN (${neighbors.joinToString(",") { "'$it'" }})"
+
         // Use Haversine formula to find drivers within radius (km)
         // If radius is large (e.g. > 100), ignore distance and return all online matching drivers (for testing)
-        val useDistanceLimit = radius < 500.0
+        // Also ignore distance if lat/lng are missing (0,0)
+        val useDistanceLimit = radius < 500.0 && !(lat == 0.0 && lng == 0.0)
 
         val sql = if (useDistanceLimit) {
             """
@@ -2671,9 +2764,13 @@ private fun getNearbyDriversFromDb(lat: Double, lng: Double, radius: Double, veh
                 JOIN drivers d ON ds.driver_id = d.id
                 WHERE ds.is_online = true AND d.status = 'APPROVED'
                 AND ds.latitude IS NOT NULL AND ds.longitude IS NOT NULL
+                $h3Filter
                 $vehicleFilter
                 AND (6371 * acos(least(1.0, cos(radians(?)) * cos(radians(ds.latitude)) * cos(radians(ds.longitude) - radians(?)) + sin(radians(?)) * sin(radians(ds.latitude)))) ) <= ?
-                ORDER BY distance ASC
+                ORDER BY (
+                    (6371 * acos(least(1.0, cos(radians(?)) * cos(radians(ds.latitude)) * cos(radians(ds.longitude) - radians(?)) + sin(radians(?)) * sin(radians(ds.latitude))))) * 0.7 
+                    + (ds.completed_today * 0.5)
+                ) ASC
             """.trimIndent()
         } else {
             """
@@ -2682,13 +2779,13 @@ private fun getNearbyDriversFromDb(lat: Double, lng: Double, radius: Double, veh
                 JOIN drivers d ON ds.driver_id = d.id
                 WHERE ds.is_online = true AND d.status = 'APPROVED'
                 $vehicleFilter
-                ORDER BY d.id DESC
+                ORDER BY ds.completed_today ASC, d.id DESC
             """.trimIndent()
         }
         
-        fun vTypeInList(vt: String): Boolean {
+        fun isPredefined(vt: String): Boolean {
             val v = vt.lowercase()
-            return v.contains("car") || v.contains("economy") || v.contains("comfort") ||
+            return v.contains("economy") || v.contains("comfort") || v.contains("car") ||
                    v.contains("okada") || v.contains("bike") || v.contains("pragya") ||
                    v.contains("aboboyaa") || v.contains("truck") || v.contains("bicycle")
         }
@@ -2697,14 +2794,18 @@ private fun getNearbyDriversFromDb(lat: Double, lng: Double, radius: Double, veh
         if (useDistanceLimit) {
             stmt.setDouble(1, lat); stmt.setDouble(2, lng); stmt.setDouble(3, lat)
             var paramIdx = 4
-            if (vehicleType != null && !vTypeInList(vehicleType)) {
+            if (vehicleType != null && !isPredefined(vehicleType)) {
+                stmt.setString(paramIdx++, vehicleType)
                 stmt.setString(paramIdx++, vehicleType)
             }
             stmt.setDouble(paramIdx++, lat); stmt.setDouble(paramIdx++, lng); stmt.setDouble(paramIdx++, lat)
             stmt.setDouble(paramIdx++, radius)
+            // Sorting parameters (Haversine again)
+            stmt.setDouble(paramIdx++, lat); stmt.setDouble(paramIdx++, lng); stmt.setDouble(paramIdx++, lat)
         } else {
-            if (vehicleType != null && !vTypeInList(vehicleType)) {
+            if (vehicleType != null && !isPredefined(vehicleType)) {
                 stmt.setString(1, vehicleType)
+                stmt.setString(2, vehicleType)
             }
         }
         
@@ -2712,8 +2813,7 @@ private fun getNearbyDriversFromDb(lat: Double, lng: Double, radius: Double, veh
         while (rs.next()) {
             val dist = rs.getDouble("distance")
             // Simple ETA calculation: assume avg speed 30km/h in city
-            // ETA (min) = (distance / speed) * 60
-            val pickupEta = (dist / 30.0) * 60.0 + 2.0 // Add 2 mins for prep
+            val pickupEta = (dist / 30.0) * 60.0 + 2.0
             
             list.add(DriverLocation(
                 id = rs.getInt("driver_id").toString(),
@@ -2721,6 +2821,7 @@ private fun getNearbyDriversFromDb(lat: Double, lng: Double, radius: Double, veh
                 longitude = rs.getDouble("longitude"),
                 bearing = rs.getFloat("bearing"),
                 vehicleType = rs.getString("vehicle_type"),
+                vehicleCategory = rs.getString("vehicle_category"),
                 pickupEtaMin = pickupEta
             ))
         }
@@ -2734,15 +2835,13 @@ private fun getAvailableDeliveriesByRadius(lat: Double, lng: Double, radius: Dou
         // Match service type to registered vehicle type and admin-assigned category
         val vType = vehicleType.lowercase()
         val vehicleFilter = when {
-            vType == "car" && vehicleCategory?.lowercase() == "economy" -> "AND (service_type ILIKE 'car' OR service_type ILIKE 'Economy')"
-            vType == "car" && vehicleCategory?.lowercase() == "comfort" -> "AND (service_type ILIKE 'car' OR service_type ILIKE 'Comfort')"
-            vType == "car" -> "AND service_type ILIKE 'car'"
-            vType == "okada" -> "AND service_type ILIKE 'okada'"
+            vType == "car" -> "AND (service_type ILIKE 'car' OR service_type ILIKE 'Economy' OR service_type ILIKE 'Comfort')"
+            vType == "okada" -> "AND (service_type ILIKE 'okada' OR service_type ILIKE 'bike')"
             vType == "pragya" -> "AND service_type ILIKE 'pragya'"
             vType == "aboboyaa" -> "AND service_type ILIKE 'aboboyaa'"
             vType == "truck" -> "AND service_type ILIKE 'truck'"
             vType == "bicycle" -> "AND service_type ILIKE 'bicycle'"
-            else -> "AND service_type ILIKE ?"
+            else -> "AND (service_type ILIKE ? OR service_type ILIKE 'car')"
         }
 
         val sql = """
@@ -2842,12 +2941,14 @@ private fun updateDriverDocumentInDb(driverId: String, docType: String, fileUrl:
 }
 
 private fun updateDriverLocationInDb(id: String, lat: Double, lng: Double, bearing: Float) {
+    val h3Index = H3Helper.getIndex(lat, lng)
     DatabaseInitializer.getDataSource().connection.use { conn ->
-        conn.prepareStatement("INSERT INTO driver_stats (driver_id, latitude, longitude, bearing) VALUES (?, ?, ?, ?) ON CONFLICT (driver_id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, bearing = EXCLUDED.bearing, updated_at = CURRENT_TIMESTAMP").apply {
+        conn.prepareStatement("INSERT INTO driver_stats (driver_id, latitude, longitude, bearing, h3_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (driver_id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, bearing = EXCLUDED.bearing, h3_index = EXCLUDED.h3_index, updated_at = CURRENT_TIMESTAMP").apply {
             setInt(1, id.toInt())
             setDouble(2, lat)
             setDouble(3, lng)
             setFloat(4, bearing)
+            setString(5, h3Index)
             executeUpdate()
         }
         
@@ -3104,3 +3205,5 @@ private fun getAllProductsFromDb(): List<Map<String, Any?>> {
     }
     return list
 }
+
+

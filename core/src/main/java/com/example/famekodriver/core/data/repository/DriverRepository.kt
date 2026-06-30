@@ -177,6 +177,12 @@ class DriverRepository {
                                 _events.tryEmit(FamekoEvent.RentalDestinationUpdated(rentalId, location))
                             }
                         }
+                        else -> {
+                            try {
+                                val data = gson.fromJson(wsMessage.payload, Map::class.java) as Map<String, Any>
+                                _events.tryEmit(FamekoEvent.Unknown(wsMessage.type, data))
+                            } catch (_: Exception) {}
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -598,9 +604,8 @@ class DriverRepository {
     }
 
     suspend fun calculateRoute(request: RouteRequest): Result<RouteResponse> = withContext(Dispatchers.IO) {
+        // Priority 1: OSRM (OpenStreetMap based, often more accurate local road data)
         try {
-            // EXCLUSIVELY use OSRM directly for real-world road routing
-            // and completely bypass any backend mock routing logic
             val url = "https://router.project-osrm.org/route/v1/driving/" +
                     "${request.start.lng},${request.start.lat};" +
                     "${request.end.lng},${request.end.lat}" +
@@ -622,18 +627,56 @@ class DriverRepository {
                         timeZone = TimeZone.getTimeZone("UTC")
                     }.format(Date())
                 )
-                Result.success(response)
-            } else {
-                Result.failure(Exception("No valid route found from OSRM: ${osrmResponse.code}"))
+                return@withContext Result.success(response)
             }
         } catch (e: Exception) {
-            Log.e("FamekoRepo", "Direct OSRM Routing failed, falling back to backend", e)
+            if (e is CancellationException) throw e
+            Log.e("FamekoRepo", "OSM Routing failed, falling back to TomTom", e)
+        }
+
+        // Priority 2: TomTom
+        try {
+            val locations = "${request.start.lat},${request.start.lng}:${request.end.lat},${request.end.lng}"
+            val tomTomResponse = NetworkClient.tomTomService.calculateRoute(
+                locations = locations,
+                apiKey = NetworkClient.TOMTOM_API_KEY
+            )
+
+            if (!tomTomResponse.routes.isNullOrEmpty()) {
+                val route = tomTomResponse.routes!![0]
+                val summary = route.summary ?: route.legs?.firstOrNull()?.summary
+                
+                if (summary != null) {
+                    val coords = route.legs?.flatMap { leg ->
+                        leg.points?.map { listOf(it.lon ?: 0.0, it.lat ?: 0.0) } ?: emptyList()
+                    } ?: emptyList()
+
+                    val response = RouteResponse(
+                        fromCache = false,
+                        routeCoords = coords,
+                        distanceM = summary.lengthInMeters ?: 0,
+                        etaMin = (summary.travelTimeInSeconds ?: 0) / 60.0,
+                        vehicleType = request.vehicleType,
+                        routeType = request.routeType,
+                        waypoints = coords.size,
+                        computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                            timeZone = TimeZone.getTimeZone("UTC")
+                        }.format(Date())
+                    )
+                    return@withContext Result.success(response)
+                }
+            }
+            throw Exception("TomTom returned no routes")
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("FamekoRepo", "TomTom Routing failed as well, falling back to backend", e)
             try {
-                // Fallback to backend as a last resort
-                val response = NetworkClient.routingApi.calculateRoute(request)
+                // Priority 3: Backend as last resort
+                val response = NetworkClient.famekoApi.calculateRoute(request)
                 Result.success(response)
-            } catch (e2: Exception) {
-                Result.failure(Exception("Routing failed: ${e2.localizedMessage}"))
+            } catch (e3: Exception) {
+                if (e3 is CancellationException) throw e3
+                Result.failure(Exception("Routing failed completely"))
             }
         }
     }
@@ -805,9 +848,9 @@ class DriverRepository {
         }
     }
 
-    suspend fun getRideEstimates(lat: Double, lng: Double, dist: Double, dur: Double): Result<List<RideEstimateResponse>> = withContext(Dispatchers.IO) {
+    suspend fun getRideEstimates(lat: Double, lng: Double, dist: Double, dur: Double, region: String? = null): Result<List<RideEstimateResponse>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.getRideEstimates(lat, lng, dist, dur)
+            val response = NetworkClient.famekoApi.getRideEstimates(lat, lng, dist, dur, region)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
@@ -1023,35 +1066,93 @@ class DriverRepository {
     }
 
     suspend fun getGeocodeSuggestions(query: String): Result<List<LocationSuggestion>> = withContext(Dispatchers.IO) {
+        // Priority 1: OSM Nominatim (Often more detailed local locations in Ghana)
         try {
-            // EXCLUSIVELY use OSM Nominatim directly to ensure real-world locations 
-            // and completely bypass any backend mocks (local or production)
             val osmResponse = NetworkClient.osmService.search(query)
-            
-            // Map and filter results to ensure they are valid
             val filteredResults = osmResponse.map { suggestion ->
                 suggestion.copy(
                     name = suggestion.displayName.split(",")[0],
                     type = "address"
                 )
             }
-            
-            Result.success(filteredResults)
+            if (filteredResults.isNotEmpty()) {
+                return@withContext Result.success(filteredResults)
+            }
         } catch (e: Exception) {
-            Log.e("FamekoRepo", "Direct OSM Geocode failed", e)
+            if (e is CancellationException) throw e
+            Log.e("FamekoRepo", "OSM Geocode failed, falling back to TomTom", e)
+        }
+
+        // Priority 2: TomTom
+        try {
+            val tomTomResponse = NetworkClient.tomTomService.fuzzySearch(
+                query = query,
+                apiKey = NetworkClient.TOMTOM_API_KEY
+            )
+
+            if (!tomTomResponse.results.isNullOrEmpty()) {
+                val suggestions = tomTomResponse.results!!.mapNotNull { result ->
+                    val addr = result.address?.freeformAddress ?: return@mapNotNull null
+                    val rLat = result.position?.lat ?: return@mapNotNull null
+                    val rLon = result.position?.lon ?: return@mapNotNull null
+                    LocationSuggestion(
+                        displayName = addr,
+                        latitude = rLat.toString(),
+                        longitude = rLon.toString(),
+                        name = result.poi?.name ?: addr.split(",")[0],
+                        type = result.type ?: "address"
+                    )
+                }
+                if (suggestions.isNotEmpty()) {
+                    return@withContext Result.success(suggestions)
+                }
+            }
+            Result.failure(Exception("Geocode failed: No results found"))
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("FamekoRepo", "TomTom Geocode failed as well", e)
             Result.failure(e)
         }
     }
 
     suspend fun reverseGeocode(lat: Double, lng: Double): Result<LocationSuggestion> = withContext(Dispatchers.IO) {
+        // Priority 1: OSM (Often more detailed in local areas)
         try {
             val response = NetworkClient.osmService.reverse(lat, lng)
-            Result.success(response.copy(
+            return@withContext Result.success(response.copy(
                 name = response.displayName.split(",")[0],
                 type = "address"
             ))
         } catch (e: Exception) {
-            Log.e("FamekoRepo", "Reverse geocode failed", e)
+            if (e is CancellationException) throw e
+            Log.e("FamekoRepo", "OSM Reverse geocode failed, falling back to TomTom", e)
+        }
+
+        // Priority 2: TomTom
+        try {
+            val tomTomResponse = NetworkClient.tomTomService.reverseGeocode(
+                lat = lat,
+                lon = lng,
+                apiKey = NetworkClient.TOMTOM_API_KEY
+            )
+
+            if (!tomTomResponse.results.isNullOrEmpty()) {
+                val result = tomTomResponse.results!![0]
+                val addr = result.address?.freeformAddress
+                if (addr != null) {
+                    return@withContext Result.success(LocationSuggestion(
+                        displayName = addr,
+                        latitude = lat.toString(),
+                        longitude = lng.toString(),
+                        name = result.poi?.name ?: addr.split(",")[0],
+                        type = "address"
+                    ))
+                }
+            }
+            Result.failure(Exception("Reverse geocode failed: No results found"))
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("FamekoRepo", "TomTom reverse geocode failed as well", e)
             Result.failure(e)
         }
     }
@@ -1071,14 +1172,15 @@ class DriverRepository {
         estimatedFare: Double,
         durationMin: Double,
         serviceType: ServiceType = ServiceType.RIDE_HAILING,
-        requestedVehicleType: String? = null
+        requestedVehicleType: String? = null,
+        scheduledTime: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val request = OrderCreateRequest(
                 customerId, pickupLocation, dropOffLocation,
                 pickupLat, pickupLng, dropOffLat, dropOffLng,
                 distanceKm, estimatedFare, durationMin, serviceType,
-                requestedVehicleType
+                requestedVehicleType, scheduledTime
             )
             val response = NetworkClient.famekoApi.createOrder(request)
             if (response["success"] == true) {
