@@ -808,10 +808,10 @@ class CustomerMapViewModel(
         }
     }
 
-    fun savePlace(suggestion: LocationSuggestion) {
+    fun savePlace(suggestion: LocationSuggestion, customLabel: String? = null) {
         viewModelScope.launch {
             val cId = sessionManager.getDriverId()?.toIntOrNull() ?: 1
-            val label = if (savedPlaces.none { it.label == "Home" }) "Home" else if (savedPlaces.none { it.label == "Work" }) "Work" else "Favorite"
+            val label = customLabel ?: if (savedPlaces.none { it.label == "Home" }) "Home" else if (savedPlaces.none { it.label == "Work" }) "Work" else "Favorite"
             userRepository.savePlace(SavedPlace(customerId = cId, label = label, address = suggestion.displayName, latitude = suggestion.latitude.toDouble(), longitude = suggestion.longitude.toDouble()))
                 .onSuccess { 
                     userRepository.getSavedPlaces(cId.toString()).onSuccess { savedPlaces = it }

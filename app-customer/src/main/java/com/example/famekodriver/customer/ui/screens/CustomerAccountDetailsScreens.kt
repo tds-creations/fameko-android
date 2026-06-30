@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -202,38 +203,81 @@ fun SafetyFeatureItem(icon: ImageVector, title: String, description: String) {
 }
 
 @Composable
-fun CustomerSavedPlacesScreen(viewModel: CustomerMapViewModel, onBack: () -> Unit) {
-    AccountDetailScreen(title = "Saved Places", onBack = onBack) {
-        Spacer(modifier = Modifier.height(24.dp))
+fun CustomerSavedPlacesScreen(
+    viewModel: CustomerMapViewModel,
+    onBack: () -> Unit,
+    onAddPlace: (String) -> Unit
+) {
+    val homePlace = viewModel.savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
+    val workPlace = viewModel.savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
+    val favorites = viewModel.savedPlaces.filter { 
+        !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
+    }
 
-        if (viewModel.savedPlaces.isEmpty()) {
-            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-                Text("No saved places yet", color = Color.Gray)
+    AccountDetailScreen(title = "Saved places", onBack = onBack) {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Home
+        SavedPlaceActionItem(
+            icon = Icons.Default.Home,
+            title = homePlace?.address ?: "Add home address",
+            onClick = { onAddPlace("Home") }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = BoltLightGray)
+
+        // Work
+        SavedPlaceActionItem(
+            icon = Icons.Default.Work,
+            title = workPlace?.address ?: "Add work address",
+            onClick = { onAddPlace("Work") }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = BoltLightGray)
+
+        // Add a place
+        SavedPlaceActionItem(
+            icon = Icons.Default.Add,
+            title = "Add a place",
+            onClick = { onAddPlace("Favorite") }
+        )
+
+        if (favorites.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Favorites", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            favorites.forEach { place ->
+                SavedPlaceItem(
+                    icon = Icons.Default.Star,
+                    title = place.label,
+                    address = place.address,
+                    onDelete = { viewModel.deleteSavedPlace(place.id) }
+                )
             }
         }
+    }
+}
 
-        viewModel.savedPlaces.forEach { place ->
-            SavedPlaceItem(
-                icon = when (place.label.lowercase()) {
-                    "home" -> Icons.Default.Home
-                    "work" -> Icons.Default.Work
-                    else -> Icons.Default.Star
-                },
-                title = place.label,
-                address = place.address,
-                onDelete = { viewModel.deleteSavedPlace(place.id) }
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        TextButton(onClick = { 
-            viewModel.navigateTo(com.example.famekodriver.customer.CustomerScreen.MainMap)
-            viewModel.isSearchMode = true
-        }) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Add new place", fontWeight = FontWeight.Bold)
-        }
+@Composable
+fun SavedPlaceActionItem(icon: ImageVector, title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(28.dp))
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = title,
+            fontWeight = FontWeight.Medium,
+            color = BoltDark,
+            modifier = Modifier.weight(1f),
+            fontSize = 16.sp
+        )
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.LightGray)
     }
 }
 

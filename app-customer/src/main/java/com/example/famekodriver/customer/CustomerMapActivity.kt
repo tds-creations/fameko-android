@@ -220,6 +220,7 @@ sealed class CustomerScreen {
     object Payment : CustomerScreen()
     object Safety : CustomerScreen()
     object SavedPlaces : CustomerScreen()
+    data class SaveLocationSearch(val label: String) : CustomerScreen()
     object FamilyProfile : CustomerScreen()
     object WorkProfile : CustomerScreen()
 }
@@ -502,7 +503,15 @@ fun CustomerMapScreen() {
                 CustomerScreen.SavedPlaces -> {
                     CustomerSavedPlacesScreen(
                         viewModel = mapViewModel,
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.Account) }
+                        onBack = { mapViewModel.navigateTo(CustomerScreen.Account) },
+                        onAddPlace = { label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label)) }
+                    )
+                }
+                is CustomerScreen.SaveLocationSearch -> {
+                    SaveLocationSearchScreen(
+                        label = screen.label,
+                        viewModel = mapViewModel,
+                        onBack = { mapViewModel.navigateTo(CustomerScreen.SavedPlaces) }
                     )
                 }
                 CustomerScreen.FamilyProfile -> {
@@ -2225,6 +2234,121 @@ fun animateMarker(marker: Marker, startPos: LatLng, endPos: LatLng, duration: Lo
             }
         }
     })
+}
+
+@Composable
+fun SaveLocationSearchScreen(
+    label: String,
+    viewModel: CustomerMapViewModel,
+    onBack: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val suggestions = viewModel.dropOffSuggestions
+    val recentPlaces = viewModel.recentPlaces
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        // Top Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.Close, contentDescription = "Close")
+            }
+            Text(
+                text = label,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = {
+                searchQuery = it
+                viewModel.updateDropOffLocation(it)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            placeholder = { Text("Search location") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+            trailingIcon = { Icon(Icons.Default.Map, contentDescription = null, tint = FamekoBlue) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = FamekoBlue,
+                unfocusedBorderColor = Color.LightGray,
+                cursorColor = FamekoBlue
+            ),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (searchQuery.isEmpty()) {
+                items(recentPlaces) { suggestion ->
+                    LocationSearchItem(
+                        suggestion = suggestion,
+                        onClick = {
+                            viewModel.savePlace(suggestion, label)
+                            onBack()
+                        }
+                    )
+                }
+            } else {
+                items(suggestions) { suggestion ->
+                    LocationSearchItem(
+                        suggestion = suggestion,
+                        onClick = {
+                            viewModel.savePlace(suggestion, label)
+                            onBack()
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LocationSearchItem(suggestion: LocationSuggestion, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (suggestion.type == "recent") Icons.Default.History else Icons.Default.LocationOn,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = suggestion.name ?: suggestion.displayName.split(",").first(),
+                fontWeight = FontWeight.Medium,
+                color = BoltDark
+            )
+            Text(
+                text = suggestion.displayName,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
+        // Distance placeholder if needed
+    }
 }
 
 @Composable
