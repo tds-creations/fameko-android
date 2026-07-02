@@ -1,19 +1,40 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "fameko-driver-placeholder"
+    "project_number": "989048143840",
+    "project_id": "fameko-driver",
+    "storage_bucket": "fameko-driver.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000001",
+        "mobilesdk_app_id": "1:989048143840:android:303c890919cd6afcdd7585",
+        "android_client_info": {
+          "package_name": "com.example.famekodriver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6C7dWCWT9SkmteFWIiWImb1VyZXCXQ4E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989048143840:android:b047a0bdf7550405dd7585",
         "android_client_info": {
           "package_name": "com.example.famekodriver.customer"
         }
       },
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "placeholder_key"
+          "current_key": "AIzaSyB6C7dWCWT9SkmteFWIiWImb1VyZXCXQ4E"
         }
       ],
       "services": {
