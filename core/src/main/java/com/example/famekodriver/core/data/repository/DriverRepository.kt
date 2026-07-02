@@ -1212,33 +1212,6 @@ class DriverRepository {
         }
     }
 
-    suspend fun getSavedPlaces(customerId: String): Result<List<SavedPlace>> = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.getSavedPlaces(customerId)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun savePlace(place: SavedPlace): Result<Boolean> = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.savePlace(place)
-            Result.success(response["success"] == true)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun deleteSavedPlace(id: Int): Result<Boolean> = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.deleteSavedPlace(id)
-            Result.success(response["success"] == true)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     suspend fun getFleetVehicles(ownerId: Int): Result<List<Map<String, Any>>> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.getFleetVehicles(ownerId)

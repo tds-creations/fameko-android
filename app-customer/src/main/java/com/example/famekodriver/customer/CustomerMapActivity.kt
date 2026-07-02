@@ -105,12 +105,13 @@ class CustomerMapViewModelFactory(
     private val orderRepository: OrderRepository,
     private val rentalRepository: RentalRepository,
     private val userRepository: UserRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val savedPlaceRepository: SavedPlaceRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CustomerMapViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return CustomerMapViewModel(repository, orderRepository, rentalRepository, userRepository, sessionManager) as T
+            return CustomerMapViewModel(repository, orderRepository, rentalRepository, userRepository, sessionManager, savedPlaceRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
@@ -219,8 +220,8 @@ sealed class CustomerScreen {
     object Profile : CustomerScreen()
     object Payment : CustomerScreen()
     object Safety : CustomerScreen()
-    object SavedPlaces : CustomerScreen()
-    data class SaveLocationSearch(val label: String) : CustomerScreen()
+    object ManagePlaces : CustomerScreen()
+    data class SaveLocationSearch(val label: String, val placeId: String? = null) : CustomerScreen()
     object FamilyProfile : CustomerScreen()
     object WorkProfile : CustomerScreen()
 }
@@ -234,10 +235,11 @@ fun CustomerMapScreen() {
     val rentalRepository = remember { RentalRepository() }
     val userRepository = remember { UserRepository() }
     val sessionManager = remember { SessionManager(context) }
+    val savedPlaceRepository = remember { SavedPlaceRepository(context) }
     
     val mapViewModel: CustomerMapViewModel = viewModel(
         modelClass = CustomerMapViewModel::class.java,
-        factory = CustomerMapViewModelFactory(repository, orderRepository, rentalRepository, userRepository, sessionManager)
+        factory = CustomerMapViewModelFactory(repository, orderRepository, rentalRepository, userRepository, sessionManager, savedPlaceRepository)
     )
 
     val mapView = remember { MapView(context) }
@@ -500,18 +502,20 @@ fun CustomerMapScreen() {
                 CustomerScreen.Safety -> {
                     CustomerSafetyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
-                CustomerScreen.SavedPlaces -> {
-                    CustomerSavedPlacesScreen(
+                CustomerScreen.ManagePlaces -> {
+                    CustomerManagePlacesScreen(
                         viewModel = mapViewModel,
                         onBack = { mapViewModel.navigateTo(CustomerScreen.Account) },
-                        onAddPlace = { label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label)) }
+                        onAddPlace = { label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label)) },
+                        onEditPlace = { id, label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label, id.toString())) }
                     )
                 }
                 is CustomerScreen.SaveLocationSearch -> {
                     SaveLocationSearchScreen(
                         label = screen.label,
+                        placeId = screen.placeId,
                         viewModel = mapViewModel,
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.SavedPlaces) }
+                        onBack = { mapViewModel.navigateTo(CustomerScreen.ManagePlaces) }
                     )
                 }
                 CustomerScreen.FamilyProfile -> {
@@ -843,7 +847,7 @@ fun MainMapContent(
                                     horizontalArrangement = Arrangement.SpaceAround
                                 ) {
                                     QuickShortcutItem("Home", Icons.Default.Home, BoltGreen) { 
-                                        if (viewModel.savedPlaces.any { it.label.equals("Home", true) }) {
+                                        if (viewModel.savedPlaces.value.any { it.label.equals("Home", true) }) {
                                             viewModel.applyShortcut("Home") {
                                                 if (hasLocationPermission) {
                                                     @SuppressLint("MissingPermission")
@@ -853,12 +857,12 @@ fun MainMapContent(
                                                 }
                                             }
                                         } else {
-                                            Toast.makeText(context, "Please set your Home address in Saved Places", Toast.LENGTH_SHORT).show()
-                                            viewModel.navigateTo(CustomerScreen.SavedPlaces)
+                                            Toast.makeText(context, "Please set your Home address in Manage Places", Toast.LENGTH_SHORT).show()
+                                            viewModel.navigateTo(CustomerScreen.ManagePlaces)
                                         }
                                     }
                                     QuickShortcutItem("Work", Icons.Default.Work, Color(0xFF3B82F6)) { 
-                                        if (viewModel.savedPlaces.any { it.label.equals("Work", true) }) {
+                                        if (viewModel.savedPlaces.value.any { it.label.equals("Work", true) }) {
                                             viewModel.applyShortcut("Work") {
                                                 if (hasLocationPermission) {
                                                     @SuppressLint("MissingPermission")
@@ -868,8 +872,8 @@ fun MainMapContent(
                                                 }
                                             }
                                         } else {
-                                            Toast.makeText(context, "Please set your Work address in Saved Places", Toast.LENGTH_SHORT).show()
-                                            viewModel.navigateTo(CustomerScreen.SavedPlaces)
+                                            Toast.makeText(context, "Please set your Work address in Manage Places", Toast.LENGTH_SHORT).show()
+                                            viewModel.navigateTo(CustomerScreen.ManagePlaces)
                                         }
                                     }
                                     QuickShortcutItem("Recent", Icons.Default.History, Color.Gray) { 
@@ -2252,12 +2256,15 @@ fun animateMarker(marker: Marker, startPos: LatLng, endPos: LatLng, duration: Lo
 @Composable
 fun SaveLocationSearchScreen(
     label: String,
+    placeId: String? = null,
     viewModel: CustomerMapViewModel,
     onBack: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var customLabel by remember { mutableStateOf(label) }
     val suggestions = viewModel.dropOffSuggestions
     val recentPlaces = viewModel.recentPlaces
+    val isDefaultLabel = label == "Home" || label == "Work"
 
     Column(
         modifier = Modifier
@@ -2275,63 +2282,64 @@ fun SaveLocationSearchScreen(
                 Icon(Icons.Default.Close, contentDescription = "Close")
             }
             Text(
-                text = label,
+                text = if (placeId != null) "Edit $label" else "Set $label",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
 
+        if (!isDefaultLabel) {
             OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    viewModel.updateDropOffLocation(it)
-                },
+                value = customLabel,
+                onValueChange = { customLabel = it },
+                label = { Text("Name this place") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                placeholder = { Text("Search location", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
-                trailingIcon = { 
-                    IconButton(onClick = { /* TODO: Pick on Map */ }) {
-                        Icon(Icons.Default.Map, contentDescription = "Pick on map", tint = Color(0xFF1B5E20))
-                    }
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF1B5E20),
-                    unfocusedBorderColor = Color.LightGray,
-                    cursorColor = Color(0xFF1B5E20),
-                    focusedContainerColor = Color(0xFFF5F5F5),
-                    unfocusedContainerColor = Color(0xFFF5F5F5)
-                ),
-                shape = RoundedCornerShape(8.dp),
-                singleLine = true
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp)
             )
+        }
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = {
+                searchQuery = it
+                viewModel.updateDropOffLocation(it)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text("Search location", color = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = FamekoBlue,
+                unfocusedBorderColor = Color.LightGray,
+                focusedContainerColor = BoltLightGray,
+                unfocusedContainerColor = BoltLightGray
+            ),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            if (searchQuery.isEmpty()) {
-                items(recentPlaces) { suggestion ->
-                    LocationSearchItem(
-                        suggestion = suggestion,
-                        onClick = {
-                            viewModel.savePlace(suggestion, label)
-                            onBack()
+            val listToUse = if (searchQuery.isEmpty()) recentPlaces else suggestions
+            
+            items(listToUse) { suggestion ->
+                LocationSearchItem(
+                    suggestion = suggestion,
+                    onClick = {
+                        if (placeId != null) {
+                            viewModel.updateSavedPlace(placeId, customLabel, suggestion)
+                        } else {
+                            viewModel.savePlace(suggestion, customLabel)
                         }
-                    )
-                }
-            } else {
-                items(suggestions) { suggestion ->
-                    LocationSearchItem(
-                        suggestion = suggestion,
-                        onClick = {
-                            viewModel.savePlace(suggestion, label)
-                            onBack()
-                        }
-                    )
-                }
+                        onBack()
+                    }
+                )
+                HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
     }

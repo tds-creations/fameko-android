@@ -344,14 +344,13 @@ object DatabaseInitializer {
                 price NUMERIC(12, 2) NOT NULL,
                 category TEXT,
                 location TEXT,
-                images TEXT, -- comma separated
                 seller_id INTEGER REFERENCES drivers(id),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """.trimIndent(),
             """
             CREATE TABLE IF NOT EXISTS saved_places (
-                id SERIAL PRIMARY KEY,
+                id TEXT PRIMARY KEY,
                 customer_id INTEGER REFERENCES customers(id) NOT NULL,
                 label TEXT NOT NULL,
                 address TEXT NOT NULL,
@@ -424,20 +423,11 @@ object DatabaseInitializer {
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS rating_count INTEGER DEFAULT 0;",
             "ALTER TABLE wallet_topups ADD COLUMN IF NOT EXISTS payment_type TEXT DEFAULT 'TOPUP';",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS scheduled_time TIMESTAMP;",
+            "ALTER TABLE saved_places ALTER COLUMN id TYPE TEXT USING id::text;",
+            "ALTER TABLE saved_places ALTER COLUMN id DROP DEFAULT;",
             "ALTER TABLE driver_stats ADD COLUMN IF NOT EXISTS h3_index TEXT;",
             "CREATE INDEX IF NOT EXISTS idx_driver_stats_h3 ON driver_stats(h3_index);",
-            "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);",
-            """
-            CREATE TABLE IF NOT EXISTS saved_places (
-                id SERIAL PRIMARY KEY,
-                customer_id INTEGER REFERENCES customers(id) NOT NULL,
-                label TEXT NOT NULL,
-                address TEXT NOT NULL,
-                latitude DOUBLE PRECISION NOT NULL,
-                longitude DOUBLE PRECISION NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);"
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 

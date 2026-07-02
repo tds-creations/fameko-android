@@ -10,8 +10,12 @@ import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.utils.RegionUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.maplibre.android.geometry.LatLng
+import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -21,7 +25,14 @@ class CustomerMapViewModel(
     private val rentalRepository: RentalRepository,
     private val userRepository: UserRepository,
     private val sessionManager: SessionManager,
+    private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
+
+    sealed class SavedPlacesUiState {
+        object Loading : SavedPlacesUiState()
+        data class Success(val places: List<SavedPlace>) : SavedPlacesUiState()
+        data class Error(val message: String) : SavedPlacesUiState()
+    }
 
     // --- Screen State ---
     var currentScreen by mutableStateOf<CustomerScreen>(CustomerScreen.Landing)
@@ -70,7 +81,11 @@ class CustomerMapViewModel(
     var isSearchMode by mutableStateOf(false)
     var activeRental by mutableStateOf<Map<String, Any>?>(null)
     var customerProfile by mutableStateOf<Map<String, Any>?>(null)
-    var savedPlaces by mutableStateOf<List<SavedPlace>>(emptyList())
+    
+    val savedPlaces: StateFlow<List<SavedPlace>> = savedPlaceRepository.savedPlaces
+    private val _savedPlacesUiState = MutableStateFlow<SavedPlacesUiState>(SavedPlacesUiState.Loading)
+    val savedPlacesUiState: StateFlow<SavedPlacesUiState> = _savedPlacesUiState.asStateFlow()
+
     var recentPlaces by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var selectedTab by mutableIntStateOf(0) // 0 for Recent, 1 for Saved
 
@@ -86,6 +101,7 @@ class CustomerMapViewModel(
     // --- Suggestions ---
     var pickupSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var dropOffSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
+    var managePlacesSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     
     var currentRegion by mutableStateOf<String?>(null)
     var showRegionalError by mutableStateOf<String?>(null)
@@ -103,6 +119,7 @@ class CustomerMapViewModel(
     private var rentalPollingJob: Job? = null
     private var pickupSearchJob: Job? = null
     private var dropOffSearchJob: Job? = null
+    private var managePlacesSearchJob: Job? = null
     private var isSelectingSuggestion = false
 
     init {
@@ -140,10 +157,27 @@ class CustomerMapViewModel(
         }
     }
 
+    fun fetchSavedPlaces() {
+        viewModelScope.launch {
+            val customerId = sessionManager.getCustomerId() ?: return@launch
+            _savedPlacesUiState.value = SavedPlacesUiState.Loading
+            savedPlaceRepository.fetchSavedPlaces(customerId)
+                .onFailure { _savedPlacesUiState.value = SavedPlacesUiState.Error(it.message ?: "Unknown error") }
+        }
+    }
+
     private fun loadInitialData() {
         viewModelScope.launch {
-            val customerId = sessionManager.getDriverId() ?: "1"
-            userRepository.getSavedPlaces(customerId).onSuccess { savedPlaces = it }
+            val customerId = sessionManager.getCustomerId() ?: "1"
+            
+            // Listen to local changes
+            viewModelScope.launch {
+                savedPlaceRepository.savedPlaces.collect { places ->
+                    _savedPlacesUiState.value = SavedPlacesUiState.Success(places)
+                }
+            }
+
+            fetchSavedPlaces()
             orderRepository.getPricingConfig().onSuccess { pricingConfig = it }
             rentalRepository.getRentalRates().onSuccess { rentalRates = it }
             orderRepository.getDiscountRate(customerId).onSuccess { discountRate = it }
@@ -195,7 +229,7 @@ class CustomerMapViewModel(
     }
 
     private fun startWebSocket() {
-        val customerId = sessionManager.getDriverId() ?: "1"
+        val customerId = sessionManager.getCustomerId() ?: "1"
         repository.startWebSocket("CUSTOMER_$customerId")
         viewModelScope.launch {
             repository.events.collect { event ->
@@ -307,7 +341,7 @@ class CustomerMapViewModel(
     private fun startActiveRentalPolling() {
         rentalPollingJob?.cancel()
         rentalPollingJob = viewModelScope.launch {
-            val customerId = sessionManager.getDriverId() ?: "1"
+            val customerId = sessionManager.getCustomerId() ?: "1"
             while (true) {
                 rentalRepository.getActiveRental(customerId.toInt()).onSuccess { activeRental = it }
                 delay(10.seconds)
@@ -378,7 +412,23 @@ class CustomerMapViewModel(
     }
 
     fun updateSaveSearchQuery(query: String) {
-        fetchDropOffSuggestions(query)
+        managePlacesSearchJob?.cancel()
+        if (query.isBlank()) {
+            managePlacesSuggestions = recentPlaces
+            return
+        }
+        if (query.length > 2) {
+            managePlacesSearchJob = viewModelScope.launch {
+                delay(500.milliseconds)
+                repository.getGeocodeSuggestions(query).onSuccess { 
+                    managePlacesSuggestions = it 
+                }.onFailure {
+                    managePlacesSuggestions = emptyList()
+                }
+            }
+        } else {
+            managePlacesSuggestions = emptyList()
+        }
     }
 
     private fun fetchDropOffSuggestions(query: String) {
@@ -387,7 +437,7 @@ class CustomerMapViewModel(
             val suggestions = if (selectedTab == 0) {
                 recentPlaces
             } else {
-                savedPlaces.map { 
+                savedPlaces.value.map { 
                     LocationSuggestion(displayName = it.address, latitude = it.latitude.toString(), longitude = it.longitude.toString(), name = it.label, type = "saved")
                 }
             }
@@ -409,13 +459,12 @@ class CustomerMapViewModel(
     }
 
     fun applyShortcut(label: String, onGetCurrentLocation: (() -> Unit)? = null) {
-        val place = savedPlaces.find { it.label.equals(label, ignoreCase = true) }
+        val place = savedPlaces.value.find { it.label.equals(label, ignoreCase = true) }
         if (place != null) {
             selectSavedPlace(place)
             onGetCurrentLocation?.invoke()
         } else {
             isSearchMode = true
-            // Could set a temporary hint or trigger focus
         }
     }
 
@@ -802,32 +851,39 @@ class CustomerMapViewModel(
         }
     }
 
-    fun deleteSavedPlace(id: Int) {
+    fun updateSavedPlace(id: String, label: String, suggestion: LocationSuggestion) {
         viewModelScope.launch {
-            userRepository.deleteSavedPlace(id).onSuccess { success ->
-                if (success) {
-                    val customerId = sessionManager.getDriverId() ?: "1"
-                    userRepository.getSavedPlaces(customerId).onSuccess { savedPlaces = it }
-                }
-            }
+            val cId = sessionManager.getCustomerId() ?: return@launch
+            val lat = suggestion.latitude.toDoubleOrNull() ?: 0.0
+            val lng = suggestion.longitude.toDoubleOrNull() ?: 0.0
+            savedPlaceRepository.updateSavedPlace(SavedPlace(id = id, customerId = cId, label = label, address = suggestion.displayName, latitude = lat, longitude = lng))
+        }
+    }
+
+    fun deleteSavedPlace(id: String) {
+        viewModelScope.launch {
+            savedPlaceRepository.deleteSavedPlace(id)
         }
     }
 
     fun savePlace(suggestion: LocationSuggestion, customLabel: String? = null) {
         viewModelScope.launch {
-            val cId = sessionManager.getDriverId()?.toIntOrNull() ?: 1
-            val label = customLabel ?: if (savedPlaces.none { it.label == "Home" }) "Home" else if (savedPlaces.none { it.label == "Work" }) "Work" else "Favorite"
-            userRepository.savePlace(SavedPlace(customerId = cId, label = label, address = suggestion.displayName, latitude = suggestion.latitude.toDouble(), longitude = suggestion.longitude.toDouble()))
-                .onSuccess { 
-                    userRepository.getSavedPlaces(cId.toString()).onSuccess { 
-                        savedPlaces = it 
-                        // Clear suggestions after saving
-                        dropOffSuggestions = emptyList()
-                    }
-                }
+            val cId = sessionManager.getCustomerId() ?: return@launch
+            val currentList = savedPlaces.value
+            val label = customLabel ?: if (currentList.none { it.label == "Home" }) "Home" else if (currentList.none { it.label == "Work" }) "Work" else "Favorite"
+            
+            savedPlaceRepository.savePlace(SavedPlace(
+                id = UUID.randomUUID().toString(),
+                customerId = cId, 
+                label = label, 
+                address = suggestion.displayName, 
+                latitude = suggestion.latitude.toDoubleOrNull() ?: 0.0, 
+                longitude = suggestion.longitude.toDoubleOrNull() ?: 0.0
+            ))
+            dropOffSuggestions = emptyList()
         }
     }
-    
+
     fun setVehicleType(type: String) {
         selectedVehicleType = type
         rideEstimates.find { it.serviceId == type }?.let {

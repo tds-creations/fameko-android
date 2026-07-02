@@ -212,6 +212,27 @@ interface FamekoApiService {
         @Field("status") status: String
     ): AuthResponse
 
+    @GET("customer/saved-places/{customerId}")
+    suspend fun getSavedPlaces(
+        @Path("customerId") customerId: String
+    ): List<SavedPlace>
+
+    @POST("customer/saved-places")
+    suspend fun savePlace(
+        @Body place: SavedPlace
+    ): Map<String, Any>
+
+    @PUT("customer/saved-places/{id}")
+    suspend fun updateSavedPlace(
+        @Path("id") id: String,
+        @Body place: SavedPlace
+    ): Map<String, Any>
+
+    @DELETE("customer/saved-places/{id}")
+    suspend fun deleteSavedPlace(
+        @Path("id") id: String
+    ): Map<String, Any>
+
     @GET("customer/trips/{customerId}")
     suspend fun getCustomerTrips(
         @Path("customerId") customerId: String
@@ -339,21 +360,6 @@ interface FamekoApiService {
     suspend fun verifyOrderPin(
         @Field("orderId") orderId: Int,
         @Field("pin") pin: String
-    ): Map<String, Any>
-
-    @GET("customer/saved-places/{customerId}")
-    suspend fun getSavedPlaces(
-        @Path("customerId") customerId: String
-    ): List<SavedPlace>
-
-    @POST("customer/saved-places")
-    suspend fun savePlace(
-        @Body place: SavedPlace
-    ): Map<String, Any>
-
-    @DELETE("customer/saved-places/{id}")
-    suspend fun deleteSavedPlace(
-        @Path("id") id: Int
     ): Map<String, Any>
 
     // --- FLEET MANAGEMENT ---

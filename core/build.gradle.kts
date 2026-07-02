@@ -3,6 +3,7 @@ import org.gradle.api.JavaVersion
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -40,4 +41,12 @@ dependencies {
     api(libs.okhttp)
     api(libs.gson)
     api(libs.webrtc)
+
+    // Room
+    api(libs.androidx.room.runtime)
+    api(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // WorkManager
+    api(libs.androidx.work.runtime.ktx)
 }

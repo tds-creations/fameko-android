@@ -18,12 +18,3 @@ data class LocationSuggestion(
     val name: String? = null,
     val type: String? = "address"
 )
-
-data class SavedPlace(
-    val id: Int = 0,
-    val customerId: Int,
-    val label: String,
-    val address: String,
-    val latitude: Double,
-    val longitude: Double
-)

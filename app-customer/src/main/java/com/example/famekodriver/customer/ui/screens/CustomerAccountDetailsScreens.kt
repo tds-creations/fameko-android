@@ -14,6 +14,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.famekodriver.customer.CustomerMapViewModel
@@ -205,69 +208,132 @@ fun SafetyFeatureItem(icon: ImageVector, title: String, description: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomerSavedPlacesScreen(
+fun CustomerManagePlacesScreen(
     viewModel: CustomerMapViewModel,
     onBack: () -> Unit,
-    onAddPlace: (String) -> Unit
+    onAddPlace: (String) -> Unit,
+    onEditPlace: (Int, String) -> Unit
 ) {
-    val savedPlaces = viewModel.savedPlaces
-    val homePlace = savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
-    val workPlace = savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
+    val uiState by viewModel.savedPlacesUiState.collectAsState()
+    val isRefreshing = uiState is CustomerMapViewModel.SavedPlacesUiState.Loading
+    
+    val savedPlacesLocal by viewModel.savedPlaces.collectAsState()
     
     var showDeleteDialog by remember { mutableStateOf<SavedPlace?>(null) }
 
-    AccountDetailScreen(title = "Saved places", onBack = onBack) {
-        Spacer(modifier = Modifier.height(16.dp))
+    AccountDetailScreen(title = "Manage places", onBack = onBack) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.fetchSavedPlaces() },
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                when (val state = uiState) {
+                    is CustomerMapViewModel.SavedPlacesUiState.Loading -> {
+                        if (savedPlacesLocal.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = FamekoBlue)
+                            }
+                        }
+                    }
+                    is CustomerMapViewModel.SavedPlacesUiState.Error -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Error: ${state.message}", color = Color.Red)
+                        }
+                    }
+                    is CustomerMapViewModel.SavedPlacesUiState.Success -> {
+                        val savedPlaces = state.places
+                        val homePlace = savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
+                        val workPlace = savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
 
-        // Home Item
-        val homeSub = homePlace?.address ?: "Add home address"
-        SavedPlaceActionItem(
-            icon = Icons.Default.Home,
-            title = "Home",
-            subtitle = homeSub,
-            onLongClick = { homePlace?.let { showDeleteDialog = it } },
-            onClick = { onAddPlace("Home") }
-        )
+                        Spacer(modifier = Modifier.height(16.dp))
 
-        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
+                        Text(
+                            "Quick access",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
 
-        // Work Item
-        val workSub = workPlace?.address ?: "Add work address"
-        SavedPlaceActionItem(
-            icon = Icons.Default.Work,
-            title = "Work",
-            subtitle = workSub,
-            onLongClick = { workPlace?.let { showDeleteDialog = it } },
-            onClick = { onAddPlace("Work") }
-        )
+                        // Home Item
+                        SavedPlaceActionItem(
+                            icon = Icons.Default.Home,
+                            title = "Home",
+                            subtitle = homePlace?.address ?: "Add home address",
+                            isSet = homePlace != null,
+                            onDelete = { homePlace?.let { showDeleteDialog = it } },
+                            onClick = { 
+                                if (homePlace != null) onEditPlace(homePlace.id.toInt(), "Home")
+                                else onAddPlace("Home") 
+                            }
+                        )
 
-        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
+                        HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
 
-        // General Add Item
-        SavedPlaceActionItem(
-            icon = Icons.Default.Add,
-            title = "Add a place",
-            subtitle = null,
-            onClick = { onAddPlace("Other") }
-        )
+                        // Work Item
+                        SavedPlaceActionItem(
+                            icon = Icons.Default.Work,
+                            title = "Work",
+                            subtitle = workPlace?.address ?: "Add work address",
+                            isSet = workPlace != null,
+                            onDelete = { workPlace?.let { showDeleteDialog = it } },
+                            onClick = { 
+                                if (workPlace != null) onEditPlace(workPlace.id.toInt(), "Work")
+                                else onAddPlace("Work") 
+                            }
+                        )
 
-        // List of other saved places (if any)
-        val otherPlaces = savedPlaces.filter { 
-            !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
-        }
+                        Spacer(modifier = Modifier.height(32.dp))
 
-        if (otherPlaces.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(24.dp))
-            Text("Other Places", style = MaterialTheme.typography.titleMedium)
-            otherPlaces.forEach { place ->
-                SavedPlaceActionItem(
-                    icon = Icons.Default.Place,
-                    title = place.label,
-                    subtitle = place.address,
-                    onLongClick = { showDeleteDialog = place },
-                    onClick = { /* Could navigate to map with this location */ }
-                )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "Other places",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Color.Gray
+                            )
+                            TextButton(onClick = { onAddPlace("Favorite") }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Add new", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // List of other saved places
+                        val otherPlaces = savedPlaces.filter { 
+                            !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
+                        }
+
+                        if (otherPlaces.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("No other places saved", color = Color.LightGray, fontSize = 14.sp)
+                            }
+                        } else {
+                            otherPlaces.forEach { place ->
+                                SavedPlaceActionItem(
+                                    icon = Icons.Default.Place,
+                                    title = place.label,
+                                    subtitle = place.address,
+                                    isSet = true,
+                                    onDelete = { showDeleteDialog = place },
+                                    onClick = { onEditPlace(place.id.toInt(), place.label) }
+                                )
+                                HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(100.dp))
             }
         }
     }
@@ -275,53 +341,86 @@ fun CustomerSavedPlacesScreen(
     if (showDeleteDialog != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Saved Place") },
-            text = { Text("Are you sure you want to remove '${showDeleteDialog?.label}'?") },
+            title = { Text("Delete Place") },
+            text = { Text("Are you sure you want to remove '${showDeleteDialog?.label}' from your managed places?") },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog?.let { viewModel.deleteSavedPlace(it.id) }
                     showDeleteDialog = null
                 }) {
-                    Text("Delete", color = Color.Red)
+                    Text("Delete", color = Color.Red, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel")
+                    Text("Cancel", color = Color.Gray)
                 }
-            }
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color.White
         )
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SavedPlaceActionItem(
     icon: ImageVector,
     title: String,
-    subtitle: String?,
-    onLongClick: (() -> Unit)? = null,
+    subtitle: String,
+    isSet: Boolean,
+    onDelete: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .padding(vertical = 16.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+        Surface(
+            shape = CircleShape,
+            color = BoltLightGray,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                icon, 
+                contentDescription = null, 
+                tint = if (isSet) FamekoBlue else Color.Gray, 
+                modifier = Modifier.padding(10.dp)
+            )
+        }
+        
         Spacer(modifier = Modifier.width(16.dp))
+        
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.Black)
-            if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = if (subtitle.startsWith("Add")) FamekoBlue else Color.Gray)
+            Text(
+                title, 
+                style = MaterialTheme.typography.bodyLarge, 
+                fontWeight = FontWeight.Bold,
+                color = BoltDark
+            )
+            Text(
+                subtitle, 
+                style = MaterialTheme.typography.bodyMedium, 
+                color = if (!isSet) FamekoBlue else Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        if (isSet && onDelete != null) {
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color.LightGray, modifier = Modifier.size(20.dp))
             }
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.LightGray)
+        
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight, 
+            contentDescription = null, 
+            tint = Color.LightGray,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

@@ -128,8 +128,8 @@ fun CustomerAccountScreen(
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
             icon = Icons.Default.LocationOn,
-            title = "Saved places",
-            onClick = { onNavigate(CustomerScreen.SavedPlaces) }
+            title = "Manage places",
+            onClick = { onNavigate(CustomerScreen.ManagePlaces) }
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(

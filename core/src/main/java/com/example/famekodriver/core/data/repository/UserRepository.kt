@@ -216,7 +216,16 @@ class UserRepository {
         }
     }
 
-    suspend fun deleteSavedPlace(id: Int): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun updateSavedPlace(id: String, place: SavedPlace): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.updateSavedPlace(id, place)
+            Result.success(response["success"] == true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteSavedPlace(id: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.deleteSavedPlace(id)
             Result.success(response["success"] == true)

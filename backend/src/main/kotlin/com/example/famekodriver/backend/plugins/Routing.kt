@@ -725,6 +725,110 @@ fun Application.configureRouting() {
             }
         }
 
+        get("/customer/saved-places/{customerId}") {
+            val customerId = call.parameters["customerId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+            val list = mutableListOf<SavedPlace>()
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = "SELECT * FROM saved_places WHERE customer_id = ?"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setInt(1, customerId)
+                val rs = stmt.executeQuery()
+                while (rs.next()) {
+                    list.add(SavedPlace(
+                        id = rs.getString("id"),
+                        customerId = rs.getInt("customer_id").toString(),
+                        label = rs.getString("label"),
+                        address = rs.getString("address"),
+                        latitude = rs.getDouble("latitude"),
+                        longitude = rs.getDouble("longitude")
+                    ))
+                }
+            }
+            call.respond(list)
+        }
+
+        get("/customer/trips/{customerId}") {
+            val customerId = call.parameters["customerId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+            val list = mutableListOf<Map<String, Any>>()
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = """
+                    SELECT o.id, o.pickup_location, o.dropoff_location, o.total_amount as fare, 
+                           o.status, o.created_at, d.pickup_lat, d.pickup_lng, d.dropoff_lat, d.dropoff_lng
+                    FROM orders o
+                    LEFT JOIN deliveries d ON o.id = d.order_id
+                    WHERE o.customer_id = ?
+                    ORDER BY o.id DESC
+                """.trimIndent()
+                val stmt = conn.prepareStatement(sql)
+                stmt.setInt(1, customerId)
+                val rs = stmt.executeQuery()
+                while (rs.next()) {
+                    list.add(mapOf(
+                        "id" to rs.getInt("id"),
+                        "pickup" to (rs.getString("pickup_location") ?: ""),
+                        "dropoff" to (rs.getString("dropoff_location") ?: ""),
+                        "fare" to rs.getDouble("fare"),
+                        "status" to (rs.getString("status") ?: "UNKNOWN"),
+                        "created_at" to rs.getTimestamp("created_at").toString(),
+                        "dropoff_lat" to rs.getDouble("dropoff_lat"),
+                        "dropoff_lng" to rs.getDouble("dropoff_lng")
+                    ))
+                }
+            }
+            call.respond(list)
+        }
+
+        post("/customer/saved-places") {
+            try {
+                val req = call.receive<SavedPlace>()
+                DatabaseInitializer.getDataSource().connection.use { conn ->
+                    val sql = "INSERT INTO saved_places (id, customer_id, label, address, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)"
+                    val stmt = conn.prepareStatement(sql)
+                    stmt.setString(1, req.id)
+                    stmt.setInt(2, req.customerId.toInt())
+                    stmt.setString(3, req.label)
+                    stmt.setString(4, req.address)
+                    stmt.setDouble(5, req.latitude)
+                    stmt.setDouble(6, req.longitude)
+                    stmt.executeUpdate()
+                }
+                call.respond(mapOf("success" to true))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("success" to false, "message" to e.localizedMessage))
+            }
+        }
+
+        put("/customer/saved-places/{id}") {
+            try {
+                val id = call.parameters["id"] ?: return@put call.respond(HttpStatusCode.BadRequest)
+                val req = call.receive<SavedPlace>()
+                DatabaseInitializer.getDataSource().connection.use { conn ->
+                    val sql = "UPDATE saved_places SET label = ?, address = ?, latitude = ?, longitude = ? WHERE id = ?"
+                    val stmt = conn.prepareStatement(sql)
+                    stmt.setString(1, req.label)
+                    stmt.setString(2, req.address)
+                    stmt.setDouble(3, req.latitude)
+                    stmt.setDouble(4, req.longitude)
+                    stmt.setString(5, id)
+                    val rows = stmt.executeUpdate()
+                    call.respond(mapOf<String, Any>("success" to (rows > 0)))
+                }
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("success" to false, "message" to e.localizedMessage))
+            }
+        }
+
+        delete("/customer/saved-places/{id}") {
+            val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = "DELETE FROM saved_places WHERE id = ?"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setString(1, id)
+                val rows = stmt.executeUpdate()
+                call.respond(mapOf<String, Any>("success" to (rows > 0)))
+            }
+        }
+
         get("/driver/profile/{id}") {
             val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
             DatabaseInitializer.getDataSource().connection.use { conn ->
