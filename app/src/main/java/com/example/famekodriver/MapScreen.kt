@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.graphics.Bitmap
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toColorInt
@@ -252,9 +253,10 @@ fun MapScreen(
                     
                     // Driver Marker
                     viewModel.driverLatLng?.let { pos ->
-                        val carIcon = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()?.let { 
-                            IconFactory.getInstance(context).fromBitmap(it) 
-                        }
+                        val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+                        val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 100, 100, false) }
+                        val carIcon = resizedBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
+
                         map.addMarker(MarkerOptions()
                             .position(pos)
                             .apply { if (carIcon != null) icon(carIcon) }

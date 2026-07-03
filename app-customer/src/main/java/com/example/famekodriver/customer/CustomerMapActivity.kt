@@ -705,7 +705,9 @@ fun MainMapContent(
             val endPos = LatLng(driver.latitude, driver.longitude)
             
             if (marker == null) {
-                val carIcon = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()?.let { IconFactory.getInstance(context).fromBitmap(it) }
+                val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+                val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 100, 100, false) }
+                val carIcon = resizedBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
                     ?: ContextCompat.getDrawable(context, R.drawable.ic_car)?.toBitmap()?.let { IconFactory.getInstance(context).fromBitmap(it) }
                 
                 @Suppress("DEPRECATION")
