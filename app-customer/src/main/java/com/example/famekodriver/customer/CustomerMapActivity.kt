@@ -706,7 +706,7 @@ fun MainMapContent(
             
             if (marker == null) {
                 val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
-                val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 60, 60, false) }
+                val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 40, 40, false) }
                 val carIcon = resizedBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
                     ?: ContextCompat.getDrawable(context, R.drawable.ic_car)?.toBitmap()?.let { IconFactory.getInstance(context).fromBitmap(it) }
                 
