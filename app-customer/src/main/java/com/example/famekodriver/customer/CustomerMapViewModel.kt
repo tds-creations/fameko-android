@@ -419,6 +419,17 @@ class CustomerMapViewModel(
 
     private fun fetchPickupSuggestions(query: String) {
         pickupSearchJob?.cancel()
+        if (query.isBlank()) {
+            val suggestions = if (selectedTab == 0) {
+                recentPlaces
+            } else {
+                savedPlaces.value.map { 
+                    LocationSuggestion(displayName = it.address, latitude = it.latitude.toString(), longitude = it.longitude.toString(), name = it.label, type = "saved")
+                }
+            }
+            pickupSuggestions = suggestions
+            return
+        }
         if (query.length > 2) {
             pickupSearchJob = viewModelScope.launch {
                 delay(500.milliseconds)

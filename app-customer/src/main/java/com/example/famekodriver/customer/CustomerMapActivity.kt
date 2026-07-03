@@ -487,8 +487,8 @@ fun CustomerMapScreen() {
                     RouteSelectionScreen(
                         viewModel = mapViewModel,
                         onBack = { 
-                            mapViewModel.isSearchMode = false
-                            mapViewModel.navigateTo(CustomerScreen.MainMap)
+                            mapViewModel.resetSearch()
+                            mapViewModel.navigateTo(CustomerScreen.Landing)
                         }
                     )
                 }
@@ -1169,11 +1169,8 @@ fun MainMapContent(
                                 modifier = Modifier.padding(horizontal = 12.dp)
                             ) {
                                 IconButton(onClick = { 
-                                    if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) {
-                                        viewModel.resetSearch()
-                                    } else {
-                                        viewModel.navigateTo(CustomerScreen.Landing)
-                                    }
+                                    viewModel.resetSearch()
+                                    viewModel.navigateTo(CustomerScreen.Landing)
                                 }) {
                                     Icon(Icons.Default.Close, null, tint = BoltDark, modifier = Modifier.size(24.dp))
                                 }
@@ -2624,7 +2621,9 @@ fun RouteSelectionScreen(
             val suggestions = if (isPickupFocused) viewModel.pickupSuggestions else viewModel.dropOffSuggestions
             
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (viewModel.dropOffLocation.isEmpty() && isDropOffFocused) {
+                val currentText = if (isPickupFocused) viewModel.pickupLocation else viewModel.dropOffLocation
+                
+                if (currentText.isEmpty()) {
                     item {
                         val context = LocalContext.current
                         ListItem(

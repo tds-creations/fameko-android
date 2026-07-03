@@ -2364,6 +2364,7 @@ private fun initializePaystackPayment(email: String, amountGHS: Double, referenc
 private fun loginDriverInDb(email: String, pass: String): Driver? {
     val cleanEmail = email.trim().lowercase()
     DatabaseInitializer.getDataSource().connection.use { conn ->
+        // 1. Try drivers table first
         val sql = "SELECT * FROM drivers WHERE LOWER(TRIM(email)) = ? AND TRIM(password) = ?"
         val stmt = conn.prepareStatement(sql)
         stmt.setString(1, cleanEmail)
@@ -2380,40 +2381,99 @@ private fun loginDriverInDb(email: String, pass: String): Driver? {
             companyName = rs.getString("company_name"),
             registrationNumber = rs.getString("registration_number")
         )
+
+        // 2. If not found in drivers, try fleet_owners table
+        val sqlOwner = "SELECT * FROM fleet_owners WHERE LOWER(TRIM(email)) = ? AND TRIM(password) = ?"
+        val stmtOwner = conn.prepareStatement(sqlOwner)
+        stmtOwner.setString(1, cleanEmail)
+        stmtOwner.setString(2, pass.trim())
+        val rsOwner = stmtOwner.executeQuery()
+        if (rsOwner.next()) return Driver(
+            id = rsOwner.getInt("id"),
+            fullName = rsOwner.getString("full_name") ?: "",
+            email = rsOwner.getString("email") ?: "",
+            phone = rsOwner.getString("phone") ?: "",
+            region = rsOwner.getString("region") ?: "",
+            licenseNumber = "N/A",
+            vehicleType = "Fleet",
+            vehicleNumber = "OWNER",
+            status = rsOwner.getString("status") ?: "PENDING",
+            isOnline = false,
+            rating = 5.0,
+            serviceType = ServiceType.BOTH,
+            profilePicture = rsOwner.getString("profile_picture"),
+            userRole = "OWNER",
+            companyName = rsOwner.getString("company_name"),
+            registrationNumber = rsOwner.getString("registration_number")
+        )
     }
     return null
 }
 
 private fun registerDriverInDb(data: Map<String, String>): Int? {
+    val role = data["user_role"]?.trim()?.uppercase() ?: "DRIVER"
+    val email = data["email"]?.trim()?.lowercase() ?: ""
+
     DatabaseInitializer.getDataSource().connection.use { conn ->
         conn.autoCommit = false
         try {
-            val sql = "INSERT INTO drivers (full_name, email, phone, region, password, license_number, vehicle_type, vehicle_number, service_types, user_role, company_name, registration_number, emergency_contact_1, emergency_contact_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
-            val stmt = conn.prepareStatement(sql)
-            stmt.setString(1, data["full_name"]?.trim() ?: "")
-            stmt.setString(2, data["email"]?.trim()?.lowercase() ?: "")
-            stmt.setString(3, data["phone"]?.trim() ?: "")
-            stmt.setString(4, data["region"]?.trim() ?: "")
-            stmt.setString(5, data["password"]?.trim() ?: "")
-            stmt.setString(6, data["license_number"]?.trim() ?: "")
-            stmt.setString(7, data["vehicle_type"]?.trim() ?: "")
-            stmt.setString(8, data["vehicle_number"]?.trim() ?: "")
-            stmt.setString(9, data["service_type"]?.trim()?.uppercase() ?: "BOTH")
-            stmt.setString(10, data["user_role"]?.trim()?.uppercase() ?: "DRIVER")
-            stmt.setString(11, data["company_name"]?.trim())
-            stmt.setString(12, data["registration_number"]?.trim())
-            stmt.setString(13, data["emergency_contact_1"]?.trim())
-            stmt.setString(14, data["emergency_contact_2"]?.trim())
-            val rs = stmt.executeQuery()
-            if (rs.next()) {
-                val driverId = rs.getInt(1)
-                // Initialize stats row
-                conn.prepareStatement("INSERT INTO driver_stats (driver_id) VALUES (?)").apply {
-                    setInt(1, driverId)
-                    executeUpdate()
+            var primaryId: Int? = null
+            var fleetOwnerId: Int? = null
+
+            // 1. Save to fleet_owners table if OWNER or BOTH
+            if (role == "OWNER" || role == "BOTH") {
+                val sql = "INSERT INTO fleet_owners (full_name, email, phone, password, company_name, registration_number, region, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setString(1, data["full_name"]?.trim() ?: "")
+                stmt.setString(2, email)
+                stmt.setString(3, data["phone"]?.trim() ?: "")
+                stmt.setString(4, data["password"]?.trim() ?: "")
+                stmt.setString(5, data["company_name"]?.trim() ?: "My Fleet")
+                stmt.setString(6, data["registration_number"]?.trim())
+                stmt.setString(7, data["region"]?.trim() ?: "")
+                stmt.setString(8, "PENDING")
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    fleetOwnerId = rs.getInt(1)
+                    if (role == "OWNER") primaryId = fleetOwnerId
                 }
+            }
+
+            // 2. Save to drivers table if DRIVER or BOTH
+            if (role == "DRIVER" || role == "BOTH") {
+                val sql = "INSERT INTO drivers (full_name, email, phone, region, password, license_number, vehicle_type, vehicle_number, service_types, user_role, company_name, registration_number, emergency_contact_1, emergency_contact_2, fleet_owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setString(1, data["full_name"]?.trim() ?: "")
+                stmt.setString(2, email)
+                stmt.setString(3, data["phone"]?.trim() ?: "")
+                stmt.setString(4, data["region"]?.trim() ?: "")
+                stmt.setString(5, data["password"]?.trim() ?: "")
+                stmt.setString(6, data["license_number"]?.trim() ?: "")
+                stmt.setString(7, data["vehicle_type"]?.trim() ?: "")
+                stmt.setString(8, data["vehicle_number"]?.trim() ?: "")
+                stmt.setString(9, data["service_type"]?.trim()?.uppercase() ?: "BOTH")
+                stmt.setString(10, role)
+                stmt.setString(11, data["company_name"]?.trim())
+                stmt.setString(12, data["registration_number"]?.trim())
+                stmt.setString(13, data["emergency_contact_1"]?.trim())
+                stmt.setString(14, data["emergency_contact_2"]?.trim())
+                if (fleetOwnerId != null) stmt.setInt(15, fleetOwnerId) else stmt.setNull(15, java.sql.Types.INTEGER)
+
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    val driverId = rs.getInt(1)
+                    primaryId = driverId
+                    // Initialize stats row
+                    conn.prepareStatement("INSERT INTO driver_stats (driver_id) VALUES (?)").apply {
+                        setInt(1, driverId)
+                        executeUpdate()
+                    }
+                }
+            }
+
+            if (primaryId != null) {
                 conn.commit()
-                return driverId
+                return primaryId
             }
             conn.rollback()
         } catch (e: Exception) {
@@ -3175,7 +3235,20 @@ private fun updateDriverVehicleInDb(id: String, type: String, number: String, mo
 private fun getFleetVehiclesFromDb(ownerId: Int): List<Map<String, Any>> {
     val list = mutableListOf<Map<String, Any>>()
     DatabaseInitializer.getDataSource().connection.use { conn ->
-        val rs = conn.prepareStatement("SELECT * FROM rental_vehicles WHERE owner_id = ?").apply { setInt(1, ownerId) }.executeQuery()
+        // Check for vehicles where this ID is the owner (legacy), the fleet owner directly, 
+        // or the driver is linked to a fleet owner record.
+        val sql = """
+            SELECT * FROM rental_vehicles 
+            WHERE owner_id = ? 
+               OR fleet_owner_id = ? 
+               OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
+            ORDER BY id DESC
+        """.trimIndent()
+        val stmt = conn.prepareStatement(sql)
+        stmt.setInt(1, ownerId)
+        stmt.setInt(2, ownerId)
+        stmt.setInt(3, ownerId)
+        val rs = stmt.executeQuery()
         while (rs.next()) {
             list.add(mapOf(
                 "id" to rs.getInt("id"),
@@ -3234,29 +3307,45 @@ private fun addVehicleToFleetInDb(
     seats: Int? = 5, transmission: String? = "Automatic", fuelType: String? = "Petrol"
 ) {
     DatabaseInitializer.getDataSource().connection.use { conn ->
+        // Resolve if this is a driver who has a fleet owner or if this is the fleet owner directly
+        var actualFleetOwnerId: Int? = null
+        val driverRs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
+        if (driverRs.next()) {
+            actualFleetOwnerId = driverRs.getObject("fleet_owner_id") as? Int
+        }
+        
+        // If not a driver with fleet_owner_id, maybe the ownerId is a fleet_owner_id itself?
+        if (actualFleetOwnerId == null) {
+            val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
+            if (ownerRs.next()) {
+                actualFleetOwnerId = ownerId
+            }
+        }
+
         val sql = """
             INSERT INTO rental_vehicles (
-                owner_id, name, model, vehicle_type, vehicle_number, daily_rate, 
+                owner_id, fleet_owner_id, name, model, vehicle_type, vehicle_number, daily_rate, 
                 description, features, image_urls, location, latitude, longitude,
                 seats, transmission, fuel_type
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """.trimIndent()
         conn.prepareStatement(sql).apply {
             setInt(1, ownerId)
-            setString(2, name)
-            setString(3, model)
-            setString(4, type)
-            setString(5, number)
-            setDouble(6, rate)
-            setString(7, description)
-            setString(8, features)
-            setString(9, imageUrls)
-            setString(10, location)
-            if (lat != null) setDouble(11, lat) else setNull(11, java.sql.Types.DOUBLE)
-            if (lng != null) setDouble(12, lng) else setNull(12, java.sql.Types.DOUBLE)
-            setInt(13, seats ?: 5)
-            setString(14, transmission ?: "Automatic")
-            setString(15, fuelType ?: "Petrol")
+            if (actualFleetOwnerId != null) setInt(2, actualFleetOwnerId) else setNull(2, java.sql.Types.INTEGER)
+            setString(3, name)
+            setString(4, model)
+            setString(5, type)
+            setString(6, number)
+            setDouble(7, rate)
+            setString(8, description)
+            setString(9, features)
+            setString(10, imageUrls)
+            setString(11, location)
+            if (lat != null) setDouble(12, lat) else setNull(12, java.sql.Types.DOUBLE)
+            if (lng != null) setDouble(13, lng) else setNull(13, java.sql.Types.DOUBLE)
+            setInt(14, seats ?: 5)
+            setString(15, transmission ?: "Automatic")
+            setString(16, fuelType ?: "Petrol")
             executeUpdate()
         }
     }

@@ -344,6 +344,7 @@ object DatabaseInitializer {
                 price NUMERIC(12, 2) NOT NULL,
                 category TEXT,
                 location TEXT,
+                images TEXT,
                 seller_id INTEGER REFERENCES drivers(id),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -357,6 +358,27 @@ object DatabaseInitializer {
                 latitude DOUBLE PRECISION NOT NULL,
                 longitude DOUBLE PRECISION NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """.trimIndent(),
+            """
+            CREATE TABLE IF NOT EXISTS fleet_owners (
+                id SERIAL PRIMARY KEY,
+                full_name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                company_name TEXT NOT NULL,
+                registration_number TEXT,
+                region TEXT,
+                status TEXT DEFAULT 'PENDING',
+                profile_picture TEXT,
+                id_front_image TEXT,
+                id_back_image TEXT,
+                business_certificate TEXT,
+                fcm_token TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """.trimIndent()
         )
@@ -427,7 +449,14 @@ object DatabaseInitializer {
             "ALTER TABLE saved_places ALTER COLUMN id DROP DEFAULT;",
             "ALTER TABLE driver_stats ADD COLUMN IF NOT EXISTS h3_index TEXT;",
             "CREATE INDEX IF NOT EXISTS idx_driver_stats_h3 ON driver_stats(h3_index);",
-            "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);"
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);",
+            "CREATE TABLE IF NOT EXISTS fleet_owners (id SERIAL PRIMARY KEY, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT UNIQUE NOT NULL, password TEXT NOT NULL, company_name TEXT NOT NULL, registration_number TEXT, region TEXT, status TEXT DEFAULT 'PENDING', is_active BOOLEAN DEFAULT TRUE, date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS fcm_token TEXT;",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;",
+            "ALTER TABLE rental_vehicles ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
+            "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
+            "CREATE INDEX IF NOT EXISTS idx_drivers_fleet_owner ON drivers(fleet_owner_id);",
+            "CREATE INDEX IF NOT EXISTS idx_rental_vehicles_fleet_owner ON rental_vehicles(fleet_owner_id);"
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 
