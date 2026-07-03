@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fameko Admin - Driver Details</title>
+    <title>Fameko Admin - Fleet Owner Details</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
     <style>
         :root {
@@ -45,7 +45,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* Sidebar - ClickUp Style */
         .sidebar {
             width: var(--sidebar-width);
             background: var(--sidebar-bg);
@@ -56,7 +55,6 @@
             border-right: 1px solid var(--border-color);
             z-index: 1000;
             overflow-y: auto;
-            transition: background 0.3s, border 0.3s;
         }
         .sidebar::-webkit-scrollbar { display: none; }
 
@@ -65,12 +63,9 @@
             margin-bottom: 10px;
             display: flex;
             align-items: center;
-            justify-content: flex-start;
             gap: 10px;
             color: var(--primary-color);
         }
-
-        .sidebar-header i { font-size: 1.2rem; }
 
         .sidebar-menu {
             list-style: none;
@@ -112,7 +107,6 @@
             opacity: 1;
         }
 
-        /* Main Content */
         .main-content {
             margin-left: var(--sidebar-width);
             flex: 1;
@@ -185,7 +179,7 @@
             font-weight: 600;
         }
 
-        .status-PENDING, .status-PENDING_DOCS { background: #FEF3C7; color: #92400E; }
+        .status-PENDING { background: #FEF3C7; color: #92400E; }
         .status-APPROVED { background: #D1FAE5; color: #065F46; }
         .status-REJECTED { background: #FEE2E2; color: #991B1B; }
         .status-SUSPENDED { background: #FFF4E6; color: #D9480F; }
@@ -284,38 +278,10 @@
         }
 
         .user-name { font-weight: 600; font-size: 0.8rem; }
-
-        .class-selector {
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            transition: var(--transition);
-            text-align: center;
-            background: var(--card-bg);
-        }
-
-        .class-selector i { font-size: 1.2rem; color: var(--muted-text); }
-        .class-selector b { font-size: 0.9rem; color: var(--dark-text); }
-        .class-selector span { font-size: 0.7rem; color: var(--muted-text); }
-
-        .class-selector:hover { border-color: var(--primary-light); background: var(--light-bg); }
-        .class-selector.active {
-            border-color: var(--primary-color);
-            background: #EBF8FF;
-        }
-        .class-selector.active i { color: var(--primary-color); }
-        .class-selector.active b { color: var(--primary-color); }
     </style>
     <script>
-        //<![CDATA[
-        // Apply theme immediately
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
-        //]]>
     </script>
 </head>
 <body>
@@ -345,10 +311,10 @@
 
     <div class="main-content">
         <div class="header">
-            <h1>Driver Details</h1>
+            <h1>Fleet Owner Details</h1>
 
             <div style="display: flex; gap: 20px; align-items: center;">
-                <a href="/admin/drivers" class="btn btn-back">
+                <a href="/admin/fleet-owners" class="btn btn-back">
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
 
@@ -362,172 +328,101 @@
             </div>
         </div>
 
-        <div th:if="${driver != null}" th:with="status=${driver['status'] != null ? #strings.toUpperCase(driver['status']) : 'UNKNOWN'}, isCar=${driver['vehicle_type'] != null and #strings.toLowerCase(driver['vehicle_type']) == 'car'}">
-            <!-- PERSONAL INFO -->
+        <div th:if="${owner != null}" th:with="status=${owner['status'] != null ? #strings.toUpperCase(owner['status']) : 'UNKNOWN'}">
             <div class="card">
-                <div class="card-header">Personal Information</div>
+                <div class="card-header">Company Information</div>
                 <div class="card-body">
                     <div class="info-grid">
                         <div class="info-item">
                             <label>Full Name</label>
-                            <span th:text="${driver['full_name']}">John Doe</span>
+                            <span th:text="${owner['full_name']}">John Doe</span>
                         </div>
                         <div class="info-item">
                             <label>Status</label>
                             <span th:class="${'status-badge status-' + status}" th:text="${status}">PENDING</span>
                         </div>
                         <div class="info-item">
+                            <label>Company Name</label>
+                            <span th:text="${owner['company_name']}">My Fleet Ltd</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Registration Number</label>
+                            <span th:text="${owner['registration_number'] ?: 'N/A'}">REG-123</span>
+                        </div>
+                        <div class="info-item">
                             <label>Email Address</label>
-                            <span th:text="${driver['email']}">john@example.com</span>
+                            <span th:text="${owner['email']}">owner@example.com</span>
                         </div>
                         <div class="info-item">
                             <label>Phone Number</label>
-                            <span th:text="${driver['phone']}">0241234567</span>
+                            <span th:text="${owner['phone']}">0241234567</span>
                         </div>
                         <div class="info-item">
                             <label>Region</label>
-                            <span th:text="${driver['region']}">Greater Accra</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Vehicle</label>
-                            <span th:text="${driver['vehicle_type'] + ' (' + driver['vehicle_number'] + ')'}">Car (GW-123)</span>
-                        </div>
-                        <div class="info-item" th:if="${isCar}">
-                            <label>Car Category</label>
-                            <span th:text="${driver['vehicle_category'] != null ? driver['vehicle_category'] : 'Economy'}"
-                                  style="color: var(--primary-color); font-weight: 800;">Economy</span>
-                        </div>
-                        <div class="info-item" th:unless="${isCar}">
-                            <label>Vehicle Type</label>
-                            <span th:text="${driver['vehicle_type'] != null ? #strings.capitalize(driver['vehicle_type']) : 'N/A'}">Okada</span>
+                            <span th:text="${owner['region']}">Greater Accra</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- VEHICLE CLASSIFICATION (Cars Only) -->
-            <div class="card" th:if="${isCar}">
-                <div class="card-header">Vehicle Classification</div>
-                <div class="card-body">
-                    <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post">
-                        <div style="display:flex; flex-direction:column; gap:12px;">
-                            <p style="margin:0; font-size: 0.8rem; color: var(--muted-text); font-weight: 500;">
-                                Examine the vehicle details and photos below. Assign the appropriate ride class based on the vehicle quality.
-                            </p>
-                            <div style="display:flex; gap:16px;">
-                                <label style="flex:1; cursor:pointer;">
-                                    <input type="radio" name="category" value="Economy" th:checked="${driver['vehicle_category'] == 'Economy'}" style="display:none;" onchange="this.form.submit()"/>
-                                    <div class="class-selector" th:classappend="${driver['vehicle_category'] == 'Economy' ? 'active' : ''}">
-                                        <i class="fas fa-car"></i>
-                                        <b>Economy</b>
-                                        <span>Standard Class</span>
-                                    </div>
-                                </label>
-                                <label style="flex:1; cursor:pointer;">
-                                    <input type="radio" name="category" value="Comfort" th:checked="${driver['vehicle_category'] == 'Comfort'}" style="display:none;" onchange="this.form.submit()"/>
-                                    <div class="class-selector" th:classappend="${driver['vehicle_category'] == 'Comfort' ? 'active' : ''}">
-                                        <i class="fas fa-couch"></i>
-                                        <b>Comfort</b>
-                                        <span>Premium Class</span>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- DOCUMENTS -->
             <div class="card">
                 <div class="card-header">Verification Documents</div>
                 <div class="card-body">
                     <div class="doc-grid">
-                        <!-- Profile Picture -->
                         <div class="doc-card">
                             <div class="doc-label">Profile Picture</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['profile_picture']) and #strings.length(driver['profile_picture']) > 5}"
-                                     th:src="${driver['profile_picture']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['profile_picture']) and #strings.length(driver['profile_picture']) > 5}"
+                                <img th:if="${not #strings.isEmpty(owner['profile_picture']) and #strings.length(owner['profile_picture']) > 5}"
+                                     th:src="${owner['profile_picture']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(owner['profile_picture']) and #strings.length(owner['profile_picture']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
-                        <!-- Driver License -->
                         <div class="doc-card">
-                            <div class="doc-label">Driver License</div>
+                            <div class="doc-label">Ghana Card (Front)</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['license_image']) and #strings.length(driver['license_image']) > 5}"
-                                     th:src="${driver['license_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['license_image']) and #strings.length(driver['license_image']) > 5}"
+                                <img th:if="${not #strings.isEmpty(owner['id_front_image']) and #strings.length(owner['id_front_image']) > 5}"
+                                     th:src="${owner['id_front_image']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(owner['id_front_image']) and #strings.length(owner['id_front_image']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
-                        <!-- Ghana Card -->
                         <div class="doc-card">
-                            <div class="doc-label">Ghana Card</div>
+                            <div class="doc-label">Ghana Card (Back)</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['id_front_image']) and #strings.length(driver['id_front_image']) > 5}"
-                                     th:src="${driver['id_front_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['id_front_image']) and #strings.length(driver['id_front_image']) > 5}"
+                                <img th:if="${not #strings.isEmpty(owner['id_back_image']) and #strings.length(owner['id_back_image']) > 5}"
+                                     th:src="${owner['id_back_image']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(owner['id_back_image']) and #strings.length(owner['id_back_image']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
-                        <!-- Insurance -->
                         <div class="doc-card">
-                            <div class="doc-label">Insurance Cert</div>
+                            <div class="doc-label">Business Certificate</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['insurance_cert']) and #strings.length(driver['insurance_cert']) > 5}"
-                                     th:src="${driver['insurance_cert']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['insurance_cert']) and #strings.length(driver['insurance_cert']) > 5}"
-                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
-                            </div>
-                        </div>
-                        <!-- Roadworthy -->
-                        <div class="doc-card">
-                            <div class="doc-label">Roadworthy Cert</div>
-                            <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['roadworthy_cert']) and #strings.length(driver['roadworthy_cert']) > 5}"
-                                     th:src="${driver['roadworthy_cert']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['roadworthy_cert']) and #strings.length(driver['roadworthy_cert']) > 5}"
-                                      style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
-                            </div>
-                        </div>
-                        <!-- Vehicle Image -->
-                        <div class="doc-card">
-                            <div class="doc-label">Vehicle Image</div>
-                            <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['vehicle_image']) and #strings.length(driver['vehicle_image']) > 5}"
-                                     th:src="${driver['vehicle_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['vehicle_image']) and #strings.length(driver['vehicle_image']) > 5}"
+                                <img th:if="${not #strings.isEmpty(owner['business_certificate']) and #strings.length(owner['business_certificate']) > 5}"
+                                     th:src="${owner['business_certificate']}" onclick="window.open(this.src)" />
+                                <span th:unless="${not #strings.isEmpty(owner['business_certificate']) and #strings.length(owner['business_certificate']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ACTION BUTTONS -->
                     <div class="action-buttons">
-                        <!-- PENDING / REJECTED / SUSPENDED -->
-                        <div th:if="${status == 'PENDING' or status == 'PENDING_DOCS' or status == 'REJECTED' or status == 'SUSPENDED'}" style="display:flex; flex-direction:column; gap:16px; width: 100%; max-width: 400px;">
-                            <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post" style="display:flex; flex-direction:column; gap:12px;">
-                                <!-- For cars, use current category. For others, use vehicle type as category -->
-                                <input type="hidden" name="category" th:value="${driver['vehicle_category'] != null ? driver['vehicle_category'] : driver['vehicle_type']}"/>
-
-                                <div style="display:flex; gap:12px;">
-                                    <button type="submit" class="btn btn-approve">
-                                        <i class="fas fa-check"></i>
-                                        <span th:text="${status == 'SUSPENDED' ? 'Re-activate Account' : 'Approve Driver'}">Approve Driver</span>
-                                    </button>
-                                    <button th:if="${status == 'PENDING' or status == 'PENDING_DOCS'}" type="button" class="btn btn-reject" onclick="document.getElementById('reject-form').submit()"><i class="fas fa-xmark"></i> Reject</button>
-                                </div>
+                        <div th:if="${status == 'PENDING' or status == 'REJECTED' or status == 'SUSPENDED'}" style="display:flex; gap:12px;">
+                            <form th:action="${'/admin/fleet-owner/approve/' + owner['id']}" method="post">
+                                <button type="submit" class="btn btn-approve">
+                                    <i class="fas fa-check"></i>
+                                    <span th:text="${status == 'SUSPENDED' ? 'Re-activate Account' : 'Approve Fleet Owner'}">Approve Fleet Owner</span>
+                                </button>
                             </form>
-
-                            <form id="reject-form" th:action="${'/admin/driver/reject/' + driver['id']}" method="post" style="display:none;"></form>
+                            <form th:if="${status == 'PENDING'}" th:action="${'/admin/fleet-owner/reject/' + owner['id']}" method="post">
+                                <button type="submit" class="btn btn-reject"><i class="fas fa-xmark"></i> Reject</button>
+                            </form>
                         </div>
 
-                        <!-- APPROVED -->
                         <div th:if="${status == 'APPROVED'}" style="display:flex; gap:12px; align-items:center">
-                            <form th:action="${'/admin/driver/suspend/' + driver['id']}" method="post">
-                                <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Driver</button>
+                            <form th:action="${'/admin/fleet-owner/suspend/' + owner['id']}" method="post">
+                                <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Fleet Owner</button>
                             </form>
                         </div>
                     </div>
@@ -538,4 +433,3 @@
     <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
 </body>
 </html>
-

@@ -110,6 +110,7 @@ fun Application.configureRouting() {
                     val region = if (principal.role == "REGIONAL_ADMIN") principal.region else null
                     
                     val drivers = getAllDriversFromDb(region)
+                    val fleetOwners = getAllFleetOwnersFromDb(region)
                     val stats = getPlatformStatsFromDb()
                     val rentals = getAllRentalsFromDb(region)
                     val liveDeliveries = getActiveDeliveriesFromDb()
@@ -117,7 +118,9 @@ fun Application.configureRouting() {
                     call.respond(ThymeleafContent("admin_dashboard", mapOf(
                         "drivers" to drivers.take(10),
                         "totalDrivers" to drivers.size,
+                        "totalFleetOwners" to fleetOwners.size,
                         "pendingCount" to drivers.count { it["status"] == "PENDING" || it["status"] == "PENDING_DOCS" },
+                        "pendingFleetOwners" to fleetOwners.count { it["status"] == "PENDING" },
                         "onlineCount" to drivers.count { it["is_online"] == true },
                         "totalRevenue" to stats["totalRevenue"],
                         "totalDebt" to stats["totalDebt"],
@@ -193,6 +196,66 @@ fun Application.configureRouting() {
                     updateDriverStatusInDb(id, "APPROVED")
                     call.respondRedirect("/admin/driver/$id")
                 }
+
+                // --- FLEET OWNERS ---
+                get("/fleet-owners") {
+                    val principal = call.principal<AdminPrincipal>()!!
+                    val statusFilter = call.parameters["status"]
+                    val regionFilter = call.parameters["region"]
+                    val principalRegion = if (principal.role == "REGIONAL_ADMIN") principal.region else null
+
+                    val allOwners = getAllFleetOwnersFromDb(principalRegion)
+                    val filteredOwners = allOwners.filter { owner ->
+                        (statusFilter.isNullOrBlank() || owner["status"].toString().equals(statusFilter, ignoreCase = true)) &&
+                        (regionFilter.isNullOrBlank() || owner["region"].toString().equals(regionFilter, ignoreCase = true))
+                    }
+
+                    val groupedOwners = filteredOwners.groupBy { it["region"].toString() }
+
+                    call.respond(ThymeleafContent("admin_fleet_owners", mapOf(
+                        "owners" to filteredOwners,
+                        "groupedOwners" to groupedOwners,
+                        "activePage" to "fleet-owners",
+                        "admin" to principal,
+                        "selectedStatus" to (statusFilter ?: ""),
+                        "selectedRegion" to (regionFilter ?: "")
+                    )))
+                }
+
+                get("/fleet-owner/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val owner = getFleetOwnerDetailsFromDb(id) ?: return@get call.respond(HttpStatusCode.NotFound)
+                    call.respond(ThymeleafContent("admin_fleet_owner_details", mapOf(
+                        "owner" to owner,
+                        "activePage" to "fleet-owners",
+                        "admin" to call.principal<AdminPrincipal>()!!
+                    )))
+                }
+
+                post("/fleet-owner/approve/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    updateFleetOwnerStatusInDb(id, "APPROVED")
+                    call.respondRedirect("/admin/fleet-owner/$id")
+                }
+
+                post("/fleet-owner/reject/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    updateFleetOwnerStatusInDb(id, "REJECTED")
+                    call.respondRedirect("/admin/fleet-owner/$id")
+                }
+
+                post("/fleet-owner/suspend/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    updateFleetOwnerStatusInDb(id, "SUSPENDED")
+                    call.respondRedirect("/admin/fleet-owner/$id")
+                }
+
+                post("/fleet-owner/release/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    updateFleetOwnerStatusInDb(id, "APPROVED")
+                    call.respondRedirect("/admin/fleet-owner/$id")
+                }
+
 
                 get("/map") {
                     val principal = call.principal<AdminPrincipal>()!!
@@ -2500,6 +2563,48 @@ private fun getAllDriversFromDb(region: String?): List<Map<String, Any>> {
     }
     return list
 }
+
+private fun getAllFleetOwnersFromDb(region: String?): List<Map<String, Any>> {
+    val list = mutableListOf<Map<String, Any>>()
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        val sql = if (region == null) "SELECT * FROM fleet_owners ORDER BY region ASC, status ASC, id DESC" else "SELECT * FROM fleet_owners WHERE region = ? ORDER BY status ASC, id DESC"
+        val stmt = conn.prepareStatement(sql); if (region != null) stmt.setString(1, region)
+        val rs = stmt.executeQuery()
+        while (rs.next()) {
+            list.add(mapOf(
+                "id" to rs.getInt("id"),
+                "name" to rs.getString("full_name"),
+                "email" to rs.getString("email"),
+                "phone" to rs.getString("phone"),
+                "company_name" to rs.getString("company_name"),
+                "registration_number" to (rs.getString("registration_number") ?: "N/A"),
+                "status" to rs.getString("status"),
+                "region" to (rs.getString("region") ?: "Unknown"),
+                "date_joined" to rs.getTimestamp("date_joined").toString()
+            ))
+        }
+    }
+    return list
+}
+
+private fun getFleetOwnerDetailsFromDb(id: Int): Map<String, Any>? {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        val rs = conn.prepareStatement("SELECT * FROM fleet_owners WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+        if (rs.next()) return mapOf(
+            "id" to rs.getInt("id"), "full_name" to rs.getString("full_name"), "email" to rs.getString("email"), "phone" to rs.getString("phone"),
+            "status" to rs.getString("status"), "region" to rs.getString("region"), "company_name" to rs.getString("company_name"),
+            "registration_number" to rs.getString("registration_number"),
+            "profile_picture" to rs.getString("profile_picture"), "id_front_image" to rs.getString("id_front_image"),
+            "id_back_image" to rs.getString("id_back_image"), "business_certificate" to rs.getString("business_certificate")
+        )
+    }
+    return null
+}
+
+private fun updateFleetOwnerStatusInDb(id: Int, status: String) {
+    DatabaseInitializer.getDataSource().connection.use { it.prepareStatement("UPDATE fleet_owners SET status = ? WHERE id = ?").apply { setString(1, status); setInt(2, id); executeUpdate() } }
+}
+
 
 
 private fun getProductFromDb(id: Int): Map<String, Any?>? {
