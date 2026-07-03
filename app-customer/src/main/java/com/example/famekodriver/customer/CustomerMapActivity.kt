@@ -62,6 +62,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
@@ -548,6 +553,19 @@ fun MainMapContent(
 
     val voiceCallHandler = remember { VoiceCallHandler { data -> viewModel.sendAudioData(data) } }
 
+    var carIconBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(Unit) {
+        val loader = context.imageLoader
+        val request = ImageRequest.Builder(context)
+            .data(ImageLinks.IC_CAR_SALOON)
+            .allowHardware(false)
+            .build()
+        val result = loader.execute(request)
+        if (result is SuccessResult) {
+            carIconBitmap = (result.drawable as? BitmapDrawable)?.bitmap
+        }
+    }
+
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     
     var showDatePicker by remember { mutableStateOf(false) }
@@ -704,8 +722,8 @@ fun MainMapContent(
             val endPos = LatLng(driver.latitude, driver.longitude)
             
             if (marker == null) {
-                val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car)?.toBitmap()
-                val carIcon = carBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
+                val carIcon = carIconBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
+                    ?: ContextCompat.getDrawable(context, R.drawable.ic_car)?.toBitmap()?.let { IconFactory.getInstance(context).fromBitmap(it) }
                 
                 @Suppress("DEPRECATION")
                 val newMarker = map.addMarker(MarkerOptions()
