@@ -254,7 +254,7 @@ fun MapScreen(
                     // Driver Marker
                     viewModel.driverLatLng?.let { pos ->
                         val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
-                        val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 100, 100, false) }
+                        val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 60, 60, false) }
                         val carIcon = resizedBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
 
                         map.addMarker(MarkerOptions()
