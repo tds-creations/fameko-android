@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
+import com.example.famekodriver.ui.theme.*
 import java.util.Locale
 
 data class MenuItem(
@@ -29,7 +30,7 @@ data class MenuItem(
     val title: String,
     val subtitle: String,
     val icon: ImageVector,
-    val color: Color = Color(0xFF004E89)
+    val color: Color = FamekoPrimary
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,12 +79,13 @@ fun MenuScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Main Menu", fontWeight = FontWeight.Bold) },
+                title = { Text("Main Menu", fontWeight = FontWeight.ExtraBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         }
     ) { padding ->
@@ -91,17 +93,19 @@ fun MenuScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFFF8F9FA))
+                .background(Color.White)
         ) {
             // Header Section
             item {
-                Box(
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF004E89))
-                        .padding(24.dp)
+                        .padding(16.dp),
+                    color = FamekoPrimary,
+                    shape = RoundedCornerShape(24.dp),
+                    shadowElevation = 8.dp
                 ) {
-                    Column {
+                    Column(modifier = Modifier.padding(24.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = CircleShape,
@@ -124,7 +128,7 @@ fun MenuScreen(
                                     fontSize = 20.sp
                                 )
                                 Surface(
-                                    color = Color(0xFF28A745),
+                                    color = BoltGreen,
                                     shape = RoundedCornerShape(4.dp),
                                     modifier = Modifier.padding(top = 4.dp)
                                 ) {
@@ -139,13 +143,13 @@ fun MenuScreen(
                             }
                         }
                         
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(32.dp))
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            StatBox("TODAY", "₵${String.format(Locale.getDefault(), "%.2f", driverStats.earningsToday)}")
+                            StatBox("TODAY", "₵${String.format(Locale.getDefault(), "%.0f", driverStats.earningsToday)}")
                             StatBox("RATING", "${String.format(Locale.getDefault(), "%.1f", driverStats.rating)} ⭐")
                             StatBox("TRIPS", "${driverStats.totalDeliveries}")
                         }
@@ -166,19 +170,20 @@ fun MenuScreen(
                         "vehicle_reg" -> onNavigateToVehicleReg()
                     }
                 }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.LightGray.copy(alpha = 0.5f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), color = BoltLightGray, thickness = 0.5.dp)
             }
             
             item {
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(48.dp))
                 Text(
-                    "v1.0.0",
+                    "Fameko for Drivers v1.2.0",
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     color = Color.Gray,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(32.dp))
             }
         }
     }

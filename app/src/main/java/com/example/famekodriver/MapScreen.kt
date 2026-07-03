@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -336,9 +337,14 @@ fun MapScreen(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 32.dp),
+                        .fillMaxWidth()
+                        .background(
+                            Color.White, 
+                            RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                        )
+                        .padding(horizontal = 24.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     if (status != "APPROVED") {
                         RegistrationNotice(
@@ -347,15 +353,28 @@ fun MapScreen(
                         )
                     }
 
-                    if (viewModel.isDailyFeePaid && viewModel.dailyFeeRemainingSeconds > 0) {
-                        DailyFeeCountdown(secondsRemaining = viewModel.dailyFeeRemainingSeconds)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Today's Earnings", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                            Text("GH₵${viewModel.finalFare.toInt()}", fontSize = 24.sp, fontWeight = FontWeight.Black, color = BoltDark)
+                        }
+                        
+                        if (viewModel.isDailyFeePaid && viewModel.dailyFeeRemainingSeconds > 0) {
+                            DailyFeeCountdown(secondsRemaining = viewModel.dailyFeeRemainingSeconds)
+                        }
                     }
-                    
+
                     OnlineToggleButton(
                         isOnline = viewModel.isOnline,
                         isApproved = status == "APPROVED",
                         onClick = { viewModel.checkAndGoOnline(status) }
                     )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
@@ -467,47 +486,62 @@ fun TripSummaryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                "Trip Completed",
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Trip Completed",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 22.sp,
+                    color = BoltDark
+                )
+                Text(
+                    "Great job! Here's your summary.",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
         },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Icon(
                     Icons.Default.CheckCircle,
                     null,
-                    tint = Color(0xFF28A745),
-                    modifier = Modifier.size(64.dp)
+                    tint = BoltGreen,
+                    modifier = Modifier.size(72.dp)
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
                 
-                SummaryRow("Total Fare", "₵${totalFare.toInt()}")
-                SummaryRow("Commission (20%)", "-₵${(totalFare - earnings).toInt()}")
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFF0F0F0))
-                
-                Text("Your Earnings", fontSize = 14.sp, color = Color.Gray)
-                Text(
-                    "₵${earnings.toInt()}",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFF28A745)
-                )
+                Surface(
+                    color = BoltLightGray,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SummaryRow("Total Trip Fare", "GH₵${totalFare.toInt()}")
+                        SummaryRow("Fameko Commission", "-GH₵${(totalFare - earnings).toInt()}")
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Your Net Earnings", fontWeight = FontWeight.Bold, color = BoltDark)
+                            Text("GH₵${earnings.toInt()}", fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltGreen)
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745)),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = FamekoPrimary),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Back to Map", fontWeight = FontWeight.Bold)
+                Text("BACK TO MAP", fontWeight = FontWeight.Black, fontSize = 16.sp)
             }
         },
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         containerColor = Color.White
     )
 }
@@ -549,56 +583,57 @@ fun SurgeIndicator(multiplier: Double) {
 @Composable
 fun NavigationHUD(delivery: Delivery) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF004E89),
-        contentColor = Color.White,
-        shadowElevation = 8.dp
+        color = Color.White,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, BoltLightGray)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                    .size(32.dp)
+                    .background(FamekoLightBlue, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Navigation, null, modifier = Modifier.size(24.dp))
+                Icon(
+                    imageVector = if (delivery.status == DeliveryStatus.ASSIGNED) Icons.Default.MyLocation else Icons.Default.Navigation,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = FamekoPrimary
+                )
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                        stringResource(R.string.heading_to_pickup)
+                        "${delivery.pickupLocation.split(",").first()} → Pickup"
                     } else {
-                        stringResource(R.string.heading_to_destination)
+                        "Heading to → ${delivery.dropOffLocation.split(",").first()}"
                     },
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-                Text(
-                    text = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                        delivery.pickupLocation
-                    } else {
-                        delivery.dropOffLocation
-                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = FamekoPrimary,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            
+            Surface(
+                color = BoltGreen,
+                shape = RoundedCornerShape(8.dp)
+            ) {
                 Text(
                     text = "${String.format(Locale.getDefault(), "%.1f", delivery.distanceKm)} km",
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp
-                )
-                Text(
-                    text = stringResource(R.string.remaining),
-                    fontSize = 10.sp,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
         }
@@ -618,11 +653,12 @@ fun DeliveryControlSheet(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(8.dp)
+        elevation = CardDefaults.cardElevation(12.dp),
+        border = BorderStroke(1.dp, BoltLightGray)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -630,96 +666,114 @@ fun DeliveryControlSheet(
             ) {
                 Column {
                     val statusText = when (delivery.status) {
-                        DeliveryStatus.ASSIGNED -> stringResource(R.string.status_going_to_pickup)
-                        DeliveryStatus.IN_TRANSIT -> stringResource(R.string.status_trip_in_progress)
+                        DeliveryStatus.ASSIGNED -> "PICKING UP"
+                        DeliveryStatus.IN_TRANSIT -> "ON TRIP"
                         else -> delivery.status.name
                     }
+                    Surface(
+                        color = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen.copy(alpha = 0.1f) else FamekoLightBlue,
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = statusText,
+                            fontWeight = FontWeight.Black,
+                            color = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary,
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = statusText,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFF6B35),
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = delivery.customerName ?: stringResource(R.string.customer),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        text = delivery.customerName ?: "Customer",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 24.sp,
+                        color = BoltDark
                     )
                 }
-                Row {
-                    ActionIcon(icon = Icons.Default.Call, color = Color(0xFF28A745), onClick = onCall)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    ActionIcon(icon = Icons.AutoMirrored.Filled.Chat, color = Color(0xFF004E89), onClick = onChat)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                        onClick = onCall,
+                        modifier = Modifier.size(48.dp).background(FamekoLightBlue, CircleShape)
+                    ) {
+                        Icon(Icons.Default.Call, null, tint = FamekoPrimary, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(
+                        onClick = onChat,
+                        modifier = Modifier.size(48.dp).background(FamekoLightBlue, CircleShape)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Chat, null, tint = FamekoPrimary, modifier = Modifier.size(20.dp))
+                    }
                 }
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF0F0F0))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val icon = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                    Icons.Default.MyLocation
-                } else {
-                    Icons.Default.Navigation
-                }
-                val tint = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                    Color(0xFF34D186)
-                } else {
-                    Color(0xFFDC3545)
-                }
-                Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                            stringResource(R.string.pickup)
-                        } else {
-                            stringResource(R.string.destination)
-                        },
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                            delivery.pickupLocation
-                        } else {
-                            delivery.dropOffLocation
-                        },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Surface(
+                color = BoltLightGray,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val icon = if (delivery.status == DeliveryStatus.ASSIGNED) Icons.Default.MyLocation else Icons.Default.Navigation
+                    val tint = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else BoltOrange
+                    
+                    Box(
+                        modifier = Modifier.size(36.dp).background(Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column {
+                        Text(
+                            text = if (delivery.status == DeliveryStatus.ASSIGNED) "PICKUP LOCATION" else "DESTINATION",
+                            fontSize = 10.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = if (delivery.status == DeliveryStatus.ASSIGNED) delivery.pickupLocation else delivery.dropOffLocation,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BoltDark,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = onCancel,
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                    border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.3f))
+                    modifier = Modifier.weight(1f).height(60.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color.LightGray)
                 ) {
-                    Text("Cancel order", fontWeight = FontWeight.Bold)
+                    Text("Cancel Trip", fontWeight = FontWeight.Bold, color = BoltDark)
                 }
+                
                 Button(
                     onClick = {
-                        if (delivery.status == DeliveryStatus.ASSIGNED) {
-                            onArrived()
-                        } else {
-                            onStatusUpdate(DeliveryStatus.DELIVERED)
-                        }
+                        if (delivery.status == DeliveryStatus.ASSIGNED) onArrived()
+                        else onStatusUpdate(DeliveryStatus.DELIVERED)
                     },
-                    modifier = Modifier
-                        .weight(1.5f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004E89))
+                    modifier = Modifier.weight(1.5f).height(60.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary)
                 ) {
                     Text(
-                        text = if (delivery.status == DeliveryStatus.ASSIGNED) {
-                            stringResource(R.string.btn_arrived_at_pickup)
-                        } else {
-                            stringResource(R.string.btn_complete_trip)
-                        },
-                        fontWeight = FontWeight.Bold,
+                        text = if (delivery.status == DeliveryStatus.ASSIGNED) "I'VE ARRIVED" else "COMPLETE TRIP",
+                        fontWeight = FontWeight.Black,
                         fontSize = 16.sp
                     )
                 }
@@ -750,30 +804,40 @@ fun IncomingRequestSheet(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(16.dp)
+        elevation = CardDefaults.cardElevation(16.dp),
+        border = BorderStroke(1.dp, BoltLightGray)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            LinearProgressIndicator(
-                progress = { timerProgress },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
-                    .padding(bottom = 12.dp),
-                color = Color(0xFFFF6B35),
-                trackColor = Color(0xFFF08035).copy(alpha = 0.1f)
-            )
+                    .background(BoltLightGray, CircleShape)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(timerProgress)
+                        .fillMaxHeight()
+                        .background(BoltOrange, CircleShape)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
             Text(
-                text = stringResource(R.string.new_delivery_request),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = Color.Gray
+                text = "New Ride Request",
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 20.sp,
+                color = BoltDark
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -781,85 +845,84 @@ fun IncomingRequestSheet(
             ) {
                 Column {
                     Text(
-                        text = "₵${request.estimatedEarnings.toInt()}",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 28.sp,
-                        color = Color(0xFF28A745)
+                        text = "GH₵${request.estimatedEarnings.toInt()}",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 32.sp,
+                        color = BoltDark
                     )
                     Text(
-                        text = stringResource(R.string.estimated_earnings),
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = "Est. Earnings",
+                        fontSize = 13.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
                     )
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = request.customerName ?: stringResource(R.string.customer),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                    Text(
-                        text = "Customer",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-                }
-                Surface(color = Color(0xFFFFEAD1), shape = RoundedCornerShape(12.dp)) {
+                
+                Surface(
+                    color = FamekoLightBlue,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color(0xFFE67E22)
-                        )
-                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(16.dp), tint = FamekoPrimary)
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text = stringResource(R.string.min_away, request.pickupEtaMin?.toInt() ?: 5),
+                            text = "${request.pickupEtaMin?.toInt() ?: 5} min away",
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFE67E22)
+                            color = FamekoPrimary,
+                            fontSize = 14.sp
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
-            LocationRow(icon = Icons.Default.MyLocation, color = Color(0xFF34D186), address = request.pickupLocation)
-            Spacer(modifier = Modifier.height(8.dp))
-            LocationRow(icon = Icons.Default.Navigation, color = Color(0xFFDC3545), address = request.dropOffLocation)
+            
             Spacer(modifier = Modifier.height(24.dp))
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BoltLightGray, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                LocationRow(icon = Icons.Default.MyLocation, color = BoltGreen, address = request.pickupLocation)
+                Box(modifier = Modifier.padding(start = 7.dp).width(2.dp).height(12.dp).background(Color.LightGray))
+                LocationRow(icon = Icons.Default.Navigation, color = BoltOrange, address = request.dropOffLocation)
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedButton(
+                IconButton(
                     onClick = onCancel,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                    border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f))
+                        .size(64.dp)
+                        .background(Color(0xFFFFF1F0), RoundedCornerShape(16.dp))
                 ) {
-                    Text(text = "Cancel order", fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Close, null, tint = Color.Red)
                 }
+                
                 Button(
                     onClick = onAccept,
                     modifier = Modifier
                         .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745)),
+                        .height(64.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
                     enabled = !isAccepting
                 ) {
                     if (isAccepting) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                     } else {
                         Text(
-                            text = "Accept order",
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp
+                            text = "Accept Ride",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp
                         )
                     }
                 }
@@ -923,19 +986,29 @@ fun OnlineToggleButton(isOnline: Boolean, isApproved: Boolean, onClick: () -> Un
     Button(
         onClick = onClick,
         modifier = Modifier
-            .size(90.dp),
-        shape = CircleShape,
+            .fillMaxWidth()
+            .height(64.dp),
+        shape = RoundedCornerShape(16.dp),
         elevation = ButtonDefaults.buttonElevation(8.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (isOnline) Color.Red else if (isApproved) Color(0xFF28A745) else Color.Gray
+            containerColor = if (isOnline) Color.Red else if (isApproved) BoltGreen else Color.Gray
         )
     ) {
-        Text(
-            text = if (isOnline) stringResource(R.string.btn_off) else stringResource(R.string.btn_go),
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 20.sp,
-            color = Color.White
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (isOnline) Icons.Default.PowerSettingsNew else Icons.Default.FlashOn,
+                contentDescription = null,
+                tint = Color.White
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = if (isOnline) "GO OFFLINE" else "GO ONLINE",
+                fontWeight = FontWeight.Black,
+                fontSize = 18.sp,
+                color = Color.White,
+                letterSpacing = 1.sp
+            )
+        }
     }
 }
 
@@ -1053,27 +1126,41 @@ fun SOSDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.dialog_sos_title), color = Color.Red, fontWeight = FontWeight.Bold) },
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Warning, null, tint = Color.Red, modifier = Modifier.size(48.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("Emergency SOS", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = BoltDark)
+            }
+        },
         text = {
             Column {
-                Text(stringResource(R.string.dialog_sos_text))
-                Spacer(Modifier.height(16.dp))
+                Text("Please select the type of emergency. Security and dispatch will be notified immediately.", textAlign = TextAlign.Center, fontSize = 14.sp, color = Color.Gray)
+                Spacer(Modifier.height(24.dp))
                 var expanded by remember { mutableStateOf(false) }
                 Box {
-                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (sosType.isEmpty()) stringResource(R.string.label_select_type) else sosType)
-                        Icon(Icons.Default.ArrowDropDown, null)
+                    OutlinedButton(
+                        onClick = { expanded = true }, 
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color.LightGray)
+                    ) {
+                        Text(
+                            text = if (sosType.isEmpty()) "Select Emergency Type" else sosType,
+                            color = if (sosType.isEmpty()) Color.Gray else BoltDark,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Icon(Icons.Default.ArrowDropDown, null, tint = Color.Gray)
                     }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        listOf(
-                            "Accident",
-                            "Robbery/Threat",
-                            "Vehicle Breakdown",
-                            "Medical Emergency",
-                            stringResource(R.string.label_other)
-                        ).forEach { type ->
+                    DropdownMenu(
+                        expanded = expanded, 
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.8f).background(Color.White)
+                    ) {
+                        listOf("Accident", "Robbery/Threat", "Vehicle Breakdown", "Medical Emergency", "Other").forEach { type ->
                             DropdownMenuItem(
-                                text = { Text(type) },
+                                text = { Text(type, fontWeight = FontWeight.Medium) },
                                 onClick = {
                                     onTypeSelect(type)
                                     expanded = false
@@ -1082,13 +1169,14 @@ fun SOSDialog(
                         }
                     }
                 }
-                if (sosType == stringResource(R.string.label_other)) {
-                    Spacer(Modifier.height(12.dp))
+                if (sosType == "Other") {
+                    Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
                         value = otherType,
                         onValueChange = onOtherChange,
-                        label = { Text(stringResource(R.string.label_specify_emergency)) },
-                        modifier = Modifier.fillMaxWidth()
+                        placeholder = { Text("Specify emergency details...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
             }
@@ -1097,20 +1185,24 @@ fun SOSDialog(
             Button(
                 onClick = { onSend(0.0, 0.0) },
                 enabled = !isSending,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 if (isSending) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text(stringResource(R.string.btn_send_sos_now))
+                    Text("SEND SOS NOW", fontWeight = FontWeight.Black)
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSending) {
-                Text(stringResource(R.string.cancel))
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), enabled = !isSending) {
+                Text("Cancel", color = Color.Gray, fontWeight = FontWeight.Bold)
             }
-        }
+        },
+        shape = RoundedCornerShape(28.dp),
+        containerColor = Color.White
     )
 }
 

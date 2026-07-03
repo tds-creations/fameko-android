@@ -117,10 +117,10 @@ class DriverLoginActivity : AppCompatActivity() {
             while (true) {
                 ivLogo.load(images[currentIndex]) {
                     crossfade(true)
-                    crossfade(500)
+                    crossfade(2000)
                 }
                 currentIndex = (currentIndex + 1) % images.size
-                delay(2500.milliseconds)
+                delay(10000.milliseconds)
             }
         }
     }

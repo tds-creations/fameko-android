@@ -601,8 +601,7 @@ fun MainMapContent(
                 viewModel.showCancelConfirmation = true
             }
             viewModel.estimatedFare != null && viewModel.currentOrderId == null -> {
-                viewModel.estimatedFare = null
-                viewModel.polylinePoints = emptyList()
+                viewModel.resetSearch()
             }
             else -> viewModel.navigateTo(CustomerScreen.Landing)
         }
@@ -648,10 +647,11 @@ fun MainMapContent(
     )
 
     val activeMarkers = remember { ConcurrentHashMap<String, Marker>() }
-    var activePolyline by remember { mutableStateOf<Polyline?>(null) }
+    val activePolylineRef = remember { object { var value: Polyline? = null } }
+    val activeRouteMarkers = remember { mutableListOf<Marker>() }
     val animatingMarkerIds = remember { mutableSetOf<String>() }
 
-    val currentSheetState = remember(viewModel.orderStatusData?.status, viewModel.estimatedFare, viewModel.currentOrderId, viewModel.isSearchMode, viewModel.pickupLocation, viewModel.dropOffLocation, viewModel.activeServiceMode, viewModel.pickupLat, viewModel.activeRental, viewModel.rentalPickupLat, viewModel.currentScreen, viewModel.isTimedOut) {
+    val currentSheetState = remember(viewModel.orderStatusData?.status, viewModel.estimatedFare, viewModel.currentOrderId, viewModel.isSearchMode, viewModel.pickupLocation, viewModel.dropOffLocation, viewModel.activeServiceMode, viewModel.pickupLat, viewModel.activeRental, viewModel.rentalPickupLat, viewModel.currentScreen, viewModel.isTimedOut, viewModel.polylinePoints) {
         when {
             viewModel.isTimedOut -> CustomerSheetState.TIMED_OUT
             viewModel.orderStatusData?.status == "PENDING" -> CustomerSheetState.SEARCHING_FOR_DRIVER
@@ -665,8 +665,107 @@ fun MainMapContent(
         }
     }
 
+    // Update markers and drivers
+    LaunchedEffect(mapLibreMap, viewModel.drivers, viewModel.orderStatusData) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        val currentStatus = viewModel.orderStatusData
+        
+        val driversToShow = if (currentStatus?.status == "ASSIGNED" || currentStatus?.status == "IN_TRANSIT" || currentStatus?.status == "ARRIVED") {
+            val dLat = currentStatus.driverLat
+            val dLng = currentStatus.driverLng
+            if (dLat != null && dLng != null) {
+                listOf(DriverLocation(
+                    id = currentStatus.driverId ?: "0",
+                    latitude = dLat,
+                    longitude = dLng,
+                    bearing = currentStatus.driverBearing ?: 0f,
+                    vehicleType = currentStatus.driverVehicle
+                ))
+            } else emptyList()
+        } else {
+            viewModel.drivers
+        }
+
+        @Suppress("DEPRECATION")
+        val currentDriverIds = driversToShow.map { it.id }.toSet()
+        val iterator = activeMarkers.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.key !in currentDriverIds) {
+                map.removeMarker(entry.value)
+                iterator.remove()
+            }
+        }
+
+        driversToShow.forEach { driver ->
+            val id = driver.id
+            val marker = activeMarkers[id]
+            val endPos = LatLng(driver.latitude, driver.longitude)
+            
+            if (marker == null) {
+                @Suppress("DEPRECATION")
+                val newMarker = map.addMarker(MarkerOptions()
+                    .position(endPos)
+                    .icon(IconFactory.getInstance(context).fromResource(R.drawable.ic_car))
+                )
+                activeMarkers[id] = newMarker
+            } else if (!animatingMarkerIds.contains(id)) {
+                val startPos = marker.position
+                val distanceSq = (startPos.latitude - endPos.latitude) * (startPos.latitude - endPos.latitude) + 
+                               (startPos.longitude - endPos.longitude) * (startPos.longitude - endPos.longitude)
+                if (distanceSq > 0.00000001) {
+                    animatingMarkerIds.add(id)
+                    animateMarker(marker, startPos, endPos) { animatingMarkerIds.remove(id) }
+                }
+            }
+        }
+    }
+
+    // Update route and route markers
+    LaunchedEffect(mapLibreMap, viewModel.polylinePoints) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        
+        @Suppress("DEPRECATION")
+        // Clean up
+        activePolylineRef.value?.let { map.removePolyline(it) }
+        activePolylineRef.value = null
+        activeRouteMarkers.forEach { map.removeMarker(it) }
+        activeRouteMarkers.clear()
+
+        if (viewModel.polylinePoints.isNotEmpty()) {
+            val polyline = map.addPolyline(PolylineOptions()
+                .addAll(viewModel.polylinePoints)
+                .color(FamekoBlue.toArgb())
+                .width(6f)
+            )
+            activePolylineRef.value = polyline
+            
+            val pickupPos = LatLng(viewModel.pickupLat ?: 0.0, viewModel.pickupLng ?: 0.0)
+            val dropoffPos = LatLng(viewModel.dropOffLat ?: 0.0, viewModel.dropOffLng ?: 0.0)
+            
+            if (pickupPos.latitude != 0.0) {
+                val m = map.addMarker(MarkerOptions()
+                    .position(pickupPos)
+                    .title("PICKUP")
+                    .snippet("${viewModel.pickupEtaMin?.toInt() ?: 5} min")
+                )
+                activeRouteMarkers.add(m)
+            }
+            if (dropoffPos.latitude != 0.0) {
+                val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                val dropoffTime = sdf.format(Date(System.currentTimeMillis() + (viewModel.durationMin * 60000).toLong()))
+                val m = map.addMarker(MarkerOptions()
+                    .position(dropoffPos)
+                    .title("DROPOFF")
+                    .snippet(dropoffTime)
+                )
+                activeRouteMarkers.add(m)
+            }
+        }
+    }
+
     // Auto-Zoom to fit route
-    LaunchedEffect(viewModel.polylinePoints) {
+    LaunchedEffect(viewModel.polylinePoints, mapLibreMap) {
         if (viewModel.polylinePoints.isNotEmpty() && mapLibreMap != null) {
             try {
                 val boundsBuilder = org.maplibre.android.geometry.LatLngBounds.Builder()
@@ -1001,6 +1100,10 @@ fun MainMapContent(
             }
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                val polylinePoints = viewModel.polylinePoints
+                val drivers = viewModel.drivers
+                val orderStatusData = viewModel.orderStatusData
+                
                 AndroidView(
                     factory = { mapView },
                     modifier = Modifier.fillMaxSize(),
@@ -1015,103 +1118,6 @@ fun MainMapContent(
                                 map.addOnMapClickListener {
                                     focusManager.clearFocus()
                                     false
-                                }
-                            }
-                            
-                            val currentStatus = viewModel.orderStatusData
-                            val driversToShow = if (currentStatus?.status == "ASSIGNED" || currentStatus?.status == "IN_TRANSIT" || currentStatus?.status == "ARRIVED") {
-                                val dLat = currentStatus.driverLat
-                                val dLng = currentStatus.driverLng
-                                if (dLat != null && dLng != null) {
-                                    listOf(DriverLocation(
-                                        id = currentStatus.driverId ?: "0",
-                                        latitude = dLat,
-                                        longitude = dLng,
-                                        bearing = currentStatus.driverBearing ?: 0f,
-                                        vehicleType = currentStatus.driverVehicle
-                                    ))
-                                } else emptyList()
-                            } else {
-                                viewModel.drivers
-                            }
-
-                            // Update markers
-                            @Suppress("DEPRECATION")
-                            val currentDriverIds = driversToShow.map { it.id }.toSet()
-                            val iterator = activeMarkers.entries.iterator()
-                            while (iterator.hasNext()) {
-                                val entry = iterator.next()
-                                if (entry.key !in currentDriverIds) {
-                                    @Suppress("DEPRECATION")
-                                    map.removeMarker(entry.value)
-                                    iterator.remove()
-                                }
-                            }
-
-                            driversToShow.forEach { driver ->
-                                val id = driver.id
-                                val marker = activeMarkers[id]
-                                val endPos = LatLng(driver.latitude, driver.longitude)
-                                
-                                if (marker == null) {
-                                    @Suppress("DEPRECATION")
-                                    val newMarker = map.addMarker(MarkerOptions()
-                                        .position(endPos)
-                                        .icon(IconFactory.getInstance(context).fromResource(R.drawable.ic_car))
-                                    )
-                                    activeMarkers[id] = newMarker
-                                } else if (!animatingMarkerIds.contains(id)) {
-                                    val startPos = marker.position
-                                    val distanceSq = (startPos.latitude - endPos.latitude) * (startPos.latitude - endPos.latitude) + 
-                                                   (startPos.longitude - endPos.longitude) * (startPos.longitude - endPos.longitude)
-                                    if (distanceSq > 0.00000001) {
-                                        animatingMarkerIds.add(id)
-                                        animateMarker(marker, startPos, endPos) { animatingMarkerIds.remove(id) }
-                                    }
-                                }
-                            }
-
-                            // Update route
-                            @Suppress("DEPRECATION")
-                            if (viewModel.polylinePoints.isEmpty()) {
-                                activePolyline?.let { map.removePolyline(it) }
-                                activePolyline = null
-                                // Remove route markers
-                                map.markers.forEach { m -> 
-                                    if (m.title == "PICKUP" || m.title == "DROPOFF") map.removeMarker(m)
-                                }
-                            } else {
-                                val points = viewModel.polylinePoints
-                                activePolyline?.let { map.removePolyline(it) }
-                                activePolyline = map.addPolyline(PolylineOptions()
-                                    .addAll(points)
-                                    .color(FamekoBlue.toArgb())
-                                    .width(5f)
-                                )
-                                
-                                // Add Route Markers
-                                map.markers.forEach { m -> 
-                                    if (m.title == "PICKUP" || m.title == "DROPOFF") map.removeMarker(m)
-                                }
-                                
-                                val pickupPos = LatLng(viewModel.pickupLat ?: 0.0, viewModel.pickupLng ?: 0.0)
-                                val dropoffPos = LatLng(viewModel.dropOffLat ?: 0.0, viewModel.dropOffLng ?: 0.0)
-                                
-                        if (pickupPos.latitude != 0.0) {
-                                    map.addMarker(MarkerOptions()
-                                        .position(pickupPos)
-                                        .title("PICKUP")
-                                        .snippet("${viewModel.pickupEtaMin?.toInt() ?: 5} min")
-                                    )
-                                }
-                                if (dropoffPos.latitude != 0.0) {
-                                    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-                                    val dropoffTime = sdf.format(Date(System.currentTimeMillis() + (viewModel.durationMin * 60000).toLong()))
-                                    map.addMarker(MarkerOptions()
-                                        .position(dropoffPos)
-                                        .title("DROPOFF")
-                                        .snippet(dropoffTime)
-                                    )
                                 }
                             }
                         }
@@ -1133,10 +1139,10 @@ fun MainMapContent(
                                 .height(64.dp)
                                 .clickable { 
                                     if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) {
-                                        viewModel.estimatedFare = null
-                                        viewModel.polylinePoints = emptyList()
+                                        viewModel.resetSearch()
+                                    } else {
+                                        viewModel.navigateTo(CustomerScreen.RouteSelection)
                                     }
-                                    viewModel.navigateTo(CustomerScreen.RouteSelection)
                                 },
                             shape = RoundedCornerShape(16.dp),
                             color = Color.White,
@@ -1149,8 +1155,7 @@ fun MainMapContent(
                             ) {
                                 IconButton(onClick = { 
                                     if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) {
-                                        viewModel.estimatedFare = null
-                                        viewModel.polylinePoints = emptyList()
+                                        viewModel.resetSearch()
                                     } else {
                                         viewModel.navigateTo(CustomerScreen.Landing)
                                     }
@@ -2312,6 +2317,16 @@ fun SaveLocationSearchScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             placeholder = { Text("Search location", color = Color.Gray) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+            trailingIcon = if (searchQuery.isNotEmpty()) {
+                { 
+                    IconButton(onClick = { 
+                        searchQuery = ""
+                        viewModel.updateDropOffLocation("")
+                    }) { 
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.Gray) 
+                    } 
+                }
+            } else null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = FamekoBlue,
                 unfocusedBorderColor = Color.LightGray,
@@ -2397,228 +2412,239 @@ fun RouteSelectionScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { focusManager.clearFocus() })
-            }
-    ) {
-        // Top Bar
-        Row(
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 0.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { focusManager.clearFocus() })
+                }
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(28.dp))
+            // Top Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 0.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(28.dp))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Route",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Route",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
 
-        // Search Box Container
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(BoltLightGray)
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                // Pickup Input
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White)
-                        .border(
-                            width = 1.5.dp,
-                            color = if (isPickupFocused) BoltGreen else Color.Transparent,
-                            shape = RoundedCornerShape(8.dp)
+            // Search Box Container
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(BoltLightGray)
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    // Pickup Input
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White)
+                            .border(
+                                width = 1.5.dp,
+                                color = if (isPickupFocused) BoltGreen else Color.Transparent,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .border(2.dp, Color.Gray, CircleShape)
                         )
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .border(2.dp, Color.Gray, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    BasicTextField(
-                        value = viewModel.pickupLocation,
-                        onValueChange = { viewModel.updatePickupLocation(it) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(pickupFocusRequester)
-                            .onFocusChanged { isPickupFocused = it.isFocused },
-                        textStyle = TextStyle(fontSize = 16.sp, color = BoltDark, fontWeight = FontWeight.Medium),
-                        decorationBox = { innerTextField ->
-                            if (viewModel.pickupLocation.isEmpty()) {
-                                Text("Pickup location", color = Color.Gray, fontSize = 16.sp)
-                            }
-                            innerTextField()
-                        },
-                        singleLine = true
-                    )
-
-                    if (isPickupFocused) {
-                        Surface(
-                            modifier = Modifier.clickable { onBack() },
-                            color = FamekoBlue,
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Map", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.width(4.dp))
-                                Icon(Icons.Default.Map, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Dropoff Input
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White)
-                        .border(
-                            width = 1.5.dp,
-                            color = if (isDropOffFocused) BoltGreen else Color.Transparent,
-                            shape = RoundedCornerShape(8.dp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        BasicTextField(
+                            value = viewModel.pickupLocation,
+                            onValueChange = { viewModel.updatePickupLocation(it) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(pickupFocusRequester)
+                                .onFocusChanged { isPickupFocused = it.isFocused },
+                            textStyle = TextStyle(fontSize = 16.sp, color = BoltDark, fontWeight = FontWeight.Medium),
+                            decorationBox = { innerTextField ->
+                                if (viewModel.pickupLocation.isEmpty()) {
+                                    Text("Pickup location", color = Color.Gray, fontSize = 16.sp)
+                                }
+                                innerTextField()
+                            },
+                            singleLine = true
                         )
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = BoltDark
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    BasicTextField(
-                        value = viewModel.dropOffLocation,
-                        onValueChange = { viewModel.updateDropOffLocation(it) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(dropOffFocusRequester)
-                            .onFocusChanged { isDropOffFocused = it.isFocused },
-                        textStyle = TextStyle(fontSize = 16.sp, color = BoltDark, fontWeight = FontWeight.Medium),
-                        decorationBox = { innerTextField ->
-                            if (viewModel.dropOffLocation.isEmpty()) {
-                                Text("Dropoff location", color = Color.Gray, fontSize = 16.sp)
+
+                        if (viewModel.pickupLocation.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.updatePickupLocation("") }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
                             }
-                            innerTextField()
-                        },
-                        singleLine = true
-                    )
-                    
-                    if (isDropOffFocused) {
-                        Surface(
-                            modifier = Modifier.clickable { onBack() },
-                            color = FamekoBlue,
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        }
+
+                        if (isPickupFocused) {
+                            Surface(
+                                modifier = Modifier.clickable { onBack() },
+                                color = FamekoBlue,
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Map", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.width(4.dp))
-                                Icon(Icons.Default.Map, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Map", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Default.Map, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Dropoff Input
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White)
+                            .border(
+                                width = 1.5.dp,
+                                color = if (isDropOffFocused) BoltGreen else Color.Transparent,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = BoltDark
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        BasicTextField(
+                            value = viewModel.dropOffLocation,
+                            onValueChange = { viewModel.updateDropOffLocation(it) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(dropOffFocusRequester)
+                                .onFocusChanged { isDropOffFocused = it.isFocused },
+                            textStyle = TextStyle(fontSize = 16.sp, color = BoltDark, fontWeight = FontWeight.Medium),
+                            decorationBox = { innerTextField ->
+                                if (viewModel.dropOffLocation.isEmpty()) {
+                                    Text("Dropoff location", color = Color.Gray, fontSize = 16.sp)
+                                }
+                                innerTextField()
+                            },
+                            singleLine = true
+                        )
+                        
+                        if (viewModel.dropOffLocation.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.updateDropOffLocation("") }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        
+                        if (isDropOffFocused) {
+                            Surface(
+                                modifier = Modifier.clickable { onBack() },
+                                color = FamekoBlue,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Map", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Default.Map, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-            // Right Action Icons
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = { if (viewModel.stops.size < 5) viewModel.stops += "" }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Add, null, tint = BoltDark)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                IconButton(onClick = {
-                    val tempLoc = viewModel.pickupLocation
-                    val tempLat = viewModel.pickupLat
-                    val tempLng = viewModel.pickupLng
-                    
-                    viewModel.pickupLocation = viewModel.dropOffLocation
-                    viewModel.pickupLat = viewModel.dropOffLat
-                    viewModel.pickupLng = viewModel.dropOffLng
-                    
-                    viewModel.dropOffLocation = tempLoc
-                    viewModel.dropOffLat = tempLat
-                    viewModel.dropOffLng = tempLng
-                }, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.SwapVert, null, tint = BoltDark)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Suggestions List
-        val suggestions = if (isPickupFocused) viewModel.pickupSuggestions else viewModel.dropOffSuggestions
-        
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            if (viewModel.dropOffLocation.isEmpty() && isDropOffFocused) {
-                item {
-                    val context = LocalContext.current
-                    ListItem(
-                        headlineContent = { Text("Use current location", fontWeight = FontWeight.Bold) },
-                        leadingContent = { Icon(Icons.Default.MyLocation, null, tint = BoltGreen) },
-                        modifier = Modifier.clickable { 
-                            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                                viewModel.isLoading = true
-                                com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
-                                    .getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
-                                    .addOnSuccessListener { location ->
-                                        location?.let { 
-                                            viewModel.useCurrentLocation(it, isPickupFocused)
-                                            if (viewModel.pickupLat != null && viewModel.dropOffLat != null) {
-                                                viewModel.calculateRoute()
-                                            }
-                                            onBack()
-                                        } ?: run { viewModel.isLoading = false }
-                                    }.addOnFailureListener { viewModel.isLoading = false }
-                            }
-                        }
-                    )
-                }
-            }
-
-            items(suggestions) { suggestion ->
-                LocationSuggestionItem(suggestion) {
-                    viewModel.selectSuggestion(suggestion, isPickupFocused)
-                    if (viewModel.pickupLat != null && viewModel.dropOffLat != null) {
-                        viewModel.calculateRoute()
-                        onBack()
+                // Right Action Icons
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { if (viewModel.stops.size < 5) viewModel.stops += "" }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Add, null, tint = BoltDark)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    IconButton(onClick = {
+                        val tempLoc = viewModel.pickupLocation
+                        val tempLat = viewModel.pickupLat
+                        val tempLng = viewModel.pickupLng
+                        
+                        viewModel.pickupLocation = viewModel.dropOffLocation
+                        viewModel.pickupLat = viewModel.dropOffLat
+                        viewModel.pickupLng = viewModel.dropOffLng
+                        
+                        viewModel.dropOffLocation = tempLoc
+                        viewModel.dropOffLat = tempLat
+                        viewModel.dropOffLng = tempLng
+                    }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.SwapVert, null, tint = BoltDark)
                     }
                 }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Suggestions List
+            val suggestions = if (isPickupFocused) viewModel.pickupSuggestions else viewModel.dropOffSuggestions
+            
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (viewModel.dropOffLocation.isEmpty() && isDropOffFocused) {
+                    item {
+                        val context = LocalContext.current
+                        ListItem(
+                            headlineContent = { Text("Use current location", fontWeight = FontWeight.Bold) },
+                            leadingContent = { Icon(Icons.Default.MyLocation, null, tint = BoltGreen) },
+                            modifier = Modifier.clickable { 
+                                if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                    viewModel.isLoading = true
+                                    com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
+                                        .getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
+                                        .addOnSuccessListener { location ->
+                                            location?.let { 
+                                                viewModel.useCurrentLocation(it, isPickupFocused)
+                                            } ?: run { viewModel.isLoading = false }
+                                        }.addOnFailureListener { viewModel.isLoading = false }
+                                }
+                            }
+                        )
+                    }
+                }
+
+                items(suggestions) { suggestion ->
+                    LocationSuggestionItem(suggestion) {
+                        viewModel.selectSuggestion(suggestion, isPickupFocused)
+                        if (viewModel.pickupLat != null && viewModel.dropOffLat != null) {
+                            viewModel.calculateRoute()
+                            onBack()
+                        }
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+                }
             }
         }
+
+        // Removed Confirm Button as per request
     }
 }
 

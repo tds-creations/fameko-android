@@ -230,106 +230,100 @@ fun CustomerManagePlacesScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                when (val state = uiState) {
-                    is CustomerMapViewModel.SavedPlacesUiState.Loading -> {
-                        if (savedPlacesLocal.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = FamekoBlue)
-                            }
-                        }
+                if (savedPlacesLocal.isEmpty() && uiState is CustomerMapViewModel.SavedPlacesUiState.Loading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(400.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = FamekoBlue)
                     }
-                    is CustomerMapViewModel.SavedPlacesUiState.Error -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Error: ${state.message}", color = Color.Red)
-                        }
+                } else if (savedPlacesLocal.isEmpty() && uiState is CustomerMapViewModel.SavedPlacesUiState.Error) {
+                    Box(modifier = Modifier.fillMaxWidth().height(400.dp), contentAlignment = Alignment.Center) {
+                        Text("Error: ${(uiState as CustomerMapViewModel.SavedPlacesUiState.Error).message}", color = Color.Red)
                     }
-                    is CustomerMapViewModel.SavedPlacesUiState.Success -> {
-                        val savedPlaces = state.places
-                        val homePlace = savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
-                        val workPlace = savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
+                } else {
+                    val savedPlaces = savedPlacesLocal
+                    val homePlace = savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
+                    val workPlace = savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
+                    Text(
+                        "Quick access",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    // Home Item
+                    SavedPlaceActionItem(
+                        icon = Icons.Default.Home,
+                        title = "Home",
+                        subtitle = homePlace?.address ?: "Add home address",
+                        isSet = homePlace != null,
+                        onDelete = { homePlace?.let { showDeleteDialog = it } },
+                        onClick = { 
+                            if (homePlace != null) onEditPlace(homePlace.id.toInt(), "Home")
+                            else onAddPlace("Home") 
+                        }
+                    )
+
+                    HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
+
+                    // Work Item
+                    SavedPlaceActionItem(
+                        icon = Icons.Default.Work,
+                        title = "Work",
+                        subtitle = workPlace?.address ?: "Add work address",
+                        isSet = workPlace != null,
+                        onDelete = { workPlace?.let { showDeleteDialog = it } },
+                        onClick = { 
+                            if (workPlace != null) onEditPlace(workPlace.id.toInt(), "Work")
+                            else onAddPlace("Work") 
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(
-                            "Quick access",
+                            "Other places",
                             style = MaterialTheme.typography.titleSmall,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            color = Color.Gray
                         )
-
-                        // Home Item
-                        SavedPlaceActionItem(
-                            icon = Icons.Default.Home,
-                            title = "Home",
-                            subtitle = homePlace?.address ?: "Add home address",
-                            isSet = homePlace != null,
-                            onDelete = { homePlace?.let { showDeleteDialog = it } },
-                            onClick = { 
-                                if (homePlace != null) onEditPlace(homePlace.id.toInt(), "Home")
-                                else onAddPlace("Home") 
+                        TextButton(onClick = { onAddPlace("Favorite") }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Add new", fontWeight = FontWeight.Bold)
                             }
-                        )
+                        }
+                    }
 
-                        HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
+                    // List of other saved places
+                    val otherPlaces = savedPlaces.filter { 
+                        !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
+                    }
 
-                        // Work Item
-                        SavedPlaceActionItem(
-                            icon = Icons.Default.Work,
-                            title = "Work",
-                            subtitle = workPlace?.address ?: "Add work address",
-                            isSet = workPlace != null,
-                            onDelete = { workPlace?.let { showDeleteDialog = it } },
-                            onClick = { 
-                                if (workPlace != null) onEditPlace(workPlace.id.toInt(), "Work")
-                                else onAddPlace("Work") 
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                    if (otherPlaces.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                "Other places",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = Color.Gray
+                            Text("No other places saved", color = Color.LightGray, fontSize = 14.sp)
+                        }
+                    } else {
+                        otherPlaces.forEach { place ->
+                            SavedPlaceActionItem(
+                                icon = Icons.Default.Place,
+                                title = place.label,
+                                subtitle = place.address,
+                                isSet = true,
+                                onDelete = { showDeleteDialog = place },
+                                onClick = { onEditPlace(place.id.toInt(), place.label) }
                             )
-                            TextButton(onClick = { onAddPlace("Favorite") }) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Add new", fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-
-                        // List of other saved places
-                        val otherPlaces = savedPlaces.filter { 
-                            !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
-                        }
-
-                        if (otherPlaces.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("No other places saved", color = Color.LightGray, fontSize = 14.sp)
-                            }
-                        } else {
-                            otherPlaces.forEach { place ->
-                                SavedPlaceActionItem(
-                                    icon = Icons.Default.Place,
-                                    title = place.label,
-                                    subtitle = place.address,
-                                    isSet = true,
-                                    onDelete = { showDeleteDialog = place },
-                                    onClick = { onEditPlace(place.id.toInt(), place.label) }
-                                )
-                                HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
-                            }
+                            HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
                         }
                     }
                 }

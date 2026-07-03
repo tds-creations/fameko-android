@@ -159,9 +159,15 @@ class CustomerMapViewModel(
 
     fun fetchSavedPlaces() {
         viewModelScope.launch {
-            val customerId = sessionManager.getCustomerId() ?: return@launch
+            val customerId = sessionManager.getCustomerId() ?: run {
+                _savedPlacesUiState.value = SavedPlacesUiState.Success(savedPlaces.value)
+                return@launch
+            }
             _savedPlacesUiState.value = SavedPlacesUiState.Loading
             savedPlaceRepository.fetchSavedPlaces(customerId)
+                .onSuccess {
+                    _savedPlacesUiState.value = SavedPlacesUiState.Success(savedPlaces.value)
+                }
                 .onFailure { _savedPlacesUiState.value = SavedPlacesUiState.Error(it.message ?: "Unknown error") }
         }
     }
@@ -338,6 +344,22 @@ class CustomerMapViewModel(
         isTimedOut = false
     }
 
+    fun resetSearch() {
+        pickupLocation = ""
+        pickupLat = null
+        pickupLng = null
+        dropOffLocation = ""
+        dropOffLat = null
+        dropOffLng = null
+        polylinePoints = emptyList()
+        estimatedFare = null
+        rideEstimates = emptyList()
+        isSearchMode = false
+        rentalPickupLocation = ""
+        rentalPickupLat = null
+        rentalPickupLng = null
+    }
+
     private fun startActiveRentalPolling() {
         rentalPollingJob?.cancel()
         rentalPollingJob = viewModelScope.launch {
@@ -367,7 +389,7 @@ class CustomerMapViewModel(
     }
 
     fun updatePickupLocation(query: String) {
-        if (isSelectingSuggestion) return
+        if (isSelectingSuggestion && query.isNotEmpty()) return
         if (activeServiceMode == ServiceType.RENTAL) {
             if (query == rentalPickupLocation) return
             rentalPickupLocation = query
@@ -385,7 +407,7 @@ class CustomerMapViewModel(
     }
 
     fun updateDropOffLocation(query: String) {
-        if (isSelectingSuggestion) return
+        if (isSelectingSuggestion && query.isNotEmpty()) return
         if (query == dropOffLocation) return
         dropOffLocation = query
         dropOffLat = null
@@ -571,8 +593,8 @@ class CustomerMapViewModel(
                     polylinePoints = response.routeCoords.map { LatLng(it[1], it[0]) }
                     distanceKm = response.distanceM / 1000.0
                     durationMin = response.etaMin
+                    isLoading = false
                     updateEstimatedFare()
-                    isSearchMode = false
                 }
                 .onFailure {
                     isLoading = false
