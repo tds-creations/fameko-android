@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -703,10 +704,13 @@ fun MainMapContent(
             val endPos = LatLng(driver.latitude, driver.longitude)
             
             if (marker == null) {
+                val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car)?.toBitmap()
+                val carIcon = carBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
+                
                 @Suppress("DEPRECATION")
                 val newMarker = map.addMarker(MarkerOptions()
                     .position(endPos)
-                    .icon(IconFactory.getInstance(context).fromResource(R.drawable.ic_car))
+                    .apply { if (carIcon != null) icon(carIcon) }
                 )
                 activeMarkers[id] = newMarker
             } else if (!animatingMarkerIds.contains(id)) {
