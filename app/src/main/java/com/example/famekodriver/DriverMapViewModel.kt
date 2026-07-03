@@ -40,6 +40,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var isAccepting by mutableStateOf(false)
     var navigationPath by mutableStateOf<List<LatLng>>(emptyList())
     var driverLatLng by mutableStateOf<LatLng?>(null)
+    var driverBearing by mutableStateOf(0f)
     var heatmapPoints by mutableStateOf<List<HeatmapPoint>>(emptyList())
     var currentSurge by mutableStateOf<SurgeInfo?>(null)
     var requestTimer by mutableIntStateOf(30)

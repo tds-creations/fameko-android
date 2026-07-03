@@ -703,26 +703,34 @@ fun MainMapContent(
             val id = driver.id
             val marker = activeMarkers[id]
             val endPos = LatLng(driver.latitude, driver.longitude)
-            
+            val bearing = driver.bearing
+
+            val carIcon = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()?.let { 
+                val matrix = android.graphics.Matrix()
+                matrix.postRotate(bearing)
+                val scaled = Bitmap.createScaledBitmap(it, 40, 40, false)
+                val rotated = Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
+                IconFactory.getInstance(context).fromBitmap(rotated) 
+            }
+
             if (marker == null) {
-                val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
-                val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 40, 40, false) }
-                val carIcon = resizedBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
-                    ?: ContextCompat.getDrawable(context, R.drawable.ic_car)?.toBitmap()?.let { IconFactory.getInstance(context).fromBitmap(it) }
-                
                 @Suppress("DEPRECATION")
                 val newMarker = map.addMarker(MarkerOptions()
                     .position(endPos)
                     .apply { if (carIcon != null) icon(carIcon) }
                 )
                 activeMarkers[id] = newMarker
-            } else if (!animatingMarkerIds.contains(id)) {
-                val startPos = marker.position
-                val distanceSq = (startPos.latitude - endPos.latitude) * (startPos.latitude - endPos.latitude) + 
-                               (startPos.longitude - endPos.longitude) * (startPos.longitude - endPos.longitude)
-                if (distanceSq > 0.00000001) {
-                    animatingMarkerIds.add(id)
-                    animateMarker(marker, startPos, endPos) { animatingMarkerIds.remove(id) }
+            } else {
+                if (carIcon != null) marker.icon = carIcon
+                
+                if (!animatingMarkerIds.contains(id)) {
+                    val startPos = marker.position
+                    val distanceSq = (startPos.latitude - endPos.latitude) * (startPos.latitude - endPos.latitude) + 
+                                   (startPos.longitude - endPos.longitude) * (startPos.longitude - endPos.longitude)
+                    if (distanceSq > 0.00000001) {
+                        animatingMarkerIds.add(id)
+                        animateMarker(marker, startPos, endPos) { animatingMarkerIds.remove(id) }
+                    }
                 }
             }
         }

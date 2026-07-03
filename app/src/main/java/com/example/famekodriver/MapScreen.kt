@@ -128,7 +128,10 @@ fun MapScreen(
                 locationRequest,
                 object : com.google.android.gms.location.LocationCallback() {
                     override fun onLocationResult(res: com.google.android.gms.location.LocationResult) {
-                        res.lastLocation?.let { viewModel.driverLatLng = LatLng(it.latitude, it.longitude) }
+                        res.lastLocation?.let { 
+                            viewModel.driverLatLng = LatLng(it.latitude, it.longitude)
+                            viewModel.driverBearing = it.bearing
+                        }
                     }
                 },
                 context.mainLooper
@@ -254,8 +257,13 @@ fun MapScreen(
                     // Driver Marker
                     viewModel.driverLatLng?.let { pos ->
                         val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
-                        val resizedBitmap = carBitmap?.let { Bitmap.createScaledBitmap(it, 40, 40, false) }
-                        val carIcon = resizedBitmap?.let { IconFactory.getInstance(context).fromBitmap(it) }
+                        val carIcon = carBitmap?.let { 
+                            val matrix = android.graphics.Matrix()
+                            matrix.postRotate(viewModel.driverBearing)
+                            val scaled = Bitmap.createScaledBitmap(it, 40, 40, false)
+                            val rotated = Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
+                            IconFactory.getInstance(context).fromBitmap(rotated) 
+                        }
 
                         map.addMarker(MarkerOptions()
                             .position(pos)
