@@ -79,6 +79,7 @@ object DatabaseInitializer {
                     println("Database connection established. Running migrations...")
                     createTables(conn)
                     migrateTables(conn)
+                    migrateFleetOwners(conn)
                     seedAdmin(conn)
                     println("Database initialization complete.")
                 }
@@ -462,6 +463,51 @@ object DatabaseInitializer {
             migrations.forEach { 
                 try { stmt.execute(it) } catch (e: Exception) { /* Ignore */ }
             }
+        }
+    }
+
+    private fun migrateFleetOwners(conn: Connection) {
+        try {
+            println("Migration: Moving fleet owners from drivers to fleet_owners table...")
+            
+            // 1. Insert into fleet_owners if they don't exist
+            val insertSql = """
+                INSERT INTO fleet_owners (full_name, email, phone, password, company_name, registration_number, region, status, profile_picture, id_front_image, id_back_image, fcm_token)
+                SELECT full_name, email, phone, password, COALESCE(company_name, 'My Fleet'), registration_number, region, status, profile_picture, id_front_image, id_back_image, fcm_token
+                FROM drivers 
+                WHERE (user_role = 'OWNER' OR user_role = 'BOTH')
+                AND email NOT IN (SELECT email FROM fleet_owners)
+            """.trimIndent()
+            conn.createStatement().execute(insertSql)
+            
+            // 2. Link drivers to fleet_owners
+            val linkSql = """
+                UPDATE drivers d
+                SET fleet_owner_id = fo.id
+                FROM fleet_owners fo
+                WHERE d.email = fo.email
+                AND (d.user_role = 'OWNER' OR d.user_role = 'BOTH')
+                AND d.fleet_owner_id IS NULL
+            """.trimIndent()
+            conn.createStatement().execute(linkSql)
+            
+            // 3. Link rental_vehicles to fleet_owners
+            val linkVehiclesSql = """
+                UPDATE rental_vehicles rv
+                SET fleet_owner_id = d.fleet_owner_id
+                FROM drivers d
+                WHERE rv.owner_id = d.id
+                AND d.fleet_owner_id IS NOT NULL
+                AND rv.fleet_owner_id IS NULL
+            """.trimIndent()
+            conn.createStatement().execute(linkVehiclesSql)
+            
+            // 4. For users who were strictly OWNER, we can keep them in drivers for now to avoid breaking FKs, 
+            // but they will now primarily use the fleet_owners table for management.
+            
+            println("Migration: Fleet owner data migration complete.")
+        } catch (e: Exception) {
+            println("Migration error (migrateFleetOwners): ${e.message}")
         }
     }
 
