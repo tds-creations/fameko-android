@@ -144,10 +144,10 @@ fun CustomerAccountScreen(
 
         // Secondary Menu Items (with subtitles)
         AccountMenuItem(
-            icon = Icons.Default.Restaurant,
-            title = "Fameko Delivery",
-            subtitle = "Get your favorites delivered fast",
-            onClick = { onNavigate(CustomerScreen.FleetBrowse) } // Link to something relevant
+            icon = Icons.Default.DirectionsCar,
+            title = "Fameko Rentals",
+            subtitle = "Rent a vehicle for your convenience",
+            onClick = { onNavigate(CustomerScreen.FleetBrowse) }
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
