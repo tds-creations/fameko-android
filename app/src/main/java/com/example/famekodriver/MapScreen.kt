@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -248,6 +249,17 @@ fun MapScreen(
                 update = { mv ->
                     val map = mapLibreMap ?: return@AndroidView
                     map.clear()
+                    
+                    // Driver Marker
+                    viewModel.driverLatLng?.let { pos ->
+                        val carIcon = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()?.let { 
+                            IconFactory.getInstance(context).fromBitmap(it) 
+                        }
+                        map.addMarker(MarkerOptions()
+                            .position(pos)
+                            .apply { if (carIcon != null) icon(carIcon) }
+                        )
+                    }
                     
                     viewModel.heatmapPoints.forEach { point ->
                         val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude), 300.0)
