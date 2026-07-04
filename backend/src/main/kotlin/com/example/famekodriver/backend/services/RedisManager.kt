@@ -221,4 +221,19 @@ object RedisManager {
             0
         }
     }
+
+    /**
+     * Store OTP for password reset (10 mins TTL)
+     */
+    fun storeResetOtp(email: String, otp: String) {
+        set("reset_otp:$email", otp, 600)
+    }
+
+    /**
+     * Verify OTP for password reset
+     */
+    fun verifyResetOtp(email: String, otp: String): Boolean {
+        val stored = get("reset_otp:$email")
+        return stored != null && stored == otp
+    }
 }

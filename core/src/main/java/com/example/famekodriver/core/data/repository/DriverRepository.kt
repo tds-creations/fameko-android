@@ -316,6 +316,24 @@ class DriverRepository {
         }
     }
 
+    suspend fun forgotPassword(email: String): Result<AuthResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.forgotPassword(ForgotPasswordRequest(email))
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun resetPassword(email: String, otp: String, newPass: String): Result<AuthResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.resetPassword(ResetPasswordRequest(email, otp, newPass))
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun adminLogin(username: String, pass: String): Result<Admin> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.loginAdmin(LoginRequest(username, pass))

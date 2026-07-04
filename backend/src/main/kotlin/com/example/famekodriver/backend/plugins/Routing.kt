@@ -961,6 +961,48 @@ fun Application.configureRouting() {
             }
         }
 
+        // --- PASSWORD RESET ---
+        post("/auth/forgot-password") {
+            try {
+                val req = call.receive<ForgotPasswordRequest>()
+                val email = req.email.trim().lowercase()
+                
+                // Verify user exists in any table
+                val exists = userExistsInAnyTable(email)
+                if (!exists) {
+                    call.respond(AuthResponse(false, "User with this email not found", null, null))
+                    return@post
+                }
+
+                val otp = (100000..999999).random().toString()
+                RedisManager.storeResetOtp(email, otp)
+                
+                // LOG the OTP for testing
+                println(">>> PASSWORD RESET OTP for $email: $otp")
+                
+                call.respond(AuthResponse(true, "Reset code sent successfully", null, null))
+            } catch (e: Exception) {
+                call.respond(AuthResponse(false, e.message ?: "Error", null, null))
+            }
+        }
+
+        post("/auth/reset-password") {
+            try {
+                val req = call.receive<ResetPasswordRequest>()
+                val email = req.email.trim().lowercase()
+                
+                if (RedisManager.verifyResetOtp(email, req.otp)) {
+                    updateUserPasswordInDb(email, req.newPassword)
+                    RedisManager.delete("reset_otp:$email")
+                    call.respond(AuthResponse(true, "Password updated successfully", null, null))
+                } else {
+                    call.respond(AuthResponse(false, "Invalid or expired code", null, null))
+                }
+            } catch (e: Exception) {
+                call.respond(AuthResponse(false, e.message ?: "Error", null, null))
+            }
+        }
+
         get("/pricing/config") { call.respond(getPricingConfigFromDb()) }
 
         route("/api/v1") {
@@ -2604,6 +2646,41 @@ private fun getFleetOwnerDetailsFromDb(id: Int): Map<String, Any>? {
 
 private fun updateFleetOwnerStatusInDb(id: Int, status: String) {
     DatabaseInitializer.getDataSource().connection.use { it.prepareStatement("UPDATE fleet_owners SET status = ? WHERE id = ?").apply { setString(1, status); setInt(2, id); executeUpdate() } }
+}
+
+private fun userExistsInAnyTable(email: String): Boolean {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        // Check Drivers
+        val s1 = conn.prepareStatement("SELECT 1 FROM drivers WHERE LOWER(TRIM(email)) = ?")
+        s1.setString(1, email)
+        if (s1.executeQuery().next()) return true
+
+        // Check Customers
+        val s2 = conn.prepareStatement("SELECT 1 FROM customers WHERE LOWER(TRIM(email)) = ?")
+        s2.setString(1, email)
+        if (s2.executeQuery().next()) return true
+
+        // Check Fleet Owners
+        val s3 = conn.prepareStatement("SELECT 1 FROM fleet_owners WHERE LOWER(TRIM(email)) = ?")
+        s3.setString(1, email)
+        if (s3.executeQuery().next()) return true
+    }
+    return false
+}
+
+private fun updateUserPasswordInDb(email: String, newPass: String) {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        // Update all tables where this email might exist
+        val tables = listOf("drivers", "customers", "fleet_owners")
+        tables.forEach { table ->
+            val sql = "UPDATE $table SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE LOWER(TRIM(email)) = ?"
+            conn.prepareStatement(sql).apply {
+                setString(1, newPass)
+                setString(2, email)
+                executeUpdate()
+            }
+        }
+    }
 }
 
 

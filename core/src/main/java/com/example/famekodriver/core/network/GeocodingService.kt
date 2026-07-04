@@ -41,6 +41,16 @@ interface FamekoApiService {
         @Body request: LoginRequest
     ): AuthResponse
 
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(
+        @Body request: ForgotPasswordRequest
+    ): AuthResponse
+
+    @POST("auth/reset-password")
+    suspend fun resetPassword(
+        @Body request: ResetPasswordRequest
+    ): AuthResponse
+
     @Multipart
     @POST("driver/register")
     suspend fun registerDriver(

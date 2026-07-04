@@ -102,6 +102,10 @@ class DriverLoginActivity : AppCompatActivity() {
             val intent = Intent(this, DriverSignupActivity::class.java)
             startActivity(intent)
         }
+
+        findViewById<TextView>(R.id.tvForgotPassword).setOnClickListener {
+            startActivity(Intent(this, ForgotPasswordActivity::class.java))
+        }
     }
 
     private fun setupCarousel() {

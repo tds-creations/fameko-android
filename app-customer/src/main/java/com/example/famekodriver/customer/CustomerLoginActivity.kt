@@ -91,6 +91,10 @@ class CustomerLoginActivity : AppCompatActivity() {
         tvBackToHome.setOnClickListener {
             finish()
         }
+
+        findViewById<TextView>(R.id.tvForgotPassword).setOnClickListener {
+            startActivity(Intent(this, CustomerForgotPasswordActivity::class.java))
+        }
     }
 
     private fun setupCarousel() {
