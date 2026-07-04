@@ -79,17 +79,17 @@ fun CustomerLandingScreen(
         // Service Grid - Row 2
         Row(modifier = Modifier.fillMaxWidth()) {
             ServiceGridItem(
-                title = "Rentals",
-                description = "Hire a car",
-                imageUrl = ImageLinks.RENTAL,
+                title = "Delivery",
+                description = "Send packages",
+                imageUrl = ImageLinks.DELIVERY,
                 modifier = Modifier.weight(1f),
-                onClick = { onServiceSelected(ServiceType.RENTAL) }
+                onClick = { onServiceSelected(ServiceType.PACKAGE_DELIVERY) }
             )
             Spacer(modifier = Modifier.width(12.dp))
             ServiceGridItem(
-                title = "Corporate",
-                description = "Long term hire",
-                icon = Icons.Default.BusinessCenter,
+                title = "Rentals",
+                description = "Hire a car",
+                imageUrl = "https://i.postimg.cc/VNrdgL8p/delivery.jpg",
                 modifier = Modifier.weight(1f),
                 onClick = { onServiceSelected(ServiceType.RENTAL) }
             )
