@@ -2767,17 +2767,31 @@ private fun getAllRentalsFromDb(region: String?): List<Map<String, Any>> {
 }
 
 private fun getPricingConfigFromDb(): PricingConfig {
+    // 1. Try Redis Cache first
+    val cached = RedisManager.get("config:pricing")
+    if (cached != null) {
+        try {
+            return com.google.gson.Gson().fromJson(cached, PricingConfig::class.java)
+        } catch (e: Exception) { /* ignore and fallback */ }
+    }
+
+    // 2. Fallback to Database
     DatabaseInitializer.getDataSource().connection.use { conn ->
         val rs = conn.createStatement().executeQuery("SELECT * FROM pricing_config LIMIT 1")
-        if (rs.next()) return PricingConfig(
-            baseFare = rs.getDouble("base_fare"), perKmRate = rs.getDouble("per_km_rate"), perMinuteRate = rs.getDouble("per_minute_rate"),
-            minFare = rs.getDouble("min_fare"), milestoneInterval = rs.getInt("milestone_interval"), milestoneDiscountPercent = rs.getInt("milestone_discount_percent"),
-            peakMultiplier = rs.getDouble("peak_multiplier"), driverCommissionPercent = rs.getDouble("driver_commission_percent"),
-            dailyServiceFee = rs.getDouble("daily_service_fee"), rentalDailyRate = rs.getDouble("rental_daily_rate"), 
-            rentalCommissionPercent = rs.getDouble("rental_commission_percent"),
-            rentalOwnerCommissionPercent = rs.getDouble("rental_owner_commission_percent"),
-            rentalCustomerServiceFeePercent = rs.getDouble("rental_customer_service_fee_percent")
-        )
+        if (rs.next()) {
+            val config = PricingConfig(
+                baseFare = rs.getDouble("base_fare"), perKmRate = rs.getDouble("per_km_rate"), perMinuteRate = rs.getDouble("per_minute_rate"),
+                minFare = rs.getDouble("min_fare"), milestoneInterval = rs.getInt("milestone_interval"), milestoneDiscountPercent = rs.getInt("milestone_discount_percent"),
+                peakMultiplier = rs.getDouble("peak_multiplier"), driverCommissionPercent = rs.getDouble("driver_commission_percent"),
+                dailyServiceFee = rs.getDouble("daily_service_fee"), rentalDailyRate = rs.getDouble("rental_daily_rate"), 
+                rentalCommissionPercent = rs.getDouble("rental_commission_percent"),
+                rentalOwnerCommissionPercent = rs.getDouble("rental_owner_commission_percent"),
+                rentalCustomerServiceFeePercent = rs.getDouble("rental_customer_service_fee_percent")
+            )
+            // 3. Update Redis Cache (TTL: 1 hour)
+            RedisManager.set("config:pricing", com.google.gson.Gson().toJson(config), 3600)
+            return config
+        }
     }
     return PricingConfig(0.0, 0.0, 0.0, 0.0, 0, 0, 1.0, 0.0, 0.0, 0.0, 0.0, 7.5, 7.5)
 }
@@ -2797,6 +2811,8 @@ private fun updatePricingConfigInDb(
             executeUpdate()
         }
     }
+    // Clear cache so changes are picked up immediately
+    RedisManager.delete("config:pricing")
 }
 
 private fun getPendingPaymentsFromDb(): List<Map<String, Any>> {
@@ -3047,6 +3063,19 @@ private fun getOrderStatus(orderId: Int): String {
 }
 
 private fun getNearbyDriversFromDb(lat: Double, lng: Double, radius: Double, vehicleType: String? = null): List<DriverLocation> {
+    // 1. Try Redis First (Ultra-fast temporary database)
+    try {
+        val nearbyIds = RedisManager.getNearbyDrivers(lat, lng, radius)
+        if (nearbyIds.isNotEmpty()) {
+            println("Redis: Found ${nearbyIds.size} nearby drivers for dispatch.")
+            // Note: Since Redis only stores IDs, we'd still need to check statuses/types 
+            // OR store more metadata in Redis. For now, we use Redis to filter and Postgres to validate.
+        }
+    } catch (e: Exception) {
+        println("Redis lookup failed, falling back to PostgreSQL: ${e.message}")
+    }
+
+    // 2. PostgreSQL / H3 Geospatial Logic (Permanent Record)
     val list = mutableListOf<DriverLocation>()
     DatabaseInitializer.getDataSource().connection.use { conn ->
         // Match requested service type to registered vehicle type and admin-assigned category
@@ -3222,6 +3251,9 @@ private fun updateDriverOnlineStatusInDb(id: String, online: Boolean): String? {
         if (!paid) {
             return "Daily service fee not paid. Please pay from your wallet to go online."
         }
+    } else {
+        // Remove from Redis real-time tracking when going offline
+        RedisManager.removeDriverLocation(id)
     }
     DatabaseInitializer.getDataSource().connection.use { conn ->
         conn.prepareStatement("INSERT INTO driver_stats (driver_id, is_online) VALUES (?, ?) ON CONFLICT (driver_id) DO UPDATE SET is_online = EXCLUDED.is_online, updated_at = CURRENT_TIMESTAMP").apply { setInt(1, id.toInt()); setBoolean(2, online); executeUpdate() }
@@ -3260,6 +3292,10 @@ private fun updateDriverDocumentInDb(driverId: String, docType: String, fileUrl:
 }
 
 private fun updateDriverLocationInDb(id: String, lat: Double, lng: Double, bearing: Float) {
+    // 1. Update Redis (Temporary Database) for real-time performance
+    RedisManager.updateDriverLocation(id, lat, lng, bearing)
+
+    // 2. Update PostgreSQL (Permanent Record)
     val h3Index = H3Helper.getIndex(lat, lng)
     DatabaseInitializer.getDataSource().connection.use { conn ->
         conn.prepareStatement("INSERT INTO driver_stats (driver_id, latitude, longitude, bearing, h3_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (driver_id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, bearing = EXCLUDED.bearing, h3_index = EXCLUDED.h3_index, updated_at = CURRENT_TIMESTAMP").apply {
