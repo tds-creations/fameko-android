@@ -36,7 +36,6 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import java.security.MessageDigest
 
-val activeSOS = ConcurrentHashMap<Int, SOSAlert>()
 val sosFlow = MutableSharedFlow<SOSAlert>(extraBufferCapacity = 64)
 
 val PAYSTACK_SECRET = System.getenv("PAYSTACK_SECRET") ?: ""
@@ -114,6 +113,7 @@ fun Application.configureRouting() {
                     val stats = getPlatformStatsFromDb()
                     val rentals = getAllRentalsFromDb(region)
                     val liveDeliveries = getActiveDeliveriesFromDb()
+                    val sosCount = RedisManager.getActiveSOSCount()
 
                     call.respond(ThymeleafContent("admin_dashboard", mapOf(
                         "drivers" to drivers.take(10),
@@ -126,7 +126,7 @@ fun Application.configureRouting() {
                         "totalDebt" to stats["totalDebt"],
                         "totalDeliveries" to liveDeliveries.size,
                         "pendingRentals" to rentals.count { it["status"] == "PENDING" },
-                        "activeSOSCount" to activeSOS.size,
+                        "activeSOSCount" to sosCount,
                         "deliveries" to liveDeliveries.take(10),
                         "activePage" to "dashboard",
                         "admin" to principal
@@ -267,12 +267,12 @@ fun Application.configureRouting() {
                 }
 
                 get("/active-sos") {
-                    call.respond(activeSOS.values.toList())
+                    call.respond(RedisManager.getAllSOS())
                 }
 
                 post("/resolve-sos/{id}") {
                     val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
-                    activeSOS.remove(id)
+                    RedisManager.resolveSOS(id)
                     call.respond(mapOf("success" to true))
                 }
 
@@ -629,7 +629,7 @@ fun Application.configureRouting() {
             }
 
             get("/active-sos") {
-                call.respond(activeSOS.values.toList())
+                call.respond(RedisManager.getAllSOS())
             }
 
             get("/pending-drivers") {
@@ -649,7 +649,7 @@ fun Application.configureRouting() {
                     "liveDeliveries" to liveDeliveries.size,
                     "totalRevenue" to stats["totalRevenue"],
                     "totalDebt" to stats["totalDebt"],
-                    "activeSOS" to activeSOS.size
+                    "activeSOS" to RedisManager.getActiveSOSCount()
                 ))
             }
 
@@ -2073,7 +2073,7 @@ fun Application.configureRouting() {
                     val rs = conn.prepareStatement("SELECT full_name, phone, vehicle_number, vehicle_model FROM drivers WHERE id = ?").apply { setInt(1, req.driverId.toInt()) }.executeQuery()
                     if (rs.next()) {
                         val id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
-                        activeSOS[id] = SOSAlert(
+                        val alert = SOSAlert(
                             id = id,
                             driverId = req.driverId,
                             driverName = rs.getString(1),
@@ -2085,7 +2085,8 @@ fun Application.configureRouting() {
                             plateNumber = rs.getString(3),
                             vehicleModel = rs.getString(4)
                         )
-                        sosFlow.tryEmit(activeSOS[id]!!)
+                        RedisManager.addSOS(alert)
+                        sosFlow.tryEmit(alert)
                         call.respond(AuthResponse(true, "SOS Triggered", null, null))
                     } else {
                         call.respond(AuthResponse(false, "Driver not found", null, null))

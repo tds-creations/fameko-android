@@ -3,6 +3,7 @@ package com.example.famekodriver.backend.services
 import redis.clients.jedis.JedisPool
 import redis.clients.jedis.JedisPoolConfig
 import redis.clients.jedis.params.SetParams
+import com.example.famekodriver.core.domain.model.SOSAlert
 
 object RedisManager {
     private val pool: JedisPool by lazy {
@@ -169,6 +170,55 @@ object RedisManager {
             }
         } catch (e: Exception) {
             println("Redis Error: ${e.message}")
+        }
+    }
+
+    // --- SOS MANAGEMENT (Temporary Storage) ---
+
+    private val SOS_KEY = "active_sos_alerts"
+
+    fun addSOS(alert: SOSAlert) {
+        try {
+            pool.resource.use { jedis ->
+                val json = com.google.gson.Gson().toJson(alert)
+                jedis.hset(SOS_KEY, alert.id.toString(), json)
+                // SOS alerts expire after 24 hours if not resolved
+                jedis.expire(SOS_KEY, 86400)
+            }
+        } catch (e: Exception) {
+            println("Redis SOS Add Error: ${e.message}")
+        }
+    }
+
+    fun getAllSOS(): List<SOSAlert> {
+        return try {
+            pool.resource.use { jedis ->
+                jedis.hgetAll(SOS_KEY).values.map { 
+                    com.google.gson.Gson().fromJson(it, SOSAlert::class.java)
+                }
+            }
+        } catch (e: Exception) {
+            emptyList<SOSAlert>()
+        }
+    }
+
+    fun resolveSOS(id: Int) {
+        try {
+            pool.resource.use { jedis ->
+                jedis.hdel(SOS_KEY, id.toString())
+            }
+        } catch (e: Exception) {
+            println("Redis SOS Resolve Error: ${e.message}")
+        }
+    }
+
+    fun getActiveSOSCount(): Int {
+        return try {
+            pool.resource.use { jedis ->
+                jedis.hlen(SOS_KEY).toInt()
+            }
+        } catch (e: Exception) {
+            0
         }
     }
 }
