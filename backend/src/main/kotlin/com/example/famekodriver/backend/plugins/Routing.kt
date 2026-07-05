@@ -977,10 +977,17 @@ fun Application.configureRouting() {
                 val otp = (100000..999999).random().toString()
                 RedisManager.storeResetOtp(email, otp)
                 
+                // SEND ACTUAL EMAIL
+                com.example.famekodriver.backend.services.EmailService.sendOtpEmail(email, otp)
+                
                 // LOG the OTP for testing
                 println(">>> PASSWORD RESET OTP for $email: $otp")
                 
-                call.respond(AuthResponse(true, "Reset code sent successfully", null, null))
+                // For development: Include OTP in the message if not in production mode
+                val isLocal = call.request.local.serverHost == "localhost" || call.request.local.serverHost == "127.0.0.1" || call.request.local.serverHost.startsWith("192.168.")
+                val message = if (isLocal) "Reset code sent: $otp (Local Mode)" else "Reset code sent successfully"
+                
+                call.respond(AuthResponse(true, message, null, null))
             } catch (e: Exception) {
                 call.respond(AuthResponse(false, e.message ?: "Error", null, null))
             }

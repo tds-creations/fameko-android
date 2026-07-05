@@ -31,6 +31,7 @@ dependencies {
     implementation(libs.firebase.admin)
     implementation(libs.h3)
     implementation(libs.jedis)
+    implementation(libs.jakarta.mail)
 }
 
 kotlin {

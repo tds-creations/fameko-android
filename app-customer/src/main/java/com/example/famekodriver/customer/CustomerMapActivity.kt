@@ -370,6 +370,9 @@ fun CustomerMapScreen() {
                         onNavigate = { mapViewModel.navigateTo(it) },
                         onLogout = {
                             sessionManager.logout()
+                            val intent = Intent(context, CustomerLoginActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            context.startActivity(intent)
                             (context as? Activity)?.finish()
                         }
                     )

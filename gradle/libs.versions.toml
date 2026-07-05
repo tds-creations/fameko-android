@@ -44,6 +44,7 @@ googleServices = "4.4.2"
 firebaseCrashlytics = "3.0.2"
 h3 = "4.4.0"
 jedis = "5.1.2"
+jakarta-mail = "2.0.1"
 
 [libraries]
 hikaricp = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikaricp" }
@@ -112,6 +113,7 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 firebase-admin = { group = "com.google.firebase", name = "firebase-admin", version = "9.2.0" }
 h3 = { group = "com.uber", name = "h3", version.ref = "h3" }
 jedis = { group = "redis.clients", name = "jedis", version.ref = "jedis" }
+jakarta-mail = { group = "com.sun.mail", name = "jakarta.mail", version.ref = "jakarta-mail" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
