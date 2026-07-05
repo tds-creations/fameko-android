@@ -7,19 +7,19 @@ import jakarta.mail.internet.MimeMessage
 
 object EmailService {
     private const val SMTP_HOST = "smtp.gmail.com"
-    private const val SMTP_PORT = "465"
+    private const val SMTP_PORT = "587" // Switched to 587 for STARTTLS compatibility
     private val SMTP_USER = (System.getenv("SMTP_EMAIL") ?: "lampteyjosephtds01@gmail.com").trim()
     private val SMTP_PASS = (System.getenv("APP_PASSWORD") ?: "jgrjdazptkpmlsui").replace(" ", "").trim()
 
     fun sendOtpEmail(recipientEmail: String, otp: String) {
-        println("EmailService: Preparing to send OTP to $recipientEmail")
+        println("EmailService: Preparing to send OTP to $recipientEmail using STARTTLS")
         val props = Properties().apply {
             put("mail.smtp.host", SMTP_HOST)
             put("mail.smtp.port", SMTP_PORT)
             put("mail.smtp.auth", "true")
-            put("mail.smtp.socketFactory.port", SMTP_PORT)
-            put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory")
-            put("mail.smtp.ssl.enable", "true")
+            put("mail.smtp.starttls.enable", "true")
+            put("mail.smtp.starttls.required", "true")
+            put("mail.smtp.ssl.protocols", "TLSv1.2")
             put("mail.smtp.timeout", "15000")
             put("mail.smtp.connectiontimeout", "15000")
             put("mail.debug", "true") 
