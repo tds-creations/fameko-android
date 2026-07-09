@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.google.maps)
     implementation(libs.maps.compose)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.auth)
     implementation(libs.osmdroid.android)
     implementation(libs.maplibre.android)
     implementation(libs.maplibre.annotation)

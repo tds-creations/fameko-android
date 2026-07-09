@@ -223,6 +223,26 @@ object RedisManager {
     }
 
     /**
+     * Store OTP for login (5 mins TTL)
+     */
+    fun storeLoginOtp(phone: String, otp: String) {
+        set("login_otp:$phone", otp, 300)
+    }
+
+    /**
+     * Verify OTP for login
+     */
+    fun verifyLoginOtp(phone: String, otp: String): Boolean {
+        val key = "login_otp:$phone"
+        val stored = get(key)
+        if (stored != null && stored == otp) {
+            delete(key) // Consume OTP after successful verification
+            return true
+        }
+        return false
+    }
+
+    /**
      * Store OTP for password reset (10 mins TTL)
      */
     fun storeResetOtp(email: String, otp: String) {

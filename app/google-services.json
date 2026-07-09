@@ -12,7 +12,20 @@
           "package_name": "com.example.famekodriver"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "989048143840-pf8ga3fe69smi77j6uipg0tkdkctmbi7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.famekodriver",
+            "certificate_hash": "a4e03bc9dc11a256d65ada1bfb838588a56bf4bf"
+          }
+        },
+        {
+          "client_id": "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB6C7dWCWT9SkmteFWIiWImb1VyZXCXQ4E"
@@ -20,7 +33,78 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989048143840:android:dd80835c2e3507ccdd7585",
+        "android_client_info": {
+          "package_name": "com.example.famekodriver.admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6C7dWCWT9SkmteFWIiWImb1VyZXCXQ4E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989048143840:android:b047a0bdf7550405dd7585",
+        "android_client_info": {
+          "package_name": "com.example.famekodriver.customer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "989048143840-cggtud57om0fq772r35n93tn38uljbmr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.famekodriver.customer",
+            "certificate_hash": "a4e03bc9dc11a256d65ada1bfb838588a56bf4bf"
+          }
+        },
+        {
+          "client_id": "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6C7dWCWT9SkmteFWIiWImb1VyZXCXQ4E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

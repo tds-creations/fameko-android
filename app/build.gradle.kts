@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.maplibre.android)
     implementation(libs.osmdroid.android)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.auth)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.preference)
 

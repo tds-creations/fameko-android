@@ -29,6 +29,9 @@ import java.time.LocalDate
 import java.net.HttpURLConnection
 import java.net.URL
 import java.io.OutputStreamWriter
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier
+import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.json.gson.GsonFactory
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlin.math.max
@@ -58,7 +61,9 @@ fun Application.configureRouting() {
         post("/admin/api-login") {
             try {
                 val req = call.receive<LoginRequest>()
-                val admin = loginAdminInDb(req.email, req.password)
+                val email = req.email ?: ""
+                val password = req.password ?: ""
+                val admin = loginAdminInDb(email, password)
                 if (admin != null) {
                     val session = AdminSession(
                         admin["username"].toString(),
@@ -741,9 +746,70 @@ fun Application.configureRouting() {
 
         post("/customer/login") {
             val req = call.receive<LoginRequest>()
-            val user = loginCustomerInDb(req.email, req.password)
+            val phone = req.phone
+            if (phone.isNullOrBlank()) {
+                call.respond(AuthResponse(false, "Phone number is required", null, null))
+                return@post
+            }
+            val user = loginCustomerInDbByPhone(phone)
             if (user != null) call.respond(AuthResponse(true, "Success", user["id"].toString(), user["name"].toString()))
-            else call.respond(AuthResponse(false, "Invalid credentials", null, null))
+            else call.respond(AuthResponse(false, "User not found with this phone number", null, null))
+        }
+
+        post("/customer/request-otp") {
+            val req = call.receive<OtpRequest>()
+            val phone = req.phone
+            val otp = (100000..999999).random().toString()
+            
+            RedisManager.storeLoginOtp(phone, otp)
+            
+            // Simulate sending WhatsApp message
+            println("WHATSAPP_SIMULATOR: Sending OTP $otp to $phone via WhatsApp")
+            
+            call.respond(mapOf("success" to true, "message" to "OTP sent to WhatsApp"))
+        }
+
+        post("/customer/verify-otp") {
+            val req = call.receive<OtpVerifyRequest>()
+            if (RedisManager.verifyLoginOtp(req.phone, req.otp)) {
+                val user = loginCustomerInDbByPhone(req.phone)
+                if (user != null) {
+                    call.respond(AuthResponse(true, "Success", user["id"].toString(), user["name"].toString()))
+                } else {
+                    call.respond(AuthResponse(false, "User not found", null, null))
+                }
+            } else {
+                call.respond(AuthResponse(false, "Invalid or expired OTP", null, null))
+            }
+        }
+
+        post("/customer/google-login") {
+            val req = call.receive<LoginRequest>()
+            val idToken = req.googleToken
+            if (idToken.isNullOrBlank()) {
+                call.respond(AuthResponse(false, "Google token is required", null, null))
+                return@post
+            }
+
+            val verifier = GoogleIdTokenVerifier.Builder(NetHttpTransport(), GsonFactory())
+                .setAudience(listOf("989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com"))
+                .build()
+
+            try {
+                val token = verifier.verify(idToken)
+                if (token != null) {
+                    val payload = token.payload
+                    val email = payload.email
+                    val name = payload["name"] as? String ?: "Google User"
+                    
+                    val user = findOrCreateCustomerByEmail(email, name)
+                    call.respond(AuthResponse(true, "Success", user["id"].toString(), user["name"].toString()))
+                } else {
+                    call.respond(AuthResponse(false, "Invalid Google token", null, null))
+                }
+            } catch (e: Exception) {
+                call.respond(AuthResponse(false, "Google verification failed: ${e.message}", null, null))
+             }
         }
 
         post("/customer/register") {
@@ -921,7 +987,12 @@ fun Application.configureRouting() {
 
         post("/driver/login") {
             val req = call.receive<LoginRequest>()
-            val driver = loginDriverInDb(req.email, req.password)
+            val phone = req.phone
+            if (phone.isNullOrBlank()) {
+                call.respond(AuthResponse(false, "Phone number is required", null, null))
+                return@post
+            }
+            val driver = loginDriverInDbByPhone(phone)
             if (driver != null) call.respond(AuthResponse(
                 success = true, 
                 message = "Success", 
@@ -932,7 +1003,78 @@ fun Application.configureRouting() {
                 user_role = driver.userRole,
                 company_name = driver.companyName
             ))
-            else call.respond(AuthResponse(false, "Invalid credentials", null, null))
+            else call.respond(AuthResponse(false, "Driver not found with this phone number", null, null))
+        }
+
+        post("/driver/request-otp") {
+            val req = call.receive<OtpRequest>()
+            val phone = req.phone
+            val otp = (100000..999999).random().toString()
+            
+            RedisManager.storeLoginOtp(phone, otp)
+            
+            println("WHATSAPP_SIMULATOR: Sending OTP $otp to $phone via WhatsApp (Driver)")
+            
+            call.respond(mapOf("success" to true, "message" to "OTP sent to WhatsApp"))
+        }
+
+        post("/driver/verify-otp") {
+            val req = call.receive<OtpVerifyRequest>()
+            if (RedisManager.verifyLoginOtp(req.phone, req.otp)) {
+                val driver = loginDriverInDbByPhone(req.phone)
+                if (driver != null) {
+                    call.respond(AuthResponse(
+                        success = true, 
+                        message = "Success", 
+                        user_id = driver.id.toString(), 
+                        name = driver.fullName, 
+                        status = driver.status, 
+                        profile_picture = driver.profilePicture,
+                        user_role = driver.userRole,
+                        company_name = driver.companyName
+                    ))
+                } else {
+                    call.respond(AuthResponse(false, "Driver not found", null, null))
+                }
+            } else {
+                call.respond(AuthResponse(false, "Invalid or expired OTP", null, null))
+            }
+        }
+
+        post("/driver/google-login") {
+            val req = call.receive<LoginRequest>()
+            val idToken = req.googleToken
+            if (idToken.isNullOrBlank()) {
+                call.respond(AuthResponse(false, "Google token is required", null, null))
+                return@post
+            }
+
+            val verifier = GoogleIdTokenVerifier.Builder(NetHttpTransport(), GsonFactory())
+                .setAudience(listOf("989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com"))
+                .build()
+
+            try {
+                val token = verifier.verify(idToken)
+                if (token != null) {
+                    val payload = token.payload
+                    val email = payload.email
+                    val name = payload["name"] as? String ?: "Google Driver"
+                    
+                    val user = findOrCreateDriverByEmail(email, name)
+                    call.respond(AuthResponse(
+                        success = true, 
+                        message = "Success", 
+                        user_id = user.id.toString(), 
+                        name = user.fullName,
+                        status = user.status,
+                        user_role = user.userRole
+                    ))
+                } else {
+                    call.respond(AuthResponse(false, "Invalid Google token", null, null))
+                }
+            } catch (e: Exception) {
+                call.respond(AuthResponse(false, "Google verification failed: ${e.message}", null, null))
+            }
         }
 
         post("/driver/register") {
@@ -961,54 +1103,7 @@ fun Application.configureRouting() {
             }
         }
 
-        // --- PASSWORD RESET ---
-        post("/auth/forgot-password") {
-            try {
-                val req = call.receive<ForgotPasswordRequest>()
-                val email = req.email.trim().lowercase()
-                
-                // Verify user exists in any table
-                val exists = userExistsInAnyTable(email)
-                if (!exists) {
-                    call.respond(AuthResponse(false, "User with this email not found", null, null))
-                    return@post
-                }
-
-                val otp = (100000..999999).random().toString()
-                RedisManager.storeResetOtp(email, otp)
-                
-                // SEND ACTUAL EMAIL
-                com.example.famekodriver.backend.services.EmailService.sendOtpEmail(email, otp)
-                
-                // LOG the OTP for testing
-                println(">>> PASSWORD RESET OTP for $email: $otp")
-                
-                // For development: Include OTP in the message if not in production mode
-                val isLocal = call.request.local.serverHost == "localhost" || call.request.local.serverHost == "127.0.0.1" || call.request.local.serverHost.startsWith("192.168.")
-                val message = if (isLocal) "Reset code sent: $otp (Local Mode)" else "Reset code sent successfully"
-                
-                call.respond(AuthResponse(true, message, null, null))
-            } catch (e: Exception) {
-                call.respond(AuthResponse(false, e.message ?: "Error", null, null))
-            }
-        }
-
-        post("/auth/reset-password") {
-            try {
-                val req = call.receive<ResetPasswordRequest>()
-                val email = req.email.trim().lowercase()
-                
-                if (RedisManager.verifyResetOtp(email, req.otp)) {
-                    updateUserPasswordInDb(email, req.newPassword)
-                    RedisManager.delete("reset_otp:$email")
-                    call.respond(AuthResponse(true, "Password updated successfully", null, null))
-                } else {
-                    call.respond(AuthResponse(false, "Invalid or expired code", null, null))
-                }
-            } catch (e: Exception) {
-                call.respond(AuthResponse(false, e.message ?: "Error", null, null))
-            }
-        }
+        // --- PASSWORD RESET REMOVED ---
 
         get("/pricing/config") { call.respond(getPricingConfigFromDb()) }
 
@@ -2301,16 +2396,40 @@ private suspend fun processDailyFeePayment(driverId: Int, amount: Double, refere
     }
 }
 
-private fun loginCustomerInDb(email: String, pass: String): Map<String, Any>? {
+private fun loginCustomerInDbByPhone(phone: String): Map<String, Any>? {
     DatabaseInitializer.getDataSource().connection.use { conn ->
-        val sql = "SELECT id, name FROM customers WHERE LOWER(TRIM(email)) = ? AND password = ?"
+        val sql = "SELECT id, name FROM customers WHERE TRIM(phone) = ? OR TRIM(phone) = ?"
         val stmt = conn.prepareStatement(sql)
-        stmt.setString(1, email.trim().lowercase())
-        stmt.setString(2, pass)
+        stmt.setString(1, phone.trim())
+        // Handle cases where phone might be stored with or without + prefix
+        val altPhone = if (phone.startsWith("+")) phone.substring(1) else "+$phone"
+        stmt.setString(2, altPhone)
         val rs = stmt.executeQuery()
         if (rs.next()) return mapOf("id" to rs.getInt("id"), "name" to rs.getString("name"))
     }
     return null
+}
+
+private fun findOrCreateCustomerByEmail(email: String, name: String): Map<String, Any> {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        // 1. Try to find by email
+        val selectSql = "SELECT id, name FROM customers WHERE email = ?"
+        val selectStmt = conn.prepareStatement(selectSql)
+        selectStmt.setString(1, email.lowercase())
+        val rs = selectStmt.executeQuery()
+        if (rs.next()) return mapOf("id" to rs.getInt("id"), "name" to rs.getString("name"))
+
+        // 2. Create if not found
+        val insertSql = "INSERT INTO customers (name, email, phone, password) VALUES (?, ?, ?, ?) RETURNING id"
+        val insertStmt = conn.prepareStatement(insertSql)
+        insertStmt.setString(1, name)
+        insertStmt.setString(2, email.lowercase())
+        insertStmt.setString(3, "") // No phone initially
+        insertStmt.setString(4, "GOOGLE_AUTH") // Placeholder
+        val insertRs = insertStmt.executeQuery()
+        if (insertRs.next()) return mapOf("id" to insertRs.getInt(1), "name" to name)
+    }
+    throw Exception("Failed to find or create customer")
 }
 
 private fun registerCustomerInDb(req: CustomerRegisterRequest): Int? {
@@ -2474,14 +2593,54 @@ private fun initializePaystackPayment(email: String, amountGHS: Double, referenc
     return null
 }
 
-private fun loginDriverInDb(email: String, pass: String): Driver? {
-    val cleanEmail = email.trim().lowercase()
+private fun findOrCreateDriverByEmail(email: String, name: String): Driver {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        // 1. Try to find by email
+        val selectSql = "SELECT * FROM drivers WHERE email = ?"
+        val selectStmt = conn.prepareStatement(selectSql)
+        selectStmt.setString(1, email.lowercase())
+        val rs = selectStmt.executeQuery()
+        if (rs.next()) return Driver(
+            id = rs.getInt("id"), fullName = rs.getString("full_name") ?: "", email = rs.getString("email") ?: "",
+            phone = rs.getString("phone") ?: "", region = rs.getString("region") ?: "", licenseNumber = rs.getString("license_number") ?: "",
+            vehicleType = rs.getString("vehicle_type"), vehicleNumber = rs.getString("vehicle_number"), status = rs.getString("status") ?: "PENDING",
+            isOnline = rs.getBoolean("is_online"), rating = rs.getDouble("rating"),
+            profilePicture = rs.getString("profile_picture"),
+            userRole = rs.getString("user_role") ?: "DRIVER",
+            companyName = rs.getString("company_name"),
+            registrationNumber = rs.getString("registration_number")
+        )
+
+        // 2. Create if not found
+        val insertSql = "INSERT INTO drivers (full_name, email, phone, password, status) VALUES (?, ?, ?, ?, 'PENDING') RETURNING id"
+        val insertStmt = conn.prepareStatement(insertSql)
+        insertStmt.setString(1, name)
+        insertStmt.setString(2, email.lowercase())
+        insertStmt.setString(3, "")
+        insertStmt.setString(4, "GOOGLE_AUTH")
+        val insertRs = insertStmt.executeQuery()
+        if (insertRs.next()) {
+            val id = insertRs.getInt(1)
+            // Initialize stats row
+            conn.prepareStatement("INSERT INTO driver_stats (driver_id) VALUES (?)").apply {
+                setInt(1, id)
+                executeUpdate()
+            }
+            return Driver(id = id, fullName = name, email = email.lowercase(), phone = "", region = "", licenseNumber = "", vehicleType = null, vehicleNumber = null, status = "PENDING", isOnline = false, rating = 5.0, userRole = "DRIVER")
+        }
+    }
+    throw Exception("Failed to find or create driver")
+}
+
+private fun loginDriverInDbByPhone(phone: String): Driver? {
+    val cleanPhone = phone.trim()
+    val altPhone = if (cleanPhone.startsWith("+")) cleanPhone.substring(1) else "+$cleanPhone"
     DatabaseInitializer.getDataSource().connection.use { conn ->
         // 1. Try drivers table first
-        val sql = "SELECT * FROM drivers WHERE LOWER(TRIM(email)) = ? AND TRIM(password) = ?"
+        val sql = "SELECT * FROM drivers WHERE TRIM(phone) = ? OR TRIM(phone) = ?"
         val stmt = conn.prepareStatement(sql)
-        stmt.setString(1, cleanEmail)
-        stmt.setString(2, pass.trim())
+        stmt.setString(1, cleanPhone)
+        stmt.setString(2, altPhone)
         val rs = stmt.executeQuery()
         if (rs.next()) return Driver(
             id = rs.getInt("id"), fullName = rs.getString("full_name") ?: "", email = rs.getString("email") ?: "",
@@ -2496,10 +2655,10 @@ private fun loginDriverInDb(email: String, pass: String): Driver? {
         )
 
         // 2. If not found in drivers, try fleet_owners table
-        val sqlOwner = "SELECT * FROM fleet_owners WHERE LOWER(TRIM(email)) = ? AND TRIM(password) = ?"
+        val sqlOwner = "SELECT * FROM fleet_owners WHERE TRIM(phone) = ? OR TRIM(phone) = ?"
         val stmtOwner = conn.prepareStatement(sqlOwner)
-        stmtOwner.setString(1, cleanEmail)
-        stmtOwner.setString(2, pass.trim())
+        stmtOwner.setString(1, cleanPhone)
+        stmtOwner.setString(2, altPhone)
         val rsOwner = stmtOwner.executeQuery()
         if (rsOwner.next()) return Driver(
             id = rsOwner.getInt("id"),

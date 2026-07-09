@@ -116,7 +116,7 @@ fun RentalBookingScreen(
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BoltGreen)
+                        colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
                     ) {
                         Text(if (isScheduled) "Schedule Rental" else "Confirm & Pay ₵${String.format(Locale.US, "%.2f", grandTotal)}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                     }
@@ -155,7 +155,7 @@ fun RentalBookingScreen(
                         Column {
                             Text(vehicle["name"].toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text("${vehicle["model"]} • ${vehicle["vehicle_type"]}", color = Color.Gray, fontSize = 13.sp)
-                            Text("₵${dailyRate.toInt()} / day", fontWeight = FontWeight.Bold, color = BoltGreen, fontSize = 14.sp)
+                            Text("₵${dailyRate.toInt()} / day", fontWeight = FontWeight.Bold, color = FamekoBlue, fontSize = 14.sp)
                         }
                     }
                 }
@@ -164,7 +164,7 @@ fun RentalBookingScreen(
             // Rental Type (Self-Drive vs Chauffeur)
             item {
                 Column {
-                    Text("Rental Mode", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+                    Text("Rental Mode", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = FamekoDark)
                     Spacer(Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         TimingOption(
@@ -186,17 +186,17 @@ fun RentalBookingScreen(
                     if (isSelfDrive) {
                         Spacer(Modifier.height(12.dp))
                         Surface(
-                            color = Color(0xFFFFF9DB),
+                            color = FamekoGold.copy(alpha = 0.15f),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Info, null, Modifier.size(16.dp), Color(0xFFF08C00))
+                                Icon(Icons.Default.Info, null, Modifier.size(16.dp), FamekoGold)
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     "Self-drive requires a valid driver's license and security deposit.",
                                     fontSize = 11.sp,
-                                    color = Color(0xFFE67700)
+                                    color = FamekoDark
                                 )
                             }
                         }
@@ -207,7 +207,7 @@ fun RentalBookingScreen(
             // Rental Duration
             item {
                 Column {
-                    Text("Rental Duration", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+                    Text("Rental Duration", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = FamekoDark)
                     Spacer(Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(1, 2, 3, 5, 7, 14, 30).forEach { days ->
@@ -218,13 +218,13 @@ fun RentalBookingScreen(
                                     .height(44.dp)
                                     .clickable { selectedDays = days },
                                 shape = RoundedCornerShape(12.dp),
-                                color = if (isSelected) BoltGreen else Color.White,
+                                color = if (isSelected) FamekoBlue else Color.White,
                                 border = if (!isSelected) androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)) else null
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
                                         text = if (days >= 7) "${days/7}w" else "${days}d",
-                                        color = if (isSelected) Color.White else BoltDark,
+                                        color = if (isSelected) Color.White else FamekoDark,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp
                                     )
@@ -238,7 +238,7 @@ fun RentalBookingScreen(
             // Scheduling
             item {
                 Column {
-                    Text("Pickup Timing", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+                    Text("Pickup Timing", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = FamekoDark)
                     Spacer(Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         TimingOption(
@@ -265,9 +265,9 @@ fun RentalBookingScreen(
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
-                                Icon(Icons.Default.Event, null, tint = BoltGreen)
+                                Icon(Icons.Default.Event, null, tint = FamekoBlue)
                                 Spacer(Modifier.width(12.dp))
-                                Text(selectedDateText, fontWeight = FontWeight.Medium, color = BoltDark)
+                                Text(selectedDateText, fontWeight = FontWeight.Medium, color = FamekoDark)
                             }
                         }
                     }
@@ -277,7 +277,7 @@ fun RentalBookingScreen(
             // Optional Stops
             item {
                 Column {
-                    Text("Route Stops (Optional)", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+                    Text("Route Stops (Optional)", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = FamekoDark)
                     Spacer(Modifier.height(16.dp))
                     stops.forEachIndexed { index, stop ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
@@ -287,7 +287,7 @@ fun RentalBookingScreen(
                                 modifier = Modifier.weight(1f),
                                 placeholder = { Text("e.g. Osu, Airport City...") },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedIndicatorColor = BoltGreen)
+                                colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedIndicatorColor = FamekoBlue)
                             )
                             IconButton(onClick = { stops = stops.toMutableList().apply { removeAt(index) } }) {
                                 Icon(Icons.Default.Delete, null, tint = Color.Gray)
@@ -296,9 +296,9 @@ fun RentalBookingScreen(
                     }
                     if (stops.size < 5) {
                         TextButton(onClick = { stops = stops + "" }) {
-                            Icon(Icons.Default.Add, null, tint = BoltGreen)
+                            Icon(Icons.Default.Add, null, tint = FamekoBlue)
                             Spacer(Modifier.width(8.dp))
-                            Text("Add a destination/stop", color = BoltGreen, fontWeight = FontWeight.Bold)
+                            Text("Add a destination/stop", color = FamekoBlue, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -307,7 +307,7 @@ fun RentalBookingScreen(
             // Trip Notes
             item {
                 Column {
-                    Text("Additional Instructions", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+                    Text("Additional Instructions", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = FamekoDark)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = tripNotes,
@@ -316,7 +316,7 @@ fun RentalBookingScreen(
                         placeholder = { Text("e.g. Needs trunk space, Driver should speak Twi...") },
                         shape = RoundedCornerShape(12.dp),
                         minLines = 3,
-                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedIndicatorColor = BoltGreen)
+                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedIndicatorColor = FamekoBlue)
                     )
                 }
             }
@@ -326,7 +326,7 @@ fun RentalBookingScreen(
                 pricingConfig?.let {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F3F5)),
+                        colors = CardDefaults.cardColors(containerColor = FamekoLightBlue.copy(alpha = 0.3f)),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
@@ -340,16 +340,16 @@ fun RentalBookingScreen(
                             
                             Spacer(Modifier.height(16.dp))
                             Surface(
-                                color = BoltGreen.copy(alpha = 0.1f),
+                                color = FamekoBlue.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Info, null, Modifier.size(16.dp), BoltGreen)
+                                    Icon(Icons.Default.Info, null, Modifier.size(16.dp), FamekoBlue)
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         "Total includes booking commission, insurance, and road assistance.",
                                         fontSize = 11.sp,
-                                        color = Color.DarkGray
+                                        color = FamekoDark
                                     )
                                 }
                             }
@@ -368,13 +368,13 @@ fun TimingOption(icon: ImageVector, label: String, isSelected: Boolean, onClick:
     Surface(
         modifier = modifier.height(56.dp).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) BoltGreen.copy(alpha = 0.1f) else Color.White,
-        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, BoltGreen) else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
+        color = if (isSelected) FamekoBlue.copy(alpha = 0.1f) else Color.White,
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, FamekoBlue) else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Icon(icon, null, tint = if (isSelected) BoltGreen else BoltDark, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = if (isSelected) FamekoBlue else FamekoDark, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(12.dp))
-            Text(label, fontWeight = FontWeight.Bold, color = if (isSelected) BoltGreen else BoltDark)
+            Text(label, fontWeight = FontWeight.Bold, color = if (isSelected) FamekoBlue else FamekoDark)
         }
     }
 }
@@ -382,7 +382,7 @@ fun TimingOption(icon: ImageVector, label: String, isSelected: Boolean, onClick:
 @Composable
 fun SummaryRow(label: String, value: String, isTotal: Boolean = false) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = if (isTotal) BoltDark else Color.Gray, fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Medium)
-        Text(value, color = if (isTotal) BoltGreen else BoltDark, fontWeight = if (isTotal) FontWeight.Black else FontWeight.Bold, fontSize = if (isTotal) 18.sp else 14.sp)
+        Text(label, color = if (isTotal) FamekoDark else Color.Gray, fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Medium)
+        Text(value, color = if (isTotal) FamekoBlue else FamekoDark, fontWeight = if (isTotal) FontWeight.Black else FontWeight.Bold, fontSize = if (isTotal) 18.sp else 14.sp)
     }
 }

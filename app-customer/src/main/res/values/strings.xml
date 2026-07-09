@@ -11,6 +11,7 @@
     <string name="hint_confirm_password">Confirm Password</string>
     <string name="agree_terms">I agree to the Terms and Conditions</string>
     <string name="already_have_account">Already have an account? Login here</string>
+    <string name="new_to_fameko">New to Fameko? Create account</string>
     <string name="msg_fill_required">Please fill in all required fields</string>
     <string name="msg_valid_email">Please enter a valid email</string>
     <string name="msg_password_mismatch">Passwords do not match</string>
@@ -18,4 +19,8 @@
     <string name="msg_account_created">Account created successfully! Logging in&#8230;</string>
     <string name="msg_auto_login_failed">Auto-login failed: %s. Please login manually.</string>
     <string name="msg_signup_failed">Signup failed: %s</string>
+    <string name="btn_verify_otp">Verify OTP</string>
+    <string name="hint_enter_otp">Enter 6-digit OTP from WhatsApp</string>
+    <string name="msg_sending_otp">Sending OTP to WhatsApp...</string>
+    <string name="msg_verifying_otp">Verifying OTP...</string>
 </resources>

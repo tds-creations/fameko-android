@@ -11,18 +11,20 @@ data class CustomerRegisterRequest(
 )
 
 data class LoginRequest(
-    val email: String,
-    val password: String
+    val phone: String? = null,
+    val email: String? = null,
+    val password: String? = null,
+    val googleToken: String? = null
 )
 
-data class ForgotPasswordRequest(
-    val email: String
+data class OtpRequest(
+    val phone: String,
+    val method: String = "WHATSAPP"
 )
 
-data class ResetPasswordRequest(
-    val email: String,
-    val otp: String,
-    val newPassword: String
+data class OtpVerifyRequest(
+    val phone: String,
+    val otp: String
 )
 
 data class AuthResponse(

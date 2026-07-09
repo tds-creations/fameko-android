@@ -43,10 +43,6 @@
             android:name=".CustomerSignupActivity"
             android:exported="false" />
 
-        <activity
-            android:name=".CustomerForgotPasswordActivity"
-            android:exported="false"
-            android:theme="@style/Theme.FamekoDriver" />
 
         <activity
             android:name=".CustomerMapActivity"

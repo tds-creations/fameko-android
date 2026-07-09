@@ -14,7 +14,7 @@ object ImageLinks {
     const val DRIVER_SIGNUP_BG = "https://i.postimg.cc/dtpd96tY/driver-signup.png"
     const val DRIVER_SPLASH_SCREEN = "https://i.postimg.cc/7ZY4rB4k/5.jpg"
     const val CUSTOMER_SPLASH_SCREEN = "https://i.postimg.cc/NjftvNcW/1.jpg"
-    const val CUSTOMER_LOGIN_CAROUSEL_1 = "https://i.postimg.cc/BnQ3fh39/4.jpg"
+    const val CUSTOMER_LOGIN_CAROUSEL_1 = "https://i.postimg.cc/dVHYs8sx/8.jpg"
     const val CUSTOMER_LOGIN_CAROUSEL_2 = "https://i.postimg.cc/2S8YNHYN/2.jpg"
     const val CUSTOMER_LOGIN_CAROUSEL_3 = "https://i.postimg.cc/zGXNYdN1/3.jpg"
     const val DRIVER_LOGIN_CAROUSEL_1 = "https://i.postimg.cc/dVHYs8sx/8.jpg"

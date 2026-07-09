@@ -13,16 +13,16 @@ import java.io.File
 
 class UserRepository {
 
-    suspend fun login(email: String, pass: String): Result<Driver?> = withContext(Dispatchers.IO) {
+    suspend fun login(phone: String): Result<Driver?> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(email, pass))
+            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(phone = phone))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Driver(
                     id = userId.toIntOrNull() ?: 0,
                     fullName = response.name ?: "Driver",
-                    email = email,
-                    phone = "",
+                    email = "",
+                    phone = phone,
                     region = "",
                     licenseNumber = "",
                     vehicleType = "Car",
@@ -43,9 +43,9 @@ class UserRepository {
         }
     }
 
-    suspend fun customerLogin(email: String, pass: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun customerLogin(phone: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginCustomer(LoginRequest(email, pass))
+            val response = NetworkClient.famekoApi.loginCustomer(LoginRequest(phone = phone))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Pair(userId, response.name ?: "Customer"))
@@ -60,7 +60,7 @@ class UserRepository {
 
     suspend fun adminLogin(username: String, pass: String): Result<Admin> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginAdmin(LoginRequest(username, pass))
+            val response = NetworkClient.famekoApi.loginAdmin(LoginRequest(email = username, password = pass))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Admin(

@@ -85,7 +85,8 @@ class CustomerSignupActivity : AppCompatActivity() {
                         Toast.makeText(this@CustomerSignupActivity, "Account created successfully", Toast.LENGTH_LONG).show()
                         
                         // Automatic login
-                        repository.customerLogin(email, password).onSuccess { (id, customerName) ->
+                        val fullPhone = if (phone.startsWith("+")) phone else "+233$phone"
+                        repository.customerLoginByPhone(fullPhone).onSuccess { (id, customerName) ->
                             sessionManager.saveSession(id, customerName)
                             val intent = Intent().setClassName(this@CustomerSignupActivity, "com.example.famekodriver.customer.CustomerMapActivity")
                             startActivity(intent)
@@ -104,12 +105,12 @@ class CustomerSignupActivity : AppCompatActivity() {
 
         val loginText = "Already have an account? Sign In"
         val spannableLogin = android.text.SpannableString(loginText)
-        val blueColor = "#0061A4".toColorInt()
+        val brandBlue = "#004E89".toColorInt()
         
         val loginStart = loginText.indexOf("Sign In")
         if (loginStart != -1) {
             spannableLogin.setSpan(
-                android.text.style.ForegroundColorSpan(blueColor),
+                android.text.style.ForegroundColorSpan(brandBlue),
                 loginStart,
                 loginText.length,
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE

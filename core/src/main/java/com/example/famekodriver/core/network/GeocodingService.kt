@@ -31,9 +31,39 @@ interface FamekoApiService {
         @Body request: LoginRequest
     ): AuthResponse
 
+    @POST("customer/google-login")
+    suspend fun loginCustomerGoogle(
+        @Body request: LoginRequest
+    ): AuthResponse
+
+    @POST("customer/request-otp")
+    suspend fun requestCustomerOtp(
+        @Body request: OtpRequest
+    ): Map<String, Any>
+
+    @POST("customer/verify-otp")
+    suspend fun verifyCustomerOtp(
+        @Body request: OtpVerifyRequest
+    ): AuthResponse
+
     @POST("driver/login")
     suspend fun loginDriver(
         @Body request: LoginRequest
+    ): AuthResponse
+
+    @POST("driver/google-login")
+    suspend fun loginDriverGoogle(
+        @Body request: LoginRequest
+    ): AuthResponse
+
+    @POST("driver/request-otp")
+    suspend fun requestDriverOtp(
+        @Body request: OtpRequest
+    ): Map<String, Any>
+
+    @POST("driver/verify-otp")
+    suspend fun verifyDriverOtp(
+        @Body request: OtpVerifyRequest
     ): AuthResponse
 
     @POST("admin/api-login")
@@ -41,15 +71,7 @@ interface FamekoApiService {
         @Body request: LoginRequest
     ): AuthResponse
 
-    @POST("auth/forgot-password")
-    suspend fun forgotPassword(
-        @Body request: ForgotPasswordRequest
-    ): AuthResponse
-
-    @POST("auth/reset-password")
-    suspend fun resetPassword(
-        @Body request: ResetPasswordRequest
-    ): AuthResponse
+    // --- REMOVED PASSWORD RESET ---
 
     @Multipart
     @POST("driver/register")

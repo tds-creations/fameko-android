@@ -2,9 +2,13 @@ package com.example.famekodriver
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
@@ -12,8 +16,11 @@ import coil.load
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.utils.ImageLinks
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -21,6 +28,22 @@ import kotlin.time.Duration.Companion.milliseconds
 class DriverLoginActivity : AppCompatActivity() {
     private lateinit var sessionManager: SessionManager
     private val repository = DriverRepository()
+
+    private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account: GoogleSignInAccount? = task.getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            if (idToken != null) {
+                loginWithGoogle(idToken)
+            } else {
+                Toast.makeText(this, "Google Sign-In failed: No ID Token", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: ApiException) {
+            Log.w("Fameko", "Google Sign-In failed: ${e.statusCode}")
+            Toast.makeText(this, "Google Sign-In failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,18 +53,23 @@ class DriverLoginActivity : AppCompatActivity() {
 
         setupCarousel()
 
-        val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
-        val etPassword = findViewById<TextInputEditText>(R.id.etPassword)
+        val etPhone = findViewById<EditText>(R.id.etPhone)
         val btnLogin = findViewById<MaterialButton>(R.id.btnLogin)
+        val btnGoogleLogin = findViewById<MaterialButton>(R.id.btnGoogleLogin)
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
+        val otpContainer = findViewById<View>(R.id.otpContainer)
+        val etOtp = findViewById<EditText>(R.id.etOtp)
+
+        var isOtpSent = false
+        
         val registerText = "Don't have an account? Register here"
         val spannableRegister = android.text.SpannableString(registerText)
-        val orangeColor = "#FF6B35".toColorInt()
+        val brandBlue = "#004E89".toColorInt()
         
         val regStart = registerText.indexOf("Register here")
         if (regStart != -1) {
             spannableRegister.setSpan(
-                android.text.style.ForegroundColorSpan(orangeColor),
+                android.text.style.ForegroundColorSpan(brandBlue),
                 regStart,
                 registerText.length,
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -55,46 +83,89 @@ class DriverLoginActivity : AppCompatActivity() {
         }
         tvRegister.text = spannableRegister
 
-        btnLogin.setOnClickListener {
-            val email = etEmail.text?.toString() ?: ""
-            val password = etPassword.text?.toString() ?: ""
+        btnGoogleLogin.setOnClickListener {
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken("989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com")
+                .requestEmail()
+                .build()
+            val googleSignInClient = GoogleSignIn.getClient(this, gso)
+            googleSignInLauncher.launch(googleSignInClient.signInIntent)
+        }
 
-            if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show()
+        btnLogin.setOnClickListener {
+            val phone = etPhone.text?.toString() ?: ""
+
+            if (phone.isEmpty()) {
+                Toast.makeText(this, "Please enter your phone number", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            btnLogin.isEnabled = false
-            Toast.makeText(this, "Logging in...", Toast.LENGTH_SHORT).show()
+            // Normalize phone number (ensure it has +233 prefix if not present)
+            // Automatically strip leading zero if user enters 10 digits
+            var cleanedPhone = phone.trim()
+            if (cleanedPhone.length == 10 && cleanedPhone.startsWith("0")) {
+                cleanedPhone = cleanedPhone.substring(1)
+            }
+            val fullPhone = if (cleanedPhone.startsWith("+")) cleanedPhone else "+233$cleanedPhone"
 
-            lifecycleScope.launch {
-                repository.login(email, password)
-                    .onSuccess { driver ->
-                        if (driver != null) {
-                            sessionManager.saveSession(
-                                driverId = driver.id.toString(),
-                                driverName = driver.fullName,
-                                status = driver.status,
-                                phone = driver.phone,
-                                role = driver.userRole,
-                                company = driver.companyName,
-                                vehicleType = driver.vehicleType
-                            )
-                            Toast.makeText(this@DriverLoginActivity, "Login Successful!", Toast.LENGTH_SHORT).show()
-                            
-                            val intent = Intent(this@DriverLoginActivity, MainActivity::class.java)
-                            startActivity(intent)
-                            finish()
-                        } else {
+            if (!isOtpSent) {
+                // Step 1: Request OTP
+                btnLogin.isEnabled = false
+                Toast.makeText(this, getString(R.string.msg_sending_otp), Toast.LENGTH_SHORT).show()
+
+                lifecycleScope.launch {
+                    repository.requestDriverOtp(fullPhone)
+                        .onSuccess { message ->
+                            isOtpSent = true
                             btnLogin.isEnabled = true
-                            Toast.makeText(this@DriverLoginActivity, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                            btnLogin.text = getString(R.string.btn_verify_otp)
+                            otpContainer.visibility = View.VISIBLE
+                            Toast.makeText(this@DriverLoginActivity, message, Toast.LENGTH_SHORT).show()
                         }
-                    }
-                    .onFailure { error ->
-                        btnLogin.isEnabled = true
-                        val message = error.message ?: "Login failed"
-                        Toast.makeText(this@DriverLoginActivity, message, Toast.LENGTH_LONG).show()
-                    }
+                        .onFailure { error ->
+                            btnLogin.isEnabled = true
+                            Toast.makeText(this@DriverLoginActivity, "Failed to send OTP: ${error.message}", Toast.LENGTH_LONG).show()
+                        }
+                }
+            } else {
+                // Step 2: Verify OTP
+                val otp = etOtp.text?.toString() ?: ""
+                if (otp.length < 6) {
+                    Toast.makeText(this, "Please enter the 6-digit OTP", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                btnLogin.isEnabled = false
+                Toast.makeText(this, getString(R.string.msg_verifying_otp), Toast.LENGTH_SHORT).show()
+
+                lifecycleScope.launch {
+                    repository.verifyDriverOtp(fullPhone, otp)
+                        .onSuccess { driver ->
+                            if (driver != null) {
+                                sessionManager.saveSession(
+                                    driverId = driver.id.toString(),
+                                    driverName = driver.fullName,
+                                    status = driver.status,
+                                    phone = driver.phone,
+                                    role = driver.userRole,
+                                    company = driver.companyName,
+                                    vehicleType = driver.vehicleType
+                                )
+                                Toast.makeText(this@DriverLoginActivity, "Login Successful!", Toast.LENGTH_SHORT).show()
+                                
+                                val intent = Intent(this@DriverLoginActivity, MainActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            } else {
+                                btnLogin.isEnabled = true
+                                Toast.makeText(this@DriverLoginActivity, "Driver not found", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .onFailure { error ->
+                            btnLogin.isEnabled = true
+                            Toast.makeText(this@DriverLoginActivity, "Verification failed: ${error.message}", Toast.LENGTH_LONG).show()
+                        }
+                }
             }
         }
 
@@ -102,9 +173,32 @@ class DriverLoginActivity : AppCompatActivity() {
             val intent = Intent(this, DriverSignupActivity::class.java)
             startActivity(intent)
         }
+    }
 
-        findViewById<TextView>(R.id.tvForgotPassword).setOnClickListener {
-            startActivity(Intent(this, ForgotPasswordActivity::class.java))
+    private fun loginWithGoogle(idToken: String) {
+        lifecycleScope.launch {
+            repository.driverGoogleLogin(idToken)
+                .onSuccess { driver ->
+                    if (driver != null) {
+                        sessionManager.saveSession(
+                            driverId = driver.id.toString(),
+                            driverName = driver.fullName,
+                            status = driver.status,
+                            phone = driver.phone,
+                            role = driver.userRole,
+                            company = driver.companyName,
+                            vehicleType = driver.vehicleType
+                        )
+                        Toast.makeText(this@DriverLoginActivity, "Login Successful!", Toast.LENGTH_SHORT).show()
+                        
+                        val intent = Intent(this@DriverLoginActivity, MainActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    }
+                }
+                .onFailure { error ->
+                    Toast.makeText(this@DriverLoginActivity, "Google login failed: ${error.message}", Toast.LENGTH_LONG).show()
+                }
         }
     }
 

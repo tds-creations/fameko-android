@@ -134,4 +134,8 @@
     <string name="hint_confirm_password">Confirm Password</string>
     <string name="btn_create_account">Create Account</string>
     <string name="tv_already_driver_login">Already a driver? Login here</string>
+    <string name="btn_verify_otp">Verify OTP</string>
+    <string name="hint_enter_otp">Enter 6-digit OTP from WhatsApp</string>
+    <string name="msg_sending_otp">Sending OTP to WhatsApp&#8230;</string>
+    <string name="msg_verifying_otp">Verifying OTP&#8230;</string>
 </resources>

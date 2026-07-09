@@ -32,6 +32,8 @@ dependencies {
     implementation(libs.h3)
     implementation(libs.jedis)
     implementation(libs.jakarta.mail)
+    implementation(libs.google.api.client)
+    implementation(libs.google.auth.library.oauth2.http)
 }
 
 kotlin {

@@ -41,6 +41,9 @@ postgresqlAndroid = "42.2.5"
 coil = "2.6.0"
 firebaseBom = "33.5.0"
 googleServices = "4.4.2"
+playServicesAuth = "21.2.0"
+googleApiClient = "2.0.0"
+googleAuthLibrary = "1.19.0"
 firebaseCrashlytics = "3.0.2"
 h3 = "4.4.0"
 jedis = "5.1.2"
@@ -88,6 +91,9 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+google-api-client = { group = "com.google.api-client", name = "google-api-client", version.ref = "googleApiClient" }
+google-auth-library-oauth2-http = { group = "com.google.auth", name = "google-auth-library-oauth2-http", version.ref = "googleAuthLibrary" }
 maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
 maplibre-annotation = { group = "org.maplibre.gl", name = "android-plugin-annotation-v9", version.ref = "maplibre-annotation" }
 osmdroid-android = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }

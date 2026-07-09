@@ -36,10 +36,6 @@
             android:exported="false"
             android:label="Driver Registration" />
 
-        <activity
-            android:name=".ForgotPasswordActivity"
-            android:exported="false"
-            android:theme="@style/Theme.FamekoDriver" />
 
         <activity
             android:name=".MainActivity"
