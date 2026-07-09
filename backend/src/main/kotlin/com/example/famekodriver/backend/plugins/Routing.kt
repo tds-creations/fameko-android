@@ -791,8 +791,9 @@ fun Application.configureRouting() {
                 return@post
             }
 
+            val googleClientId = System.getenv("GOOGLE_CLIENT_ID") ?: "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com"
             val verifier = GoogleIdTokenVerifier.Builder(NetHttpTransport(), GsonFactory())
-                .setAudience(listOf("989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com"))
+                .setAudience(listOf(googleClientId))
                 .build()
 
             try {
@@ -1049,8 +1050,9 @@ fun Application.configureRouting() {
                 return@post
             }
 
+            val googleClientId = System.getenv("GOOGLE_CLIENT_ID") ?: "989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com"
             val verifier = GoogleIdTokenVerifier.Builder(NetHttpTransport(), GsonFactory())
-                .setAudience(listOf("989048143840-chmqrl6lr2s0kdtep3gbbp0t5kse2gf6.apps.googleusercontent.com"))
+                .setAudience(listOf(googleClientId))
                 .build()
 
             try {
