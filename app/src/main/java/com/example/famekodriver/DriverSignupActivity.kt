@@ -36,6 +36,37 @@ class DriverSignupActivity : AppCompatActivity() {
 
         setupRegistrationForm()
         setupVehicleTypeSelection()
+        checkGoogleExtras()
+    }
+
+    private fun checkGoogleExtras() {
+        val googleName = intent.getStringExtra("google_name")
+        val googleEmail = intent.getStringExtra("google_email")
+
+        if (googleEmail != null) {
+            val etName = findViewById<TextInputEditText>(R.id.etName)
+            val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
+            val etPassword = findViewById<TextInputEditText>(R.id.etPassword)
+            val etConfirmPassword = findViewById<TextInputEditText>(R.id.etConfirmPassword)
+            val tilEmail = findViewById<TextInputLayout>(R.id.tilEmail)
+            val tilPassword = findViewById<TextInputLayout>(R.id.tilPassword)
+            val tilConfirmPassword = findViewById<TextInputLayout>(R.id.tilConfirmPassword)
+
+            etName.setText(googleName)
+            etEmail.setText(googleEmail)
+            
+            // Lock fields
+            etEmail.isEnabled = false
+            tilEmail.helperText = "Verified via Google"
+            
+            // Hide password fields as they aren't needed for Google login
+            tilPassword.visibility = View.GONE
+            tilConfirmPassword.visibility = View.GONE
+            etPassword.setText("GOOGLE_AUTH")
+            etConfirmPassword.setText("GOOGLE_AUTH")
+            
+            Toast.makeText(this, "Signed in as $googleEmail. Please complete the remaining details.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun setupVehicleTypeSelection() {
@@ -212,6 +243,8 @@ class DriverSignupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnSubmit).isEnabled = false
         Toast.makeText(this, "Creating account...", Toast.LENGTH_SHORT).show()
 
+        val googleUid = intent.getStringExtra("google_uid")
+
         lifecycleScope.launch {
             repository.driverRegister(
                 name = name,
@@ -228,7 +261,8 @@ class DriverSignupActivity : AppCompatActivity() {
                 docs = emptyMap(),
                 userRole = userRole,
                 companyName = companyName,
-                registrationNumber = if (userRole == "DRIVER") "DRV-" + (System.currentTimeMillis() % 1000000) else regNum
+                registrationNumber = if (userRole == "DRIVER") "DRV-" + (System.currentTimeMillis() % 1000000) else regNum,
+                firebaseUid = googleUid
             ).onSuccess {
                 Toast.makeText(this@DriverSignupActivity, "Registration successful! You can now log in.", Toast.LENGTH_LONG).show()
                 finish()

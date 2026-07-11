@@ -7,7 +7,8 @@ data class CustomerRegisterRequest(
     val address: String,
     val password: String,
     val region: String? = null,
-    val profilePicture: String? = null
+    val profilePicture: String? = null,
+    val firebaseUid: String? = null
 )
 
 data class LoginRequest(

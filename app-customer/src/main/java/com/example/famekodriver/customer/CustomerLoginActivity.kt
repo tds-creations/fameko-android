@@ -35,7 +35,7 @@ class CustomerLoginActivity : AppCompatActivity() {
             val account: GoogleSignInAccount? = task.getResult(ApiException::class.java)
             val idToken = account?.idToken
             if (idToken != null) {
-                loginWithGoogle(idToken)
+                loginWithGoogle(idToken, account.displayName, account.email, account.id)
             } else {
                 Toast.makeText(this, "Google Sign-In failed: No ID Token", Toast.LENGTH_SHORT).show()
             }
@@ -165,7 +165,7 @@ class CustomerLoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun loginWithGoogle(idToken: String) {
+    private fun loginWithGoogle(idToken: String, displayName: String?, email: String?, uid: String?) {
         lifecycleScope.launch {
             repository.customerGoogleLogin(idToken)
                 .onSuccess { (customerId, customerName) ->
@@ -173,7 +173,17 @@ class CustomerLoginActivity : AppCompatActivity() {
                     navigateToCustomerMap()
                 }
                 .onFailure { error ->
-                    Toast.makeText(this@CustomerLoginActivity, "Google login failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    if (error.message == "USER_NOT_FOUND") {
+                        Toast.makeText(this@CustomerLoginActivity, "Account not found. Please sign up.", Toast.LENGTH_LONG).show()
+                        val intent = Intent(this@CustomerLoginActivity, CustomerSignupActivity::class.java).apply {
+                            putExtra("google_name", displayName)
+                            putExtra("google_email", email)
+                            putExtra("google_uid", uid)
+                        }
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(this@CustomerLoginActivity, "Google login failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    }
                 }
         }
     }

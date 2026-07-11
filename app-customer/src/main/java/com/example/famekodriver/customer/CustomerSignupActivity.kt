@@ -2,6 +2,7 @@ package com.example.famekodriver.customer
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.toColorInt
@@ -26,7 +27,41 @@ class CustomerSignupActivity : AppCompatActivity() {
         sessionManager = SessionManager(this)
 
         setupCarousel()
+        setupForm()
+        checkGoogleExtras()
+    }
 
+    private fun checkGoogleExtras() {
+        val googleName = intent.getStringExtra("google_name")
+        val googleEmail = intent.getStringExtra("google_email")
+
+        if (googleEmail != null) {
+            val etName = findViewById<TextInputEditText>(R.id.etName)
+            val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
+            val etPassword = findViewById<TextInputEditText>(R.id.etPassword)
+            val etConfirmPassword = findViewById<TextInputEditText>(R.id.etConfirmPassword)
+            val tilEmail = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilEmail)
+            val tilPassword = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilPassword)
+            val tilConfirmPassword = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilConfirmPassword)
+
+            etName.setText(googleName)
+            etEmail.setText(googleEmail)
+
+            // Lock fields
+            etEmail.isEnabled = false
+            tilEmail.helperText = "Verified via Google"
+
+            // Hide password fields
+            tilPassword.visibility = View.GONE
+            tilConfirmPassword.visibility = View.GONE
+            etPassword.setText("GOOGLE_AUTH")
+            etConfirmPassword.setText("GOOGLE_AUTH")
+
+            Toast.makeText(this, "Signed in as $googleEmail. Please complete your profile.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun setupForm() {
         // Fields from layout
         val etName = findViewById<TextInputEditText>(R.id.etName)
         val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
@@ -80,7 +115,8 @@ class CustomerSignupActivity : AppCompatActivity() {
 
             btnSignup.isEnabled = false
             lifecycleScope.launch {
-                repository.customerRegister(name, email, phone, address, password, region = region)
+                val googleUid = intent.getStringExtra("google_uid")
+                repository.customerRegister(name, email, phone, address, password, region = region, firebaseUid = googleUid)
                     .onSuccess {
                         Toast.makeText(this@CustomerSignupActivity, "Account created successfully", Toast.LENGTH_LONG).show()
                         

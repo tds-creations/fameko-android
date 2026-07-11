@@ -32,6 +32,7 @@ import java.io.OutputStreamWriter
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
+import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlin.math.max
@@ -200,6 +201,18 @@ fun Application.configureRouting() {
                     val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
                     updateDriverStatusInDb(id, "APPROVED")
                     call.respondRedirect("/admin/driver/$id")
+                }
+
+                post("/driver/terminate/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    terminateDriverAccount(id)
+                    call.respondRedirect("/admin/drivers")
+                }
+
+                post("/customer/terminate/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    terminateCustomerAccount(id)
+                    call.respondRedirect("/admin/customers")
                 }
 
                 // --- FLEET OWNERS ---
@@ -801,10 +814,14 @@ fun Application.configureRouting() {
                 if (token != null) {
                     val payload = token.payload
                     val email = payload.email
-                    val name = payload["name"] as? String ?: "Google User"
+                    val uid = payload.subject // Google unique ID
                     
-                    val user = findOrCreateCustomerByEmail(email, name)
-                    call.respond(AuthResponse(true, "Success", user["id"].toString(), user["name"].toString()))
+                    val user = syncCustomerWithFirebase(email, uid)
+                    if (user != null) {
+                        call.respond(AuthResponse(true, "Success", user["id"].toString(), user["name"].toString()))
+                    } else {
+                        call.respond(AuthResponse(false, "USER_NOT_FOUND", null, null))
+                    }
                 } else {
                     call.respond(AuthResponse(false, "Invalid Google token", null, null))
                 }
@@ -1061,16 +1078,21 @@ fun Application.configureRouting() {
                     val payload = token.payload
                     val email = payload.email
                     val name = payload["name"] as? String ?: "Google Driver"
+                    val uid = payload.subject
                     
-                    val user = findOrCreateDriverByEmail(email, name)
-                    call.respond(AuthResponse(
-                        success = true, 
-                        message = "Success", 
-                        user_id = user.id.toString(), 
-                        name = user.fullName,
-                        status = user.status,
-                        user_role = user.userRole
-                    ))
+                    val user = syncDriverWithFirebase(email, uid)
+                    if (user != null) {
+                        call.respond(AuthResponse(
+                            success = true, 
+                            message = "Success", 
+                            user_id = user.id.toString(), 
+                            name = user.fullName,
+                            status = user.status,
+                            user_role = user.userRole
+                        ))
+                    } else {
+                        call.respond(AuthResponse(false, "USER_NOT_FOUND", null, null))
+                    }
                 } else {
                     call.respond(AuthResponse(false, "Invalid Google token", null, null))
                 }
@@ -2412,31 +2434,31 @@ private fun loginCustomerInDbByPhone(phone: String): Map<String, Any>? {
     return null
 }
 
-private fun findOrCreateCustomerByEmail(email: String, name: String): Map<String, Any> {
+private fun syncCustomerWithFirebase(email: String, firebaseUid: String): Map<String, Any>? {
     DatabaseInitializer.getDataSource().connection.use { conn ->
-        // 1. Try to find by email
-        val selectSql = "SELECT id, name FROM customers WHERE email = ?"
+        val selectSql = "SELECT id, name, firebase_uid FROM customers WHERE email = ?"
         val selectStmt = conn.prepareStatement(selectSql)
         selectStmt.setString(1, email.lowercase())
         val rs = selectStmt.executeQuery()
-        if (rs.next()) return mapOf("id" to rs.getInt("id"), "name" to rs.getString("name"))
-
-        // 2. Create if not found
-        val insertSql = "INSERT INTO customers (name, email, phone, password) VALUES (?, ?, ?, ?) RETURNING id"
-        val insertStmt = conn.prepareStatement(insertSql)
-        insertStmt.setString(1, name)
-        insertStmt.setString(2, email.lowercase())
-        insertStmt.setString(3, "") // No phone initially
-        insertStmt.setString(4, "GOOGLE_AUTH") // Placeholder
-        val insertRs = insertStmt.executeQuery()
-        if (insertRs.next()) return mapOf("id" to insertRs.getInt(1), "name" to name)
+        if (rs.next()) {
+            val dbUid = rs.getString("firebase_uid")
+            if (dbUid == null) {
+                // Link existing account to this Firebase UID
+                conn.prepareStatement("UPDATE customers SET firebase_uid = ? WHERE email = ?").apply {
+                    setString(1, firebaseUid)
+                    setString(2, email.lowercase())
+                    executeUpdate()
+                }
+            }
+            return mapOf("id" to rs.getInt("id"), "name" to rs.getString("name"))
+        }
     }
-    throw Exception("Failed to find or create customer")
+    return null
 }
 
 private fun registerCustomerInDb(req: CustomerRegisterRequest): Int? {
     DatabaseInitializer.getDataSource().connection.use { conn ->
-        val sql = "INSERT INTO customers (name, email, phone, default_address, password, region, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id"
+        val sql = "INSERT INTO customers (name, email, phone, default_address, password, region, profile_picture, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
         val stmt = conn.prepareStatement(sql)
         stmt.setString(1, req.name.trim())
         stmt.setString(2, req.email.trim().lowercase())
@@ -2445,6 +2467,7 @@ private fun registerCustomerInDb(req: CustomerRegisterRequest): Int? {
         stmt.setString(5, req.password.trim())
         stmt.setString(6, req.region ?: "")
         stmt.setString(7, req.profilePicture ?: "")
+        stmt.setString(8, req.firebaseUid)
         val rs = stmt.executeQuery()
         if (rs.next()) return rs.getInt(1)
     }
@@ -2595,43 +2618,34 @@ private fun initializePaystackPayment(email: String, amountGHS: Double, referenc
     return null
 }
 
-private fun findOrCreateDriverByEmail(email: String, name: String): Driver {
+private fun syncDriverWithFirebase(email: String, firebaseUid: String): Driver? {
     DatabaseInitializer.getDataSource().connection.use { conn ->
-        // 1. Try to find by email
         val selectSql = "SELECT * FROM drivers WHERE email = ?"
         val selectStmt = conn.prepareStatement(selectSql)
         selectStmt.setString(1, email.lowercase())
         val rs = selectStmt.executeQuery()
-        if (rs.next()) return Driver(
-            id = rs.getInt("id"), fullName = rs.getString("full_name") ?: "", email = rs.getString("email") ?: "",
-            phone = rs.getString("phone") ?: "", region = rs.getString("region") ?: "", licenseNumber = rs.getString("license_number") ?: "",
-            vehicleType = rs.getString("vehicle_type"), vehicleNumber = rs.getString("vehicle_number"), status = rs.getString("status") ?: "PENDING",
-            isOnline = rs.getBoolean("is_online"), rating = rs.getDouble("rating"),
-            profilePicture = rs.getString("profile_picture"),
-            userRole = rs.getString("user_role") ?: "DRIVER",
-            companyName = rs.getString("company_name"),
-            registrationNumber = rs.getString("registration_number")
-        )
-
-        // 2. Create if not found
-        val insertSql = "INSERT INTO drivers (full_name, email, phone, password, status, region, license_number, vehicle_type, vehicle_number, service_types, emergency_contact_1, emergency_contact_2) VALUES (?, ?, ?, ?, 'PENDING', 'Greater Accra', 'G-PENDING', 'Car', 'G-PENDING', 'BOTH', 'N/A', 'N/A') RETURNING id"
-        val insertStmt = conn.prepareStatement(insertSql)
-        insertStmt.setString(1, name)
-        insertStmt.setString(2, email.lowercase())
-        insertStmt.setString(3, "")
-        insertStmt.setString(4, "GOOGLE_AUTH")
-        val insertRs = insertStmt.executeQuery()
-        if (insertRs.next()) {
-            val id = insertRs.getInt(1)
-            // Initialize stats row
-            conn.prepareStatement("INSERT INTO driver_stats (driver_id) VALUES (?)").apply {
-                setInt(1, id)
-                executeUpdate()
+        if (rs.next()) {
+            val dbUid = rs.getString("firebase_uid")
+            if (dbUid == null) {
+                conn.prepareStatement("UPDATE drivers SET firebase_uid = ? WHERE email = ?").apply {
+                    setString(1, firebaseUid)
+                    setString(2, email.lowercase())
+                    executeUpdate()
+                }
             }
-            return Driver(id = id, fullName = name, email = email.lowercase(), phone = "", region = "", licenseNumber = "", vehicleType = null, vehicleNumber = null, status = "PENDING", isOnline = false, rating = 5.0, userRole = "DRIVER")
+            return Driver(
+                id = rs.getInt("id"), fullName = rs.getString("full_name") ?: "", email = rs.getString("email") ?: "",
+                phone = rs.getString("phone") ?: "", region = rs.getString("region") ?: "", licenseNumber = rs.getString("license_number") ?: "",
+                vehicleType = rs.getString("vehicle_type"), vehicleNumber = rs.getString("vehicle_number"), status = rs.getString("status") ?: "PENDING",
+                isOnline = rs.getBoolean("is_online"), rating = rs.getDouble("rating"),
+                profilePicture = rs.getString("profile_picture"),
+                userRole = rs.getString("user_role") ?: "DRIVER",
+                companyName = rs.getString("company_name"),
+                registrationNumber = rs.getString("registration_number")
+            )
         }
     }
-    throw Exception("Failed to find or create driver")
+    return null
 }
 
 private fun loginDriverInDbByPhone(phone: String): Driver? {
@@ -2696,7 +2710,7 @@ private fun registerDriverInDb(data: Map<String, String>): Int? {
 
             // 1. Save to fleet_owners table if OWNER or BOTH
             if (role == "OWNER" || role == "BOTH") {
-                val sql = "INSERT INTO fleet_owners (full_name, email, phone, password, company_name, registration_number, region, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                val sql = "INSERT INTO fleet_owners (full_name, email, phone, password, company_name, registration_number, region, status, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                 val stmt = conn.prepareStatement(sql)
                 stmt.setString(1, data["full_name"]?.trim() ?: "")
                 stmt.setString(2, email)
@@ -2706,6 +2720,7 @@ private fun registerDriverInDb(data: Map<String, String>): Int? {
                 stmt.setString(6, data["registration_number"]?.trim())
                 stmt.setString(7, data["region"]?.trim() ?: "")
                 stmt.setString(8, "PENDING")
+                stmt.setString(9, data["firebase_uid"])
                 val rs = stmt.executeQuery()
                 if (rs.next()) {
                     fleetOwnerId = rs.getInt(1)
@@ -2715,7 +2730,7 @@ private fun registerDriverInDb(data: Map<String, String>): Int? {
 
             // 2. Save to drivers table if DRIVER or BOTH
             if (role == "DRIVER" || role == "BOTH") {
-                val sql = "INSERT INTO drivers (full_name, email, phone, region, password, license_number, vehicle_type, vehicle_number, service_types, user_role, company_name, registration_number, emergency_contact_1, emergency_contact_2, fleet_owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                val sql = "INSERT INTO drivers (full_name, email, phone, region, password, license_number, vehicle_type, vehicle_number, service_types, user_role, company_name, registration_number, emergency_contact_1, emergency_contact_2, fleet_owner_id, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                 val stmt = conn.prepareStatement(sql)
                 stmt.setString(1, data["full_name"]?.trim() ?: "")
                 stmt.setString(2, email)
@@ -2732,6 +2747,7 @@ private fun registerDriverInDb(data: Map<String, String>): Int? {
                 stmt.setString(13, data["emergency_contact_1"]?.trim())
                 stmt.setString(14, data["emergency_contact_2"]?.trim())
                 if (fleetOwnerId != null) stmt.setInt(15, fleetOwnerId) else stmt.setNull(15, java.sql.Types.INTEGER)
+                stmt.setString(16, data["firebase_uid"])
 
                 val rs = stmt.executeQuery()
                 if (rs.next()) {
@@ -3834,6 +3850,37 @@ private fun getAllProductsFromDb(): List<Map<String, Any?>> {
         }
     }
     return list
+}
+
+private fun terminateDriverAccount(id: Int) {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        // 1. Get UID
+        val rs = conn.prepareStatement("SELECT firebase_uid FROM drivers WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+        if (rs.next()) {
+            val uid = rs.getString("firebase_uid")
+            if (!uid.isNullOrBlank()) {
+                try { FirebaseAuth.getInstance().deleteUser(uid) } catch (e: Exception) { println("Firebase Delete Error: ${e.message}") }
+            }
+        }
+        // 2. Delete Profile
+        conn.prepareStatement("DELETE FROM driver_stats WHERE driver_id = ?").apply { setInt(1, id); executeUpdate() }
+        conn.prepareStatement("DELETE FROM drivers WHERE id = ?").apply { setInt(1, id); executeUpdate() }
+    }
+}
+
+private fun terminateCustomerAccount(id: Int) {
+    DatabaseInitializer.getDataSource().connection.use { conn ->
+        // 1. Get UID
+        val rs = conn.prepareStatement("SELECT firebase_uid FROM customers WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+        if (rs.next()) {
+            val uid = rs.getString("firebase_uid")
+            if (!uid.isNullOrBlank()) {
+                try { FirebaseAuth.getInstance().deleteUser(uid) } catch (e: Exception) { println("Firebase Delete Error: ${e.message}") }
+            }
+        }
+        // 2. Delete Profile
+        conn.prepareStatement("DELETE FROM customers WHERE id = ?").apply { setInt(1, id); executeUpdate() }
+    }
 }
 
 

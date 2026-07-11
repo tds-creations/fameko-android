@@ -35,7 +35,7 @@ class DriverLoginActivity : AppCompatActivity() {
             val account: GoogleSignInAccount? = task.getResult(ApiException::class.java)
             val idToken = account?.idToken
             if (idToken != null) {
-                loginWithGoogle(idToken)
+                loginWithGoogle(idToken, account.displayName, account.email, account.id)
             } else {
                 Toast.makeText(this, "Google Sign-In failed: No ID Token", Toast.LENGTH_SHORT).show()
             }
@@ -175,7 +175,7 @@ class DriverLoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun loginWithGoogle(idToken: String) {
+    private fun loginWithGoogle(idToken: String, displayName: String?, email: String?, uid: String?) {
         lifecycleScope.launch {
             repository.driverGoogleLogin(idToken)
                 .onSuccess { driver ->
@@ -197,7 +197,17 @@ class DriverLoginActivity : AppCompatActivity() {
                     }
                 }
                 .onFailure { error ->
-                    Toast.makeText(this@DriverLoginActivity, "Google login failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    if (error.message == "USER_NOT_FOUND") {
+                        Toast.makeText(this@DriverLoginActivity, "Account not found. Please complete your registration.", Toast.LENGTH_LONG).show()
+                        val intent = Intent(this@DriverLoginActivity, DriverSignupActivity::class.java).apply {
+                            putExtra("google_name", displayName)
+                            putExtra("google_email", email)
+                            putExtra("google_uid", uid)
+                        }
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(this@DriverLoginActivity, "Google login failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    }
                 }
         }
     }

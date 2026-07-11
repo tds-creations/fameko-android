@@ -480,9 +480,9 @@ class DriverRepository {
         }
     }
 
-    suspend fun customerRegister(name: String, email: String, phone: String, address: String, password: String, region: String? = null, profilePicture: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun customerRegister(name: String, email: String, phone: String, address: String, password: String, region: String? = null, profilePicture: String? = null, firebaseUid: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val request = CustomerRegisterRequest(name, email, phone, address, password, region, profilePicture)
+            val request = CustomerRegisterRequest(name, email, phone, address, password, region, profilePicture, firebaseUid)
             val response = NetworkClient.famekoApi.registerCustomer(request)
             if (response.success) {
                 Result.success(Unit)
@@ -513,7 +513,8 @@ class DriverRepository {
         docs: Map<String, File> = emptyMap(),
         userRole: String = "DRIVER",
         companyName: String? = null,
-        registrationNumber: String? = null
+        registrationNumber: String? = null,
+        firebaseUid: String? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val nameBody = name.toRequestBody(MultipartBody.FORM)
@@ -530,6 +531,7 @@ class DriverRepository {
             val roleBody = userRole.toRequestBody(MultipartBody.FORM)
             val companyBody = companyName?.toRequestBody(MultipartBody.FORM)
             val regNumBody = registrationNumber?.toRequestBody(MultipartBody.FORM)
+            val uidBody = firebaseUid?.toRequestBody(MultipartBody.FORM)
 
             fun fileToPart(key: String): MultipartBody.Part? {
                 val file = docs[key] ?: return null
@@ -539,7 +541,7 @@ class DriverRepository {
 
             val response = NetworkClient.famekoApi.registerDriver(
                 nameBody, emailBody, phoneBody, passBody, licenseBody, regionBody, vTypeBody, sTypeBody, vNumBody,
-                e1Body, e2Body, roleBody, companyBody, regNumBody,
+                e1Body, e2Body, roleBody, companyBody, regNumBody, uidBody,
                 fileToPart("profile_pic"),
                 fileToPart("drivers_license"),
                 fileToPart("insurance_cert"),

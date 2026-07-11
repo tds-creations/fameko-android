@@ -90,6 +90,7 @@ interface FamekoApiService {
         @Part("user_role") userRole: RequestBody,
         @Part("company_name") companyName: RequestBody?,
         @Part("registration_number") registrationNumber: RequestBody?,
+        @Part("firebase_uid") firebaseUid: RequestBody? = null,
         @Part profile_pic: MultipartBody.Part? = null,
         @Part drivers_license: MultipartBody.Part? = null,
         @Part insurance_cert: MultipartBody.Part? = null,

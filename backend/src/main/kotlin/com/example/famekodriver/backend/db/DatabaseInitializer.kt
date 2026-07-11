@@ -457,7 +457,9 @@ object DatabaseInitializer {
             "ALTER TABLE rental_vehicles ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "CREATE INDEX IF NOT EXISTS idx_drivers_fleet_owner ON drivers(fleet_owner_id);",
-            "CREATE INDEX IF NOT EXISTS idx_rental_vehicles_fleet_owner ON rental_vehicles(fleet_owner_id);"
+            "CREATE INDEX IF NOT EXISTS idx_rental_vehicles_fleet_owner ON rental_vehicles(fleet_owner_id);",
+            "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;"
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 
