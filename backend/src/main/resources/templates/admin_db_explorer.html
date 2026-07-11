@@ -52,9 +52,13 @@
 
         .main-content {
             margin-left: var(--sidebar-width);
+            .main-content {
             flex: 1;
             padding: 24px 32px;
-            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
             transition: var(--transition);
         }   overflow-x: hidden;
         }
@@ -133,14 +137,19 @@
         tr:hover td { background-color: var(--light-bg); }
 
         .db-sidebar {
-            width: 200px;
+            width: 220px;
             border-right: 1px solid var(--border-color);
             padding-right: 10px;
+            overflow-y: auto;
+            height: 100%;
         }
 
         .db-layout {
             display: flex;
             gap: 20px;
+            flex: 1;
+            overflow: hidden; /* This makes the children scroll independently */
+            min-height: 0;
         }
 
         .table-list {
@@ -208,7 +217,7 @@
                 </ul>
             </div>
 
-            <div style="flex: 1; min-width: 0;">
+            <div style="flex: 1; min-width: 0; overflow-y: auto; height: 100%; padding-bottom: 24px;" id="db-content-area">
                 <div id="loading-spinner" class="spinner"></div>
 
                 <div id="welcome-content" th:style="${selectedTable == null ? 'display: block' : 'display: none'}" class="card" style="padding: 40px; text-align: center; color: var(--muted-text);">
@@ -217,7 +226,7 @@
                 </div>
 
                 <div id="table-card" th:style="${selectedTable != null ? 'display: block' : 'display: none'}" class="card">
-                    <div class="card-header">
+                    <div class="card-header" style="position: sticky; top: 0; background: var(--card-bg); z-index: 10;">
                         <div class="card-title">
                             <i class="fas fa-table"></i>
                             <span id="display-table-name" th:text="${selectedTable != null ? selectedTable : ''}">Table Name</span>
