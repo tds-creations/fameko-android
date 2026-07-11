@@ -2614,7 +2614,7 @@ private fun findOrCreateDriverByEmail(email: String, name: String): Driver {
         )
 
         // 2. Create if not found
-        val insertSql = "INSERT INTO drivers (full_name, email, phone, password, status) VALUES (?, ?, ?, ?, 'PENDING') RETURNING id"
+        val insertSql = "INSERT INTO drivers (full_name, email, phone, password, status, region, license_number) VALUES (?, ?, ?, ?, 'PENDING', 'Greater Accra', 'G-PENDING') RETURNING id"
         val insertStmt = conn.prepareStatement(insertSql)
         insertStmt.setString(1, name)
         insertStmt.setString(2, email.lowercase())
