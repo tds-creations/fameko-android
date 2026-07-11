@@ -1410,6 +1410,7 @@ fun Application.configureRouting() {
                 DatabaseInitializer.getDataSource().connection.use { conn ->
                     conn.prepareStatement("UPDATE orders SET status = 'CANCELLED' WHERE id = ?").apply { setInt(1, orderId); executeUpdate() }
                     conn.prepareStatement("UPDATE deliveries SET status = 'CANCELLED' WHERE order_id = ?").apply { setInt(1, orderId); executeUpdate() }
+                    RedisManager.setChatRetention(orderId)
                 }
                 
                 if (driverId != null) {
@@ -2093,6 +2094,10 @@ fun Application.configureRouting() {
                             }
                         }
                         
+                        if (status == "DELIVERED" || status == "CANCELLED") {
+                            RedisManager.setChatRetention(orderId)
+                        }
+                        
                         // Notify Customer
                         val customerId = getCustomerIdForOrder(orderId)
                         if (customerId != null) {
@@ -2301,60 +2306,34 @@ fun Application.configureRouting() {
         route("/chat") {
             post("/send") {
                 val msg = call.receive<Message>()
-                DatabaseInitializer.getDataSource().connection.use { conn ->
-                    val sql = "INSERT INTO chat_messages (conversation_id, sender_type, sender_id, body) VALUES (?, ?, ?, ?) RETURNING id, created_at"
-                    val stmt = conn.prepareStatement(sql)
-                    stmt.setInt(1, msg.conversationId)
-                    stmt.setString(2, msg.senderType)
-                    stmt.setInt(3, msg.senderId)
-                    stmt.setString(4, msg.body)
-                    
-                    val rs = stmt.executeQuery()
-                    if (rs.next()) {
-                        val savedMsg = msg.copy(
-                            id = rs.getInt(1),
-                            createdAt = rs.getTimestamp(2).toInstant().toString()
-                        )
-                        
-                        // 1. Find recipient
-                        val recipientId = if (savedMsg.senderType == "customer") {
-                            getDriverIdForOrder(savedMsg.conversationId)?.let { "DRIVER_$it" }
-                        } else {
-                            getCustomerIdForOrder(savedMsg.conversationId)?.let { "CUSTOMER_$it" }
-                        }
-                        
-                        // 2. Broadcast via WS and Push
-                        if (recipientId != null) {
-                            sendToUser(recipientId, "NEW_MESSAGE", savedMsg)
-                        }
-                        
-                        call.respond(savedMsg)
-                    } else {
-                        call.respond(HttpStatusCode.InternalServerError)
-                    }
+                val savedMsg = msg.copy(
+                    id = (System.currentTimeMillis() % 1000000).toInt(), // Temp ID
+                    createdAt = java.time.Instant.now().toString()
+                )
+                
+                // Store in Redis instead of Postgres
+                RedisManager.saveChatMessage(savedMsg.conversationId, com.google.gson.Gson().toJson(savedMsg))
+                
+                // 1. Find recipient
+                val recipientId = if (savedMsg.senderType == "customer") {
+                    getDriverIdForOrder(savedMsg.conversationId)?.let { "DRIVER_$it" }
+                } else {
+                    getCustomerIdForOrder(savedMsg.conversationId)?.let { "CUSTOMER_$it" }
                 }
+                
+                // 2. Broadcast via WS and Push
+                if (recipientId != null) {
+                    sendToUser(recipientId, "NEW_MESSAGE", savedMsg)
+                }
+                
+                call.respond(savedMsg)
             }
 
             get("/history/{convId}") {
                 val convId = call.parameters["convId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-                val list = mutableListOf<Message>()
-                DatabaseInitializer.getDataSource().connection.use { conn ->
-                    val sql = "SELECT * FROM chat_messages WHERE conversation_id = ? ORDER BY created_at ASC"
-                    val stmt = conn.prepareStatement(sql)
-                    stmt.setInt(1, convId)
-                    val rs = stmt.executeQuery()
-                    while (rs.next()) {
-                        list.add(Message(
-                            id = rs.getInt("id"),
-                            conversationId = rs.getInt("conversation_id"),
-                            senderType = rs.getString("sender_type"),
-                            senderId = rs.getInt("sender_id"),
-                            body = rs.getString("body"),
-                            createdAt = rs.getTimestamp("created_at").toInstant().toString(),
-                            read = rs.getBoolean("is_read")
-                        ))
-                    }
-                }
+                val jsonList = RedisManager.getChatHistory(convId)
+                val gson = com.google.gson.Gson()
+                val list = jsonList.map { gson.fromJson(it, Message::class.java) }
                 call.respond(list)
             }
         }

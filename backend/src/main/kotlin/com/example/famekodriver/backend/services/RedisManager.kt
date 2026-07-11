@@ -256,4 +256,45 @@ object RedisManager {
         val stored = get("reset_otp:$email")
         return stored != null && stored == otp
     }
+
+    // --- TEMPORARY CHAT STORAGE ---
+
+    /**
+     * Store a chat message in a trip-specific list in Redis.
+     */
+    fun saveChatMessage(convId: Int, messageJson: String) {
+        try {
+            pool.resource.use { jedis ->
+                val key = "chat:$convId"
+                jedis.rpush(key, messageJson)
+                // Default TTL for active trips is 12 hours to prevent orphaned keys if ride never "ends"
+                jedis.expire(key, 43200) 
+            }
+        } catch (e: Exception) {
+            println("Redis Chat Save Error: ${e.message}")
+        }
+    }
+
+    /**
+     * Retrieve temporary chat history from Redis.
+     */
+    fun getChatHistory(convId: Int): List<String> {
+        return try {
+            pool.resource.use { it.lrange("chat:$convId", 0, -1) }
+        } catch (e: Exception) {
+            println("Redis Chat Fetch Error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Once ride ends, keep chat for 24 hours only for dispute resolution/safety.
+     */
+    fun setChatRetention(convId: Int) {
+        try {
+            pool.resource.use { it.expire("chat:$convId", 86400) }
+        } catch (e: Exception) {
+            println("Redis Chat TTL Error: ${e.message}")
+        }
+    }
 }
