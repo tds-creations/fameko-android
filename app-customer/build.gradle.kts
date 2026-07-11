@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.google.material)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.viewpager2)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.preference)
     implementation(libs.kotlinx.coroutines.core)

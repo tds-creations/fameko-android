@@ -7,13 +7,11 @@
     android:background="@color/white"
     tools:context=".DriverLoginActivity">
 
-    <!-- Carousel Section (Maintained) -->
-    <ImageView
-        android:id="@+id/ivLogo"
+    <!-- Carousel Section (ViewPager2 for Swiping Effect) -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPagerCarousel"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:contentDescription="@null"
-        android:scaleType="centerCrop"
         app:layout_constraintHeight_percent="0.4"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -24,7 +22,7 @@
         android:layout_height="0dp"
         android:fillViewport="true"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ivLogo">
+        app:layout_constraintTop_toBottomOf="@id/viewPagerCarousel">
 
         <LinearLayout
             android:layout_width="match_parent"

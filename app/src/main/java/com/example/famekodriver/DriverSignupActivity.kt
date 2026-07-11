@@ -274,22 +274,20 @@ class DriverSignupActivity : AppCompatActivity() {
     }
 
     private fun setupCarousel() {
-        val ivLogo = findViewById<ImageView>(R.id.ivLogo)
+        val viewPager = findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.viewPagerCarousel)
         val images = listOf(
             ImageLinks.DRIVER_LOGIN_CAROUSEL_1,
             ImageLinks.DRIVER_LOGIN_CAROUSEL_2,
             ImageLinks.DRIVER_LOGIN_CAROUSEL_3
         )
 
-        var currentIndex = 0
+        viewPager.adapter = com.example.famekodriver.core.utils.CarouselAdapter(images)
+
         lifecycleScope.launch {
             while (true) {
-                ivLogo.load(images[currentIndex]) {
-                    crossfade(true)
-                    crossfade(2000)
-                }
-                currentIndex = (currentIndex + 1) % images.size
-                delay(10000.milliseconds)
+                delay(5000)
+                val nextItem = (viewPager.currentItem + 1) % images.size
+                viewPager.setCurrentItem(nextItem, true)
             }
         }
     }

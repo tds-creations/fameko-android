@@ -49,4 +49,7 @@ dependencies {
 
     // WorkManager
     api(libs.androidx.work.runtime.ktx)
+    
+    api(libs.androidx.viewpager2)
+    api(libs.coil)
 }

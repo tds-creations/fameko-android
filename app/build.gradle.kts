@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.google.material)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.viewpager2)
 
     // Maps and Location (OSM / MapLibre)
     implementation(libs.maplibre.android)

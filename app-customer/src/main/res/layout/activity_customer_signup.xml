@@ -7,12 +7,11 @@
     android:background="#001A3F"
     tools:context=".CustomerSignupActivity">
 
-    <ImageView
-        android:id="@+id/ivLogo"
+    <!-- Carousel Section (ViewPager2 for Swiping Effect) -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPagerCarousel"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:contentDescription="@null"
-        android:scaleType="centerCrop"
         app:layout_constraintHeight_percent="0.3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -27,7 +26,7 @@
         app:cardCornerRadius="40dp"
         app:cardElevation="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ivLogo"
+        app:layout_constraintTop_toBottomOf="@id/viewPagerCarousel"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.LargeComponent.TopRounded">
 
         <androidx.core.widget.NestedScrollView
