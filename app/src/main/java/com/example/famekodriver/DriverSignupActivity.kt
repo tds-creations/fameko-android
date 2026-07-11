@@ -87,7 +87,7 @@ class DriverSignupActivity : AppCompatActivity() {
         val tvLogin = findViewById<TextView>(R.id.tvLogin)
         val loginText = "Already a driver? Login here"
         val spannableLogin = android.text.SpannableString(loginText)
-        val brandBlue = "#004E89".toColorInt()
+        val brandBlue = "#0047AB".toColorInt()
         
         val loginStart = loginText.indexOf("Login here")
         if (loginStart != -1) {

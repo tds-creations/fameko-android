@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.famekodriver.admin.ui.AdminDashboardScreen
@@ -91,6 +93,15 @@ fun AdminMainContent() {
     var targetMapLocation by remember { mutableStateOf<GeoPoint?>(null) }
     val adminViewModel: AdminViewModel = viewModel()
     val context = LocalContext.current
+    val view = LocalView.current
+
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as android.app.Activity).window
+            window.statusBarColor = FamekoPrimary.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+        }
+    }
 
     Scaffold(
         bottomBar = {

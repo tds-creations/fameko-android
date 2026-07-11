@@ -85,6 +85,8 @@ import com.example.famekodriver.customer.ui.theme.*
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.messaging.FirebaseMessaging
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
@@ -171,18 +173,28 @@ class CustomerMapActivity : ComponentActivity() {
 
 @Composable
 fun FamekoTheme(content: @Composable () -> Unit) {
+    val colorScheme = lightColorScheme(
+        primary = FamekoBlue,
+        onPrimary = Color.White,
+        secondary = FamekoGold,
+        onSecondary = Color.White,
+        surface = Color.White,
+        onSurface = BoltDark,
+        background = Color.White,
+        onBackground = BoltDark,
+        error = BoltOrange
+    )
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = colorScheme.primary.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+        }
+    }
+
     MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = FamekoBlue,
-            onPrimary = Color.White,
-            secondary = FamekoGold,
-            onSecondary = Color.White,
-            surface = Color.White,
-            onSurface = BoltDark,
-            background = Color.White,
-            onBackground = BoltDark,
-            error = BoltOrange
-        ),
+        colorScheme = colorScheme,
         typography = Typography(
             headlineMedium = TextStyle(
                 fontWeight = FontWeight.ExtraBold,

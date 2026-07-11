@@ -2,7 +2,7 @@ package com.example.famekodriver.admin.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val FamekoPrimary = Color(0xFF004E89)
+val FamekoPrimary = Color(0xFF0047AB)
 val FamekoSecondary = Color(0xFF28A745)
 val FamekoAccent = Color(0xFFFF6B35)
 val AdminDark = Color(0xFF1A202C)

@@ -64,7 +64,7 @@ class DriverLoginActivity : AppCompatActivity() {
         
         val registerText = "Don't have an account? Register here"
         val spannableRegister = android.text.SpannableString(registerText)
-        val brandBlue = "#004E89".toColorInt()
+        val brandBlue = "#0047AB".toColorInt()
         
         val regStart = registerText.indexOf("Register here")
         if (regStart != -1) {

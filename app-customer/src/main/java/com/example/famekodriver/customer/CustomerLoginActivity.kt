@@ -135,7 +135,7 @@ class CustomerLoginActivity : AppCompatActivity() {
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
         val registerText = getString(R.string.new_to_fameko)
         val spannableRegister = android.text.SpannableString(registerText)
-        val brandBlue = "#004E89".toColorInt()
+        val brandBlue = "#0047AB".toColorInt()
         
         // Find index of "Create account"
         val highlightedPart = "Create account"
