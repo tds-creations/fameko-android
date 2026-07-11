@@ -45,7 +45,7 @@
                     android:id="@+id/tvTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Create Driver Account"
+                    android:text="@string/title_create_driver_account"
                     android:textColor="#1A1C1E"
                     android:textSize="28sp"
                     android:textStyle="bold" />
@@ -55,7 +55,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Join the Fameko Fleet"
+                    android:text="@string/subtitle_join_fameko_fleet"
                     android:textColor="#44474E"
                     android:textSize="18sp" />
 
@@ -63,20 +63,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
+                    android:hint="@string/hint_full_name"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:boxStrokeWidthFocused="1dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Full Name"
                         android:inputType="textPersonName"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
@@ -87,7 +87,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Select Vehicle Type"
+                    android:text="@string/label_select_vehicle_type"
                     android:textColor="#1A1C1E"
                     android:textStyle="bold" />
 
@@ -119,13 +119,13 @@
                                 android:id="@+id/ivCar"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="Car"
+                                android:contentDescription="@string/vehicle_car"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="Car"
+                                android:text="@string/vehicle_car"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -146,13 +146,13 @@
                                 android:id="@+id/ivPragya"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="Pragya"
+                                android:contentDescription="@string/vehicle_pragya"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="Pragya"
+                                android:text="@string/vehicle_pragya"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -173,13 +173,13 @@
                                 android:id="@+id/ivBicycle"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="Bicycle"
+                                android:contentDescription="@string/vehicle_bicycle"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="Bicycle"
+                                android:text="@string/vehicle_bicycle"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -200,13 +200,13 @@
                                 android:id="@+id/ivAboboyaa"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="Aboboyaa"
+                                android:contentDescription="@string/vehicle_aboboyaa"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="Aboboyaa"
+                                android:text="@string/vehicle_aboboyaa"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -227,13 +227,13 @@
                                 android:id="@+id/ivOkada"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="Okada"
+                                android:contentDescription="@string/vehicle_okada"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="Okada"
+                                android:text="@string/vehicle_okada"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -254,13 +254,13 @@
                                 android:id="@+id/ivTruck"
                                 android:layout_width="60dp"
                                 android:layout_height="60dp"
-                                android:contentDescription="Truck"
+                                android:contentDescription="@string/vehicle_truck"
                                 android:scaleType="centerInside" />
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="Truck"
+                                android:text="@string/vehicle_truck"
                                 android:textColor="#000000"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -283,7 +283,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Driver"
+                        android:text="@string/role_driver"
                         android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
@@ -292,7 +292,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Fleet Owner"
+                        android:text="@string/role_fleet_owner"
                         android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
@@ -301,7 +301,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Both"
+                        android:text="@string/role_both"
                         android:textSize="12sp" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -311,20 +311,21 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:visibility="gone"
+                    android:hint="@string/hint_company_name"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:boxStrokeWidthFocused="1dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etCompanyName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Company Name"
+                        android:hint="@string/hint_company_name"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -334,6 +335,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/hint_registration_number"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -341,13 +344,13 @@
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:helperTextEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etRegistrationNumber"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Registration Number"
+                        android:hint="@string/hint_registration_number"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -356,6 +359,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/hint_email_address"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -363,22 +368,26 @@
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:helperTextEnabled="true"
+                    app:helperText="@string/helper_email_example">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Email Address"
+                        android:hint="@string/hint_email_address"
                         android:inputType="textEmailAddress"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/hint_phone_number"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -386,16 +395,18 @@
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:helperTextEnabled="true"
+                    app:helperText="@string/helper_phone_reachable">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPhone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Phone Number"
+                        android:hint="@string/hint_phone_number"
                         android:inputType="phone"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -403,6 +414,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/hint_drivers_license_number"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -410,37 +423,47 @@
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:helperTextEnabled="true"
+                    app:helperText="@string/helper_license_verification">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etLicenseNumber"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Driver\u0027s License Number"
+                        android:hint="@string/hint_drivers_license_number"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/hint_select_region"
+                    android:textColor="#1A1C1E"
+                    android:textStyle="bold"
+                    android:labelFor="@+id/actRegion" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilRegion"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="4dp"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:boxStrokeWidthFocused="1dp">
 
                     <AutoCompleteTextView
                         android:id="@+id/actRegion"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Select Region"
                         android:inputType="none"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
@@ -450,7 +473,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Emergency Contacts"
+                    android:text="@string/label_emergency_contacts"
                     android:textColor="#1A1C1E"
                     android:textStyle="bold" />
 
@@ -458,52 +481,58 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
+                    android:hint="@string/hint_emergency_contact_1"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:boxStrokeWidthFocused="1dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmergency1"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Emergency Contact 1"
+                        android:hint="@string/hint_emergency_contact_1"
                         android:inputType="phone"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/hint_emergency_contact_2"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:boxStrokeWidthFocused="1dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmergency2"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Emergency Contact 2"
+                        android:hint="@string/hint_emergency_contact_2"
                         android:inputType="phone"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/hint_password"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -511,23 +540,27 @@
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false"
-                    app:passwordToggleEnabled="true">
+                    app:passwordToggleEnabled="true"
+                    app:helperTextEnabled="true"
+                    app:helperText="@string/helper_password_length">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Password"
+                        android:hint="@string/hint_password"
                         android:inputType="textPassword"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/hint_confirm_password"
+                    android:textColorHint="#44474E"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -535,17 +568,17 @@
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false"
                     app:passwordToggleEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etConfirmPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Confirm Password"
+                        android:hint="@string/hint_confirm_password"
                         android:inputType="textPassword"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
@@ -553,8 +586,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="64dp"
                     android:layout_marginTop="24dp"
-                    android:text="Create Account"
+                    android:text="@string/btn_create_account"
                     android:textAllCaps="false"
+                    android:textColor="@android:color/white"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     app:backgroundTint="@color/brand_blue"
@@ -566,7 +600,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:layout_marginTop="16dp"
-                    android:text="Already a driver? Login here"
+                    android:text="@string/tv_already_driver_login"
                     android:textColor="#44474E" />
 
             </LinearLayout>

@@ -109,6 +109,8 @@
     <string name="status_maintenance">MAINTENANCE</string>
 
     <!-- Driver Signup -->
+    <string name="title_create_driver_account">Create Driver Account</string>
+    <string name="subtitle_join_fameko_fleet">Join the Fameko Fleet</string>
     <string name="hint_full_name">Full Name</string>
     <string name="label_select_vehicle_type">Select Vehicle Type</string>
     <string name="vehicle_car">Car</string>
@@ -121,12 +123,14 @@
     <string name="role_driver">Driver</string>
     <string name="role_fleet_owner">Fleet Owner</string>
     <string name="role_both">Both</string>
+    <string name="hint_company_name">Company Name</string>
     <string name="hint_rental_company_name">Rental Company Name</string>
     <string name="hint_registration_number">Registration Number</string>
     <string name="hint_email_address">Email Address</string>
     <string name="hint_phone_number">Phone Number</string>
     <string name="hint_drivers_license_number">Driver\'s License Number</string>
     <string name="hint_region_of_operation">Region of Operation</string>
+    <string name="hint_select_region">Select Region</string>
     <string name="label_emergency_contacts">Emergency Contacts</string>
     <string name="hint_emergency_contact_1">Emergency Contact 1</string>
     <string name="hint_emergency_contact_2">Emergency Contact 2</string>
@@ -138,4 +142,8 @@
     <string name="hint_enter_otp">Enter 6-digit OTP from WhatsApp</string>
     <string name="msg_sending_otp">Sending OTP to WhatsApp&#8230;</string>
     <string name="msg_verifying_otp">Verifying OTP&#8230;</string>
+    <string name="helper_email_example">e.g. name@example.com</string>
+    <string name="helper_phone_reachable">Must be reachable for trips</string>
+    <string name="helper_license_verification">Required for verification</string>
+    <string name="helper_password_length">Use at least 6 characters</string>
 </resources>

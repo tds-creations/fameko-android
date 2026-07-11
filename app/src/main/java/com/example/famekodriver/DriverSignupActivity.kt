@@ -122,19 +122,23 @@ class DriverSignupActivity : AppCompatActivity() {
                         tilRegNum.visibility = View.GONE
                         tilLicenseNum.visibility = View.VISIBLE
                         tilLicenseNum.hint = "Driver's License Number"
+                        tilLicenseNum.helperText = "Enter your valid DVLA license number"
                     }
                     R.id.btnRoleOwner -> {
                         tilCompanyName.visibility = View.VISIBLE
                         tilRegNum.visibility = View.VISIBLE
                         tilRegNum.hint = "Business Registration Number"
+                        tilRegNum.helperText = "Enter your RGD business number"
                         tilLicenseNum.visibility = View.GONE
                     }
                     R.id.btnRoleBoth -> {
                         tilCompanyName.visibility = View.VISIBLE
                         tilRegNum.visibility = View.VISIBLE
                         tilRegNum.hint = "Business Registration Number"
+                        tilRegNum.helperText = "Enter your RGD business number"
                         tilLicenseNum.visibility = View.VISIBLE
                         tilLicenseNum.hint = "Driver's License Number"
+                        tilLicenseNum.helperText = "Enter your valid DVLA license number"
                     }
                 }
             }
