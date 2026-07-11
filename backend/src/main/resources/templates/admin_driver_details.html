@@ -530,12 +530,28 @@
                                 <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Driver</button>
                             </form>
                         </div>
+
+                        <!-- TERMINATION (All Statuses) -->
+                        <div style="margin-left: auto;">
+                            <button type="button" class="btn btn-reject" th:onclick="'confirmTerminate(' + ${driver['id']} + ')'">
+                                <i class="fas fa-trash-can"></i> Terminate Account
+                            </button>
+                            <form th:id="'terminate-form-' + ${driver['id']}" th:action="${'/admin/driver/terminate/' + driver['id']}" method="post" style="display:none;"></form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+
+    <script th:inline="javascript">
+        function confirmTerminate(id) {
+            if (confirm("CRITICAL ACTION: This will PERMANENTLY delete the driver profile from PostgreSQL and their authentication account from Firebase. The user will be immediately logged out and unable to log in again. \n\nAre you absolutely sure?")) {
+                document.getElementById('terminate-form-' + id).submit();
+            }
+        }
+    </script>
 </body>
 </html>
 

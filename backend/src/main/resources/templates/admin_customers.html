@@ -352,9 +352,15 @@
                             </td>
                             <td th:text="${customer['date_joined'] != null ? #strings.substring(customer['date_joined'], 0, 10) : 'N/A'}">2024-01-01</td>
                             <td>
-                                <button class="btn" style="background: var(--light-bg); color: var(--primary-color)">
-                                    <i class="fas fa-history"></i> History
-                                </button>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="btn" style="background: var(--light-bg); color: var(--primary-color)">
+                                        <i class="fas fa-history"></i> History
+                                    </button>
+                                    <button class="btn btn-reject" th:onclick="'confirmTerminate(' + ${customer['id']} + ')'" title="Terminate Account">
+                                        <i class="fas fa-trash-can"></i>
+                                    </button>
+                                </div>
+                                <form th:id="'terminate-form-' + ${customer['id']}" th:action="${'/admin/customer/terminate/' + customer['id']}" method="post" style="display:none;"></form>
                             </td>
                         </tr>
                     </tbody>
@@ -363,6 +369,14 @@
         </div>
     </div>
     <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+
+    <script th:inline="javascript">
+        function confirmTerminate(id) {
+            if (confirm("CRITICAL ACTION: This will PERMANENTLY delete the customer profile from PostgreSQL and their authentication account from Firebase. \n\nAre you absolutely sure?")) {
+                document.getElementById('terminate-form-' + id).submit();
+            }
+        }
+    </script>
 </body>
 </html>
 
