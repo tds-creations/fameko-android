@@ -5,12 +5,14 @@
             background: var(--sidebar-bg);
             color: var(--dark-text);
             height: 100vh;
-            position: fixed;
+            position: sticky;
+            top: 0;
             padding-top: 10px;
             border-right: 1px solid var(--border-color);
             z-index: 1000;
             overflow-y: auto;
             transition: var(--transition);
+            flex-shrink: 0;
         }
         .sidebar.collapsed {
             width: var(--sidebar-collapsed-width);
@@ -134,9 +136,8 @@
         /* Main Content Adjustment */
         .main-content {
             transition: var(--transition);
-        }
-        .main-content.sidebar-collapsed {
-            margin-left: var(--sidebar-collapsed-width) !important;
+            flex: 1;
+            min-width: 0; /* Ensures content doesn't overflow container */
         }
     </style>
 
@@ -202,7 +203,6 @@
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('main-content');
             sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('sidebar-collapsed');
 
             // Save state
             localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
@@ -213,9 +213,7 @@
             const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
             if (isCollapsed) {
                 const sidebar = document.getElementById('sidebar');
-                const mainContent = document.getElementById('main-content');
                 if (sidebar) sidebar.classList.add('collapsed');
-                if (mainContent) mainContent.classList.add('sidebar-collapsed');
             }
         })();
     </script>
