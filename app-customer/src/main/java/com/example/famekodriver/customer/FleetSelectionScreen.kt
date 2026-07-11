@@ -63,7 +63,7 @@ private fun vehicleStatusColor(vehicle: Map<String, Any>): Color =
     when (vehicleStatus(vehicle)) {
         "AVAILABLE"              -> BoltGreen
         "BOOKED"                 -> Color(0xFFF08C00)
-        "OCCUPIED", "IN_USE"     -> Color(0xFF004E89)
+        "OCCUPIED", "IN_USE"     -> FamekoBlue
         else                     -> Color.Red
     }
 

@@ -92,6 +92,9 @@ import org.maplibre.android.annotations.Polyline
 import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.modes.CameraMode
+import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import java.text.SimpleDateFormat
@@ -309,7 +312,7 @@ fun CustomerMapScreen() {
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = FamekoBlue,
                             selectedTextColor = FamekoBlue,
-                            indicatorColor = FamekoBlue.copy(alpha = 0.1f)
+                            indicatorColor = FamekoGold.copy(alpha = 0.3f)
                         )
                     )
                     NavigationBarItem(
@@ -320,7 +323,7 @@ fun CustomerMapScreen() {
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = FamekoBlue,
                             selectedTextColor = FamekoBlue,
-                            indicatorColor = FamekoBlue.copy(alpha = 0.1f)
+                            indicatorColor = FamekoGold.copy(alpha = 0.3f)
                         )
                     )
                     NavigationBarItem(
@@ -331,7 +334,7 @@ fun CustomerMapScreen() {
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = FamekoBlue,
                             selectedTextColor = FamekoBlue,
-                            indicatorColor = FamekoBlue.copy(alpha = 0.1f)
+                            indicatorColor = FamekoGold.copy(alpha = 0.3f)
                         )
                     )
                 }
@@ -574,8 +577,9 @@ fun MainMapContent(
     }
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    var hasCentredOnLocation by remember { mutableStateOf(false) }
 
-    LaunchedEffect(hasLocationPermission, viewModel.pickupLat, viewModel.pickupLng, isActive) {
+    LaunchedEffect(hasLocationPermission, viewModel.pickupLat, viewModel.pickupLng, isActive, mapLibreMap) {
         while (isActive) {
             if (hasLocationPermission) {
                 val targetLat = viewModel.pickupLat
@@ -588,6 +592,10 @@ fun MainMapContent(
                     fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
                         location?.let {
                             viewModel.updateNearbyDrivers(it.latitude, it.longitude)
+                            if (!hasCentredOnLocation && mapLibreMap != null) {
+                                mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
+                                hasCentredOnLocation = true
+                            }
                         }
                     }
                 }
@@ -667,6 +675,24 @@ fun MainMapContent(
             viewModel.isSearchMode || ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) || (viewModel.activeServiceMode == ServiceType.RENTAL && viewModel.rentalPickupLocation.isNotEmpty()) -> CustomerSheetState.PICKING_ADDRESS
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             else -> CustomerSheetState.IDLE
+        }
+    }
+
+    LaunchedEffect(mapLibreMap, hasLocationPermission) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        if (hasLocationPermission) {
+            map.getStyle { style ->
+                val locationComponent = map.locationComponent
+                if (!locationComponent.isLocationComponentActivated) {
+                    locationComponent.activateLocationComponent(
+                        LocationComponentActivationOptions.builder(context, style).build()
+                    )
+                }
+                locationComponent.isLocationComponentEnabled = true
+                locationComponent.renderMode = RenderMode.COMPASS
+            }
+        } else {
+            map.locationComponent.isLocationComponentEnabled = false
         }
     }
 
@@ -874,9 +900,9 @@ fun MainMapContent(
 
     BottomSheetScaffold(
         scaffoldState = sheetScaffoldState,
-            sheetPeekHeight = if (currentSheetState == CustomerSheetState.LANDING) 200.dp
-                             else if (currentSheetState == CustomerSheetState.IDLE) 180.dp
-                             else if (viewModel.currentOrderId != null || viewModel.activeRental != null || currentSheetState == CustomerSheetState.SELECTING_SERVICE) 140.dp 
+            sheetPeekHeight = if (currentSheetState == CustomerSheetState.LANDING) 140.dp
+                             else if (currentSheetState == CustomerSheetState.IDLE) 120.dp
+                             else if (viewModel.currentOrderId != null || viewModel.activeRental != null || currentSheetState == CustomerSheetState.SELECTING_SERVICE) 110.dp
                              else 0.dp,
             sheetContainerColor = Color.White,
             sheetShadowElevation = 32.dp,
@@ -925,40 +951,6 @@ fun MainMapContent(
                         }
                         CustomerSheetState.IDLE -> {
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(64.dp)
-                                        .clickable { 
-                                            viewModel.navigateTo(CustomerScreen.RouteSelection)
-                                        },
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = Color.White,
-                                    shadowElevation = 8.dp,
-                                    border = BorderStroke(1.dp, BoltLightGray)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 20.dp)
-                                    ) {
-                                        Icon(Icons.Default.Search, null, tint = FamekoBlue, modifier = Modifier.size(24.dp))
-                                        Spacer(Modifier.width(16.dp))
-                                        Text(
-                                            text = when(viewModel.activeServiceMode) {
-                                                ServiceType.RIDE_HAILING -> "Where to?"
-                                                ServiceType.RENTAL -> "Set pickup for rental"
-                                                ServiceType.PACKAGE_DELIVERY -> "Where are we delivering?"
-                                                else -> "Where to?"
-                                            },
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = Color.Gray,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                                
-                                Spacer(Modifier.height(20.dp))
-                                
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceAround
@@ -978,7 +970,7 @@ fun MainMapContent(
                                             viewModel.navigateTo(CustomerScreen.ManagePlaces)
                                         }
                                     }
-                                    QuickShortcutItem("Work", Icons.Default.Work, Color(0xFF3B82F6)) { 
+                                    QuickShortcutItem("Work", Icons.Default.Work, FamekoBlue) {
                                         if (viewModel.savedPlaces.value.any { it.label.equals("Work", true) }) {
                                             viewModel.applyShortcut("Work") {
                                                 if (hasLocationPermission) {
@@ -1130,7 +1122,18 @@ fun MainMapContent(
                             if (mapLibreMap == null) {
                                 mapLibreMap = map
                                 val styleUrl = "https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBAZFVDV2NzZ09mRGhEaU9MdDsVGbKlskhOMbwzZ3vdhit8?key=${NetworkClient.TOMTOM_API_KEY}"
-                                map.setStyle(styleUrl)
+                                map.setStyle(styleUrl) { style ->
+                                    if (hasLocationPermission) {
+                                        val locationComponent = map.locationComponent
+                                        if (!locationComponent.isLocationComponentActivated) {
+                                            locationComponent.activateLocationComponent(
+                                                LocationComponentActivationOptions.builder(context, style).build()
+                                            )
+                                        }
+                                        locationComponent.isLocationComponentEnabled = true
+                                        locationComponent.renderMode = RenderMode.COMPASS
+                                    }
+                                }
 
                                 // Clear focus from input fields when the map is tapped
                                 map.addOnMapClickListener {
@@ -1199,19 +1202,19 @@ fun MainMapContent(
                 }
 
                 // Map Utility Buttons (Recenter, Zoom)
-                if (currentSheetState == CustomerSheetState.IDLE) {
+                if (currentSheetState == CustomerSheetState.IDLE || currentSheetState == CustomerSheetState.LANDING || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS) {
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(bottom = 200.dp, end = 16.dp), // Pushed up above the bottom sheet
+                            .padding(bottom = 160.dp, end = 16.dp), // Pushed up above the bottom sheet
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FloatingActionButton(
                             onClick = { 
                                 hasLocationPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                                 if (hasLocationPermission) {
-                                    LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { loc ->
-                                        loc?.let { mapLibreMap?.moveCamera(CameraUpdateFactory.newLatLng(LatLng(it.latitude, it.longitude))) }
+                                    fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { loc ->
+                                        loc?.let { mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLng(LatLng(it.latitude, it.longitude))) }
                                     }
                                 }
                             },
@@ -1518,7 +1521,7 @@ fun ActiveRentalSheetContent(
 
     Column(modifier = Modifier.padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (isSelfDrive) "Self-Drive Active" else "Active Rental", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF004E89))
+            Text(if (isSelfDrive) "Self-Drive Active" else "Active Rental", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = FamekoBlue)
             Spacer(Modifier.weight(1f))
             Surface(
                 color = if (isUnlocked) BoltGreen.copy(alpha = 0.1f) else Color(0xFFFFF9DB),
@@ -1745,13 +1748,13 @@ fun DriverInfoSheetContent(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconButton(
                     onClick = onInitiateCall,
-                    modifier = Modifier.size(44.dp).background(FamekoLightBlue, CircleShape)
+                    modifier = Modifier.size(44.dp).background(FamekoGold.copy(alpha = 0.2f), CircleShape)
                 ) {
                     Icon(Icons.Default.Call, null, tint = FamekoBlue, modifier = Modifier.size(20.dp))
                 }
                 IconButton(
                     onClick = { onNavigateToChat(orderId, data.driverName ?: "Driver") },
-                    modifier = Modifier.size(44.dp).background(FamekoLightBlue, CircleShape)
+                    modifier = Modifier.size(44.dp).background(FamekoGold.copy(alpha = 0.2f), CircleShape)
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Chat, null, tint = FamekoBlue, modifier = Modifier.size(20.dp))
                 }

@@ -314,7 +314,7 @@ class CustomerMapViewModel(
                 }
             }
             is FamekoEvent.NearbyDriversUpdate -> {
-                if (currentOrderId == null) {
+                if (currentOrderId == null || orderStatusData?.status == "PENDING") {
                     drivers = event.drivers
                 }
             }

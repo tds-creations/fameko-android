@@ -89,7 +89,7 @@ fun CustomerLandingScreen(
             ServiceGridItem(
                 title = "Rentals",
                 description = "Hire a car",
-                imageUrl = "https://i.postimg.cc/VNrdgL8p/delivery.jpg",
+                imageUrl = ImageLinks.RENTAL,
                 modifier = Modifier.weight(1f),
                 onClick = { onServiceSelected(ServiceType.RENTAL) }
             )
@@ -178,7 +178,7 @@ fun ServiceGridItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier.size(72.dp),
                     tint = BoltDark
                 )
             } else if (imageUrl != null) {
@@ -186,9 +186,9 @@ fun ServiceGridItem(
                     model = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))

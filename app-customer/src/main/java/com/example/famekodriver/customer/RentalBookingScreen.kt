@@ -326,7 +326,7 @@ fun RentalBookingScreen(
                 pricingConfig?.let {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = FamekoLightBlue.copy(alpha = 0.3f)),
+                        colors = CardDefaults.cardColors(containerColor = FamekoGold.copy(alpha = 0.15f)),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {

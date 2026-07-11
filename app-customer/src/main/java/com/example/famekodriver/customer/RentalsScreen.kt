@@ -34,7 +34,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 // We use colors defined in CustomerMapActivity.kt (package-level visibility)
-private val AppBlue = Color(0xFF004E89)
+private val AppBlue = FamekoBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
