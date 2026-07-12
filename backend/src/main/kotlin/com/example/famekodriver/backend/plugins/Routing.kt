@@ -766,12 +766,12 @@ fun Application.configureRouting() {
                 return@post
             }
             
+            val normalizedPhone = normalizePhone(phone)
+            
             DatabaseInitializer.getDataSource().connection.use { conn ->
-                val sql = "SELECT id, name, password FROM customers WHERE TRIM(phone) = ? OR TRIM(phone) = ?"
+                val sql = "SELECT id, name, password FROM customers WHERE TRIM(phone) = ?"
                 val stmt = conn.prepareStatement(sql)
-                stmt.setString(1, phone.trim())
-                val altPhone = if (phone.startsWith("+")) phone.substring(1) else "+$phone"
-                stmt.setString(2, altPhone)
+                stmt.setString(1, normalizedPhone)
                 val rs = stmt.executeQuery()
                 if (rs.next()) {
                     val dbPass = rs.getString("password")
@@ -1004,39 +1004,55 @@ fun Application.configureRouting() {
                 return@post
             }
 
-            val driver = loginDriverInDbByPhone(phone)
-            if (driver != null) {
-                // In a real app, use BCrypt or similar.
-                // For simplicity now, direct match or GOOGLE_AUTH if they signed up with google.
-                // We need to fetch password for driver too.
-                
-                DatabaseInitializer.getDataSource().connection.use { conn ->
-                    val sql = "SELECT password FROM drivers WHERE id = ?"
-                    val stmt = conn.prepareStatement(sql)
-                    stmt.setInt(1, driver.id)
-                    val rs = stmt.executeQuery()
-                    if (rs.next()) {
-                        val dbPass = rs.getString(1)
+            val normalizedPhone = normalizePhone(phone)
+
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, password FROM drivers WHERE TRIM(phone) = ?"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setString(1, normalizedPhone)
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    val dbPass = rs.getString("password")
+                    if (dbPass == password || dbPass == "GOOGLE_AUTH") {
+                        call.respond(AuthResponse(
+                            success = true, 
+                            message = "Success", 
+                            user_id = rs.getInt("id").toString(), 
+                            name = rs.getString("full_name"), 
+                            status = rs.getString("status"), 
+                            profile_picture = rs.getString("profile_picture"),
+                            user_role = rs.getString("user_role"),
+                            company_name = rs.getString("company_name")
+                        ))
+                    } else {
+                        call.respond(AuthResponse(false, "Invalid password", null, null))
+                    }
+                } else {
+                    // Try fleet owners
+                    val sqlOwner = "SELECT id, full_name, status, profile_picture, password FROM fleet_owners WHERE TRIM(phone) = ?"
+                    val stmtOwner = conn.prepareStatement(sqlOwner)
+                    stmtOwner.setString(1, normalizedPhone)
+                    val rsOwner = stmtOwner.executeQuery()
+                    if (rsOwner.next()) {
+                        val dbPass = rsOwner.getString("password")
                         if (dbPass == password || dbPass == "GOOGLE_AUTH") {
                             call.respond(AuthResponse(
-                                success = true, 
-                                message = "Success", 
-                                user_id = driver.id.toString(), 
-                                name = driver.fullName, 
-                                status = driver.status, 
-                                profile_picture = driver.profilePicture,
-                                user_role = driver.userRole,
-                                company_name = driver.companyName
+                                success = true,
+                                message = "Success",
+                                user_id = rsOwner.getInt("id").toString(),
+                                name = rsOwner.getString("full_name"),
+                                status = rsOwner.getString("status"),
+                                profile_picture = rsOwner.getString("profile_picture"),
+                                user_role = "OWNER"
                             ))
                         } else {
                             call.respond(AuthResponse(false, "Invalid password", null, null))
                         }
                     } else {
-                         call.respond(AuthResponse(false, "Error verifying credentials", null, null))
+                        call.respond(AuthResponse(false, "Driver not found with this phone number", null, null))
                     }
                 }
             }
-            else call.respond(AuthResponse(false, "Driver not found with this phone number", null, null))
         }
 
 
@@ -2423,7 +2439,7 @@ private fun registerCustomerInDb(req: CustomerRegisterRequest): Int? {
         val stmt = conn.prepareStatement(sql)
         stmt.setString(1, req.name.trim())
         stmt.setString(2, req.email.trim().lowercase())
-        stmt.setString(3, req.phone.trim())
+        stmt.setString(3, normalizePhone(req.phone))
         stmt.setString(4, req.address.trim())
         stmt.setString(5, req.password.trim())
         stmt.setString(6, req.region ?: "")
@@ -2675,7 +2691,7 @@ private fun registerDriverInDb(data: Map<String, String>): Int? {
                 val stmt = conn.prepareStatement(sql)
                 stmt.setString(1, data["full_name"]?.trim() ?: "")
                 stmt.setString(2, email)
-                stmt.setString(3, data["phone"]?.trim() ?: "")
+                stmt.setString(3, normalizePhone(data["phone"]))
                 stmt.setString(4, data["password"]?.trim() ?: "")
                 stmt.setString(5, data["company_name"]?.trim() ?: "My Fleet")
                 stmt.setString(6, data["registration_number"]?.trim())
@@ -2695,7 +2711,7 @@ private fun registerDriverInDb(data: Map<String, String>): Int? {
                 val stmt = conn.prepareStatement(sql)
                 stmt.setString(1, data["full_name"]?.trim() ?: "")
                 stmt.setString(2, email)
-                stmt.setString(3, data["phone"]?.trim() ?: "")
+                stmt.setString(3, normalizePhone(data["phone"]))
                 stmt.setString(4, data["region"]?.trim() ?: "")
                 stmt.setString(5, data["password"]?.trim() ?: "")
                 stmt.setString(6, data["license_number"]?.trim() ?: "")
@@ -3798,19 +3814,25 @@ private fun getAllProductsFromDb(): List<Map<String, Any?>> {
     DatabaseInitializer.getDataSource().connection.use { conn ->
         val rs = conn.createStatement().executeQuery("SELECT * FROM products ORDER BY id DESC")
         while (rs.next()) {
-            list.add(mapOf(
-                "id" to rs.getInt("id"),
-                "name" to rs.getString("name"),
-                "description" to rs.getString("description"),
-                "price" to rs.getDouble("price"),
-                "category" to rs.getString("category"),
-                "location" to rs.getString("location"),
-                "images" to (rs.getString("images")?.split(",")?.map { it.replace("\\", "/") } ?: emptyList<String>()),
-                "seller_id" to rs.getInt("seller_id")
             ))
         }
     }
     return list
+}
+
+fun normalizePhone(phone: String?): String {
+    if (phone == null) return ""
+    var cleaned = phone.trim().replace(" ", "").replace("-", "")
+    if (cleaned.startsWith("0")) {
+        cleaned = cleaned.substring(1)
+    }
+    if (cleaned.startsWith("+233")) {
+        return cleaned
+    }
+    if (cleaned.startsWith("233")) {
+        return "+$cleaned"
+    }
+    return "+233$cleaned"
 }
 
 private fun terminateDriverAccount(id: Int) {

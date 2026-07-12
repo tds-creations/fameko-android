@@ -244,12 +244,13 @@ class DriverSignupActivity : AppCompatActivity() {
         Toast.makeText(this, "Creating account...", Toast.LENGTH_SHORT).show()
 
         val googleUid = intent.getStringExtra("google_uid")
+        val normalizedPhone = normalizePhone(phone)
 
         lifecycleScope.launch {
             repository.driverRegister(
                 name = name,
                 email = email,
-                phone = phone,
+                phone = normalizedPhone,
                 password = password,
                 licenseNumber = licenseNum, // Assign driver's license number
                 region = region,
@@ -271,6 +272,14 @@ class DriverSignupActivity : AppCompatActivity() {
                 Toast.makeText(this@DriverSignupActivity, "Error: ${it.message}", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun normalizePhone(phone: String): String {
+        var cleaned = phone.trim().replace(" ", "").replace("-", "")
+        if (cleaned.startsWith("0")) {
+            cleaned = cleaned.substring(1)
+        }
+        return if (cleaned.startsWith("+")) cleaned else "+233$cleaned"
     }
 
     private fun setupCarousel() {

@@ -116,13 +116,13 @@ class CustomerSignupActivity : AppCompatActivity() {
             btnSignup.isEnabled = false
             lifecycleScope.launch {
                 val googleUid = intent.getStringExtra("google_uid")
-                repository.customerRegister(name, email, phone, address, password, region = region, firebaseUid = googleUid)
+                val normalizedPhone = normalizePhone(phone)
+                repository.customerRegister(name, email, normalizedPhone, address, password, region = region, firebaseUid = googleUid)
                     .onSuccess {
                         Toast.makeText(this@CustomerSignupActivity, "Account created successfully", Toast.LENGTH_LONG).show()
                         
                         // Automatic login
-                        val fullPhone = if (phone.startsWith("+")) phone else "+233$phone"
-                        repository.customerLoginByPhone(fullPhone, password).onSuccess { (id, customerName) ->
+                        repository.customerLoginByPhone(normalizedPhone, password).onSuccess { (id, customerName) ->
                             sessionManager.saveSession(id, customerName)
                             val intent = Intent().setClassName(this@CustomerSignupActivity, "com.example.famekodriver.customer.CustomerMapActivity")
                             startActivity(intent)
@@ -162,6 +162,14 @@ class CustomerSignupActivity : AppCompatActivity() {
         tvLogin.setOnClickListener {
             finish()
         }
+    }
+
+    private fun normalizePhone(phone: String): String {
+        var cleaned = phone.trim().replace(" ", "").replace("-", "")
+        if (cleaned.startsWith("0")) {
+            cleaned = cleaned.substring(1)
+        }
+        return if (cleaned.startsWith("+")) cleaned else "+233$cleaned"
     }
 
     private fun setupCarousel() {

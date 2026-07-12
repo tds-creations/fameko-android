@@ -99,12 +99,7 @@ class DriverLoginActivity : AppCompatActivity() {
             }
 
             // Normalize phone number (ensure it has +233 prefix if not present)
-            // Automatically strip leading zero if user enters 10 digits
-            var cleanedPhone = phone.trim()
-            if (cleanedPhone.length == 10 && cleanedPhone.startsWith("0")) {
-                cleanedPhone = cleanedPhone.substring(1)
-            }
-            val fullPhone = if (cleanedPhone.startsWith("+")) cleanedPhone else "+233$cleanedPhone"
+            val fullPhone = normalizePhone(phone)
 
             btnLogin.isEnabled = false
             Toast.makeText(this, "Logging in...", Toast.LENGTH_SHORT).show()
@@ -180,6 +175,14 @@ class DriverLoginActivity : AppCompatActivity() {
                     }
                 }
         }
+    }
+
+    private fun normalizePhone(phone: String): String {
+        var cleaned = phone.trim().replace(" ", "").replace("-", "")
+        if (cleaned.startsWith("0")) {
+            cleaned = cleaned.substring(1)
+        }
+        return if (cleaned.startsWith("+")) cleaned else "+233$cleaned"
     }
 
     private fun setupCarousel() {
