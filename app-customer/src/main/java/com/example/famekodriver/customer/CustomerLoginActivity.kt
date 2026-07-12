@@ -58,16 +58,14 @@ class CustomerLoginActivity : AppCompatActivity() {
         val btnLogin = findViewById<MaterialButton>(R.id.btnLogin)
         val btnGoogleLogin = findViewById<MaterialButton>(R.id.btnGoogleLogin)
         val tvBackToHome = findViewById<TextView>(R.id.tvBackToHome)
-        val otpContainer = findViewById<View>(R.id.otpContainer)
-        val etOtp = findViewById<EditText>(R.id.etOtp)
-
-        var isOtpSent = false
+        val etPassword = findViewById<EditText>(R.id.etPassword)
 
         btnLogin.setOnClickListener {
             val phone = etPhone.text?.toString() ?: ""
+            val password = etPassword.text?.toString() ?: ""
 
-            if (phone.isEmpty()) {
-                Toast.makeText(this, "Please enter your phone number", Toast.LENGTH_SHORT).show()
+            if (phone.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please enter phone and password", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -79,47 +77,19 @@ class CustomerLoginActivity : AppCompatActivity() {
             }
             val fullPhone = if (cleanedPhone.startsWith("+")) cleanedPhone else "+233$cleanedPhone"
 
-            if (!isOtpSent) {
-                // Step 1: Request OTP
-                btnLogin.isEnabled = false
-                Toast.makeText(this, getString(R.string.msg_sending_otp), Toast.LENGTH_SHORT).show()
+            btnLogin.isEnabled = false
+            Toast.makeText(this, "Logging in...", Toast.LENGTH_SHORT).show()
 
-                lifecycleScope.launch {
-                    repository.requestCustomerOtp(fullPhone)
-                        .onSuccess { message ->
-                            isOtpSent = true
-                            btnLogin.isEnabled = true
-                            btnLogin.text = getString(R.string.btn_verify_otp)
-                            otpContainer.visibility = View.VISIBLE
-                            Toast.makeText(this@CustomerLoginActivity, message, Toast.LENGTH_SHORT).show()
-                        }
-                        .onFailure { error ->
-                            btnLogin.isEnabled = true
-                            Toast.makeText(this@CustomerLoginActivity, "Failed to send OTP: ${error.message}", Toast.LENGTH_LONG).show()
-                        }
-                }
-            } else {
-                // Step 2: Verify OTP
-                val otp = etOtp.text?.toString() ?: ""
-                if (otp.length < 6) {
-                    Toast.makeText(this, "Please enter the 6-digit OTP", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-
-                btnLogin.isEnabled = false
-                Toast.makeText(this, getString(R.string.msg_verifying_otp), Toast.LENGTH_SHORT).show()
-
-                lifecycleScope.launch {
-                    repository.verifyCustomerOtp(fullPhone, otp)
-                        .onSuccess { (customerId, customerName) ->
-                            sessionManager.saveSession(customerId, customerName)
-                            navigateToCustomerMap()
-                        }
-                        .onFailure { error ->
-                            btnLogin.isEnabled = true
-                            Toast.makeText(this@CustomerLoginActivity, "Verification failed: ${error.message}", Toast.LENGTH_LONG).show()
-                        }
-                }
+            lifecycleScope.launch {
+                repository.customerLoginByPhone(fullPhone, password)
+                    .onSuccess { (customerId, customerName) ->
+                        sessionManager.saveSession(customerId, customerName)
+                        navigateToCustomerMap()
+                    }
+                    .onFailure { error ->
+                        btnLogin.isEnabled = true
+                        Toast.makeText(this@CustomerLoginActivity, "Login failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    }
             }
         }
 

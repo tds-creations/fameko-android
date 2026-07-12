@@ -122,7 +122,7 @@ class CustomerSignupActivity : AppCompatActivity() {
                         
                         // Automatic login
                         val fullPhone = if (phone.startsWith("+")) phone else "+233$phone"
-                        repository.customerLoginByPhone(fullPhone).onSuccess { (id, customerName) ->
+                        repository.customerLoginByPhone(fullPhone, password).onSuccess { (id, customerName) ->
                             sessionManager.saveSession(id, customerName)
                             val intent = Intent().setClassName(this@CustomerSignupActivity, "com.example.famekodriver.customer.CustomerMapActivity")
                             startActivity(intent)

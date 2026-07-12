@@ -269,11 +269,11 @@ class DriverRepository {
     }
 
     /**
-     * Authenticates a driver by phone
+     * Authenticates a driver by phone and password
      */
-    suspend fun login(phone: String): Result<Driver?> = withContext(Dispatchers.IO) {
+    suspend fun login(phone: String, pass: String): Result<Driver?> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(phone = phone))
+            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(phone = phone, password = pass))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Driver(
@@ -301,47 +301,9 @@ class DriverRepository {
         }
     }
 
-    suspend fun requestDriverOtp(phone: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.requestDriverOtp(OtpRequest(phone))
-            if (response["success"] == true) {
-                Result.success(response["message"]?.toString() ?: "OTP Sent")
-            } else {
-                Result.failure(Exception(response["message"]?.toString() ?: "Failed to send OTP"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 
-    suspend fun verifyDriverOtp(phone: String, otp: String): Result<Driver?> = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.verifyDriverOtp(OtpVerifyRequest(phone, otp))
-            val userId = response.user_id
-            if (response.success && userId != null) {
-                Result.success(Driver(
-                    id = userId.toIntOrNull() ?: 0,
-                    fullName = response.name ?: "Driver",
-                    email = "",
-                    phone = phone,
-                    region = "",
-                    licenseNumber = "",
-                    vehicleType = "Car",
-                    vehicleNumber = "",
-                    status = response.status ?: "PENDING",
-                    isOnline = false,
-                    rating = 5.0,
-                    serviceType = ServiceType.RIDE_HAILING,
-                    userRole = response.user_role ?: "DRIVER",
-                    companyName = response.company_name
-                ))
-            } else {
-                Result.failure(Exception(response.message ?: "Invalid OTP"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+
+
 
     suspend fun driverGoogleLogin(idToken: String): Result<Driver?> = withContext(Dispatchers.IO) {
         try {
@@ -372,9 +334,9 @@ class DriverRepository {
         }
     }
 
-    suspend fun customerLoginByPhone(phone: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun customerLoginByPhone(phone: String, pass: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginCustomer(LoginRequest(phone = phone))
+            val response = NetworkClient.famekoApi.loginCustomer(LoginRequest(phone = phone, password = pass))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Pair(userId, response.name ?: "Customer"))
@@ -387,32 +349,9 @@ class DriverRepository {
         }
     }
 
-    suspend fun requestCustomerOtp(phone: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.requestCustomerOtp(OtpRequest(phone))
-            if (response["success"] == true) {
-                Result.success(response["message"]?.toString() ?: "OTP Sent")
-            } else {
-                Result.failure(Exception(response["message"]?.toString() ?: "Failed to send OTP"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 
-    suspend fun verifyCustomerOtp(phone: String, otp: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.verifyCustomerOtp(OtpVerifyRequest(phone, otp))
-            val userId = response.user_id
-            if (response.success && userId != null) {
-                Result.success(Pair(userId, response.name ?: "Customer"))
-            } else {
-                Result.failure(Exception(response.message ?: "Invalid OTP"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+
+
 
     suspend fun customerGoogleLogin(idToken: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
         try {

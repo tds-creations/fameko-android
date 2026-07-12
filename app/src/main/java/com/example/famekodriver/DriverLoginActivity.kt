@@ -57,11 +57,8 @@ class DriverLoginActivity : AppCompatActivity() {
         val btnLogin = findViewById<MaterialButton>(R.id.btnLogin)
         val btnGoogleLogin = findViewById<MaterialButton>(R.id.btnGoogleLogin)
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
-        val otpContainer = findViewById<View>(R.id.otpContainer)
-        val etOtp = findViewById<EditText>(R.id.etOtp)
+        val etPassword = findViewById<EditText>(R.id.etPassword)
 
-        var isOtpSent = false
-        
         val registerText = "Don't have an account? Register here"
         val spannableRegister = android.text.SpannableString(registerText)
         val brandBlue = "#0047AB".toColorInt()
@@ -94,9 +91,10 @@ class DriverLoginActivity : AppCompatActivity() {
 
         btnLogin.setOnClickListener {
             val phone = etPhone.text?.toString() ?: ""
+            val password = etPassword.text?.toString() ?: ""
 
-            if (phone.isEmpty()) {
-                Toast.makeText(this, "Please enter your phone number", Toast.LENGTH_SHORT).show()
+            if (phone.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please enter phone and password", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -108,64 +106,36 @@ class DriverLoginActivity : AppCompatActivity() {
             }
             val fullPhone = if (cleanedPhone.startsWith("+")) cleanedPhone else "+233$cleanedPhone"
 
-            if (!isOtpSent) {
-                // Step 1: Request OTP
-                btnLogin.isEnabled = false
-                Toast.makeText(this, getString(R.string.msg_sending_otp), Toast.LENGTH_SHORT).show()
+            btnLogin.isEnabled = false
+            Toast.makeText(this, "Logging in...", Toast.LENGTH_SHORT).show()
 
-                lifecycleScope.launch {
-                    repository.requestDriverOtp(fullPhone)
-                        .onSuccess { message ->
-                            isOtpSent = true
+            lifecycleScope.launch {
+                repository.login(fullPhone, password)
+                    .onSuccess { driver ->
+                        if (driver != null) {
+                            sessionManager.saveSession(
+                                driverId = driver.id.toString(),
+                                driverName = driver.fullName,
+                                status = driver.status,
+                                phone = driver.phone,
+                                role = driver.userRole,
+                                company = driver.companyName,
+                                vehicleType = driver.vehicleType
+                            )
+                            Toast.makeText(this@DriverLoginActivity, "Login Successful!", Toast.LENGTH_SHORT).show()
+                            
+                            val intent = Intent(this@DriverLoginActivity, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        } else {
                             btnLogin.isEnabled = true
-                            btnLogin.text = getString(R.string.btn_verify_otp)
-                            otpContainer.visibility = View.VISIBLE
-                            Toast.makeText(this@DriverLoginActivity, message, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@DriverLoginActivity, "Driver not found", Toast.LENGTH_SHORT).show()
                         }
-                        .onFailure { error ->
-                            btnLogin.isEnabled = true
-                            Toast.makeText(this@DriverLoginActivity, "Failed to send OTP: ${error.message}", Toast.LENGTH_LONG).show()
-                        }
-                }
-            } else {
-                // Step 2: Verify OTP
-                val otp = etOtp.text?.toString() ?: ""
-                if (otp.length < 6) {
-                    Toast.makeText(this, "Please enter the 6-digit OTP", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-
-                btnLogin.isEnabled = false
-                Toast.makeText(this, getString(R.string.msg_verifying_otp), Toast.LENGTH_SHORT).show()
-
-                lifecycleScope.launch {
-                    repository.verifyDriverOtp(fullPhone, otp)
-                        .onSuccess { driver ->
-                            if (driver != null) {
-                                sessionManager.saveSession(
-                                    driverId = driver.id.toString(),
-                                    driverName = driver.fullName,
-                                    status = driver.status,
-                                    phone = driver.phone,
-                                    role = driver.userRole,
-                                    company = driver.companyName,
-                                    vehicleType = driver.vehicleType
-                                )
-                                Toast.makeText(this@DriverLoginActivity, "Login Successful!", Toast.LENGTH_SHORT).show()
-                                
-                                val intent = Intent(this@DriverLoginActivity, MainActivity::class.java)
-                                startActivity(intent)
-                                finish()
-                            } else {
-                                btnLogin.isEnabled = true
-                                Toast.makeText(this@DriverLoginActivity, "Driver not found", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                        .onFailure { error ->
-                            btnLogin.isEnabled = true
-                            Toast.makeText(this@DriverLoginActivity, "Verification failed: ${error.message}", Toast.LENGTH_LONG).show()
-                        }
-                }
+                    }
+                    .onFailure { error ->
+                        btnLogin.isEnabled = true
+                        Toast.makeText(this@DriverLoginActivity, "Login failed: ${error.message}", Toast.LENGTH_LONG).show()
+                    }
             }
         }
 

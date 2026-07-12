@@ -36,16 +36,6 @@ interface FamekoApiService {
         @Body request: LoginRequest
     ): AuthResponse
 
-    @POST("customer/request-otp")
-    suspend fun requestCustomerOtp(
-        @Body request: OtpRequest
-    ): Map<String, Any>
-
-    @POST("customer/verify-otp")
-    suspend fun verifyCustomerOtp(
-        @Body request: OtpVerifyRequest
-    ): AuthResponse
-
     @POST("driver/login")
     suspend fun loginDriver(
         @Body request: LoginRequest
@@ -54,16 +44,6 @@ interface FamekoApiService {
     @POST("driver/google-login")
     suspend fun loginDriverGoogle(
         @Body request: LoginRequest
-    ): AuthResponse
-
-    @POST("driver/request-otp")
-    suspend fun requestDriverOtp(
-        @Body request: OtpRequest
-    ): Map<String, Any>
-
-    @POST("driver/verify-otp")
-    suspend fun verifyDriverOtp(
-        @Body request: OtpVerifyRequest
     ): AuthResponse
 
     @POST("admin/api-login")

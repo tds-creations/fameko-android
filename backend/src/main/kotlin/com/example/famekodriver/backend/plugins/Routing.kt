@@ -760,41 +760,33 @@ fun Application.configureRouting() {
         post("/customer/login") {
             val req = call.receive<LoginRequest>()
             val phone = req.phone
-            if (phone.isNullOrBlank()) {
-                call.respond(AuthResponse(false, "Phone number is required", null, null))
+            val password = req.password
+            if (phone.isNullOrBlank() || password.isNullOrBlank()) {
+                call.respond(AuthResponse(false, "Phone and password are required", null, null))
                 return@post
             }
-            val user = loginCustomerInDbByPhone(phone)
-            if (user != null) call.respond(AuthResponse(true, "Success", user["id"].toString(), user["name"].toString()))
-            else call.respond(AuthResponse(false, "User not found with this phone number", null, null))
-        }
-
-        post("/customer/request-otp") {
-            val req = call.receive<OtpRequest>()
-            val phone = req.phone
-            val otp = (100000..999999).random().toString()
             
-            RedisManager.storeLoginOtp(phone, otp)
-            
-            // Simulate sending WhatsApp message
-            println("WHATSAPP_SIMULATOR: Sending OTP $otp to $phone via WhatsApp")
-            
-            call.respond(mapOf("success" to true, "message" to "OTP sent to WhatsApp"))
-        }
-
-        post("/customer/verify-otp") {
-            val req = call.receive<OtpVerifyRequest>()
-            if (RedisManager.verifyLoginOtp(req.phone, req.otp)) {
-                val user = loginCustomerInDbByPhone(req.phone)
-                if (user != null) {
-                    call.respond(AuthResponse(true, "Success", user["id"].toString(), user["name"].toString()))
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = "SELECT id, name, password FROM customers WHERE TRIM(phone) = ? OR TRIM(phone) = ?"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setString(1, phone.trim())
+                val altPhone = if (phone.startsWith("+")) phone.substring(1) else "+$phone"
+                stmt.setString(2, altPhone)
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    val dbPass = rs.getString("password")
+                    if (dbPass == password || dbPass == "GOOGLE_AUTH") {
+                        call.respond(AuthResponse(true, "Success", rs.getInt("id").toString(), rs.getString("name")))
+                    } else {
+                        call.respond(AuthResponse(false, "Invalid password", null, null))
+                    }
                 } else {
-                    call.respond(AuthResponse(false, "User not found", null, null))
+                    call.respond(AuthResponse(false, "User not found with this phone number", null, null))
                 }
-            } else {
-                call.respond(AuthResponse(false, "Invalid or expired OTP", null, null))
             }
         }
+
+
 
         post("/customer/google-login") {
             val req = call.receive<LoginRequest>()
@@ -1006,58 +998,48 @@ fun Application.configureRouting() {
         post("/driver/login") {
             val req = call.receive<LoginRequest>()
             val phone = req.phone
-            if (phone.isNullOrBlank()) {
-                call.respond(AuthResponse(false, "Phone number is required", null, null))
+            val password = req.password
+            if (phone.isNullOrBlank() || password.isNullOrBlank()) {
+                call.respond(AuthResponse(false, "Phone and password are required", null, null))
                 return@post
             }
+
             val driver = loginDriverInDbByPhone(phone)
-            if (driver != null) call.respond(AuthResponse(
-                success = true, 
-                message = "Success", 
-                user_id = driver.id.toString(), 
-                name = driver.fullName, 
-                status = driver.status, 
-                profile_picture = driver.profilePicture,
-                user_role = driver.userRole,
-                company_name = driver.companyName
-            ))
+            if (driver != null) {
+                // In a real app, use BCrypt or similar.
+                // For simplicity now, direct match or GOOGLE_AUTH if they signed up with google.
+                // We need to fetch password for driver too.
+                
+                DatabaseInitializer.getDataSource().connection.use { conn ->
+                    val sql = "SELECT password FROM drivers WHERE id = ?"
+                    val stmt = conn.prepareStatement(sql)
+                    stmt.setInt(1, driver.id)
+                    val rs = stmt.executeQuery()
+                    if (rs.next()) {
+                        val dbPass = rs.getString(1)
+                        if (dbPass == password || dbPass == "GOOGLE_AUTH") {
+                            call.respond(AuthResponse(
+                                success = true, 
+                                message = "Success", 
+                                user_id = driver.id.toString(), 
+                                name = driver.fullName, 
+                                status = driver.status, 
+                                profile_picture = driver.profilePicture,
+                                user_role = driver.userRole,
+                                company_name = driver.companyName
+                            ))
+                        } else {
+                            call.respond(AuthResponse(false, "Invalid password", null, null))
+                        }
+                    } else {
+                         call.respond(AuthResponse(false, "Error verifying credentials", null, null))
+                    }
+                }
+            }
             else call.respond(AuthResponse(false, "Driver not found with this phone number", null, null))
         }
 
-        post("/driver/request-otp") {
-            val req = call.receive<OtpRequest>()
-            val phone = req.phone
-            val otp = (100000..999999).random().toString()
-            
-            RedisManager.storeLoginOtp(phone, otp)
-            
-            println("WHATSAPP_SIMULATOR: Sending OTP $otp to $phone via WhatsApp (Driver)")
-            
-            call.respond(mapOf("success" to true, "message" to "OTP sent to WhatsApp"))
-        }
 
-        post("/driver/verify-otp") {
-            val req = call.receive<OtpVerifyRequest>()
-            if (RedisManager.verifyLoginOtp(req.phone, req.otp)) {
-                val driver = loginDriverInDbByPhone(req.phone)
-                if (driver != null) {
-                    call.respond(AuthResponse(
-                        success = true, 
-                        message = "Success", 
-                        user_id = driver.id.toString(), 
-                        name = driver.fullName, 
-                        status = driver.status, 
-                        profile_picture = driver.profilePicture,
-                        user_role = driver.userRole,
-                        company_name = driver.companyName
-                    ))
-                } else {
-                    call.respond(AuthResponse(false, "Driver not found", null, null))
-                }
-            } else {
-                call.respond(AuthResponse(false, "Invalid or expired OTP", null, null))
-            }
-        }
 
         post("/driver/google-login") {
             val req = call.receive<LoginRequest>()

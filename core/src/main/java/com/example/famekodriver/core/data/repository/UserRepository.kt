@@ -13,9 +13,9 @@ import java.io.File
 
 class UserRepository {
 
-    suspend fun login(phone: String): Result<Driver?> = withContext(Dispatchers.IO) {
+    suspend fun login(phone: String, pass: String): Result<Driver?> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(phone = phone))
+            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(phone = phone, password = pass))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Driver(
@@ -43,9 +43,9 @@ class UserRepository {
         }
     }
 
-    suspend fun customerLogin(phone: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun customerLogin(phone: String, pass: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginCustomer(LoginRequest(phone = phone))
+            val response = NetworkClient.famekoApi.loginCustomer(LoginRequest(phone = phone, password = pass))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Pair(userId, response.name ?: "Customer"))

@@ -91,9 +91,9 @@
                     android:textSize="16sp" />
             </LinearLayout>
 
-            <!-- OTP Input Container -->
+            <!-- Password Input Container -->
             <LinearLayout
-                android:id="@+id/otpContainer"
+                android:id="@+id/passwordContainer"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="16dp"
@@ -101,23 +101,21 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:visibility="gone">
+                android:paddingEnd="16dp">
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_dialog_info"
+                    android:src="@android:drawable/ic_lock_idle_lock"
                     app:tint="#44474E" />
 
                 <EditText
-                    android:id="@+id/etOtp"
+                    android:id="@+id/etPassword"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="@null"
-                    android:hint="Enter 6-digit OTP from WhatsApp"
-                    android:inputType="number"
-                    android:maxLength="6"
+                    android:hint="Enter password"
+                    android:inputType="textPassword"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
                     android:textColor="#1A1C1E"
