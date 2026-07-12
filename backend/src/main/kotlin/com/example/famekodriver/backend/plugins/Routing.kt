@@ -3814,6 +3814,15 @@ private fun getAllProductsFromDb(): List<Map<String, Any?>> {
     DatabaseInitializer.getDataSource().connection.use { conn ->
         val rs = conn.createStatement().executeQuery("SELECT * FROM products ORDER BY id DESC")
         while (rs.next()) {
+            list.add(mapOf(
+                "id" to rs.getInt("id"),
+                "name" to rs.getString("name"),
+                "description" to rs.getString("description"),
+                "price" to rs.getDouble("price"),
+                "category" to rs.getString("category"),
+                "location" to rs.getString("location"),
+                "images" to (rs.getString("images")?.split(",")?.map { it.replace("\\", "/") } ?: emptyList<String>()),
+                "seller_id" to rs.getInt("seller_id")
             ))
         }
     }
@@ -3865,5 +3874,6 @@ private fun terminateCustomerAccount(id: Int) {
         conn.prepareStatement("DELETE FROM customers WHERE id = ?").apply { setInt(1, id); executeUpdate() }
     }
 }
+
 
 
