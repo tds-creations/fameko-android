@@ -62,20 +62,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
+                    android:hint="Full Name"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:boxStrokeWidthFocused="1dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Full Name"
                         android:inputType="textPersonName"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
@@ -87,6 +86,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="Email Address"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -95,14 +95,12 @@
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
                     app:endIconDrawable="@android:drawable/ic_dialog_email"
-                    app:endIconTint="#44474E"
-                    app:hintEnabled="false">
+                    app:endIconTint="#44474E">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Email Address"
                         android:inputType="textEmailAddress"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
@@ -114,6 +112,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="Phone Number"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -122,14 +121,12 @@
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
                     app:endIconDrawable="@android:drawable/ic_dialog_email"
-                    app:endIconTint="#44474E"
-                    app:hintEnabled="false">
+                    app:endIconTint="#44474E">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPhone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Phone Number"
                         android:inputType="phone"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
@@ -141,6 +138,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="Create Password"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -149,14 +147,12 @@
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
                     app:endIconTint="#44474E"
-                    app:hintEnabled="false"
                     app:passwordToggleEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Create Password"
                         android:inputType="textPassword"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
@@ -168,6 +164,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="Confirm Password"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -176,14 +173,12 @@
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
                     app:endIconTint="#44474E"
-                    app:hintEnabled="false"
                     app:passwordToggleEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etConfirmPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Confirm Password"
                         android:inputType="textPassword"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
@@ -206,14 +201,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
+                    android:hint="@string/hint_select_region"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxStrokeWidth="0dp"
-                    app:boxStrokeWidthFocused="1dp"
-                    app:hintEnabled="false">
+                    app:boxStrokeWidthFocused="1dp">
 
                     <AutoCompleteTextView
                         android:id="@+id/actRegion"
@@ -229,6 +224,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="Default Address (Optional)"
                     app:boxBackgroundColor="#E1E2E8"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -237,14 +233,12 @@
                     app:boxStrokeWidth="0dp"
                     app:boxStrokeWidthFocused="1dp"
                     app:endIconDrawable="@android:drawable/ic_dialog_email"
-                    app:endIconTint="#44474E"
-                    app:hintEnabled="false">
+                    app:endIconTint="#44474E">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etAddress"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Default Address (Optional)"
                         android:inputType="textPostalAddress"
                         android:padding="16dp"
                         android:textColor="#1A1C1E" />
