@@ -1,6 +1,7 @@
 package com.example.famekodriver.backend.plugins
 
 import com.example.famekodriver.backend.db.DatabaseInitializer
+import com.example.famekodriver.backend.db.DatabaseRepository
 import io.ktor.server.application.*
 import kotlinx.coroutines.*
 import java.time.LocalDateTime
@@ -20,40 +21,26 @@ fun Application.configureRentalScheduler() {
 }
 
 private suspend fun checkAndEndExpiredRentals() {
-    DatabaseInitializer.getDataSource().connection.use { conn ->
-        val sql = """
-            SELECT id, customer_id, vehicle_id, start_time, duration_hours 
-            FROM rentals 
-            WHERE status IN ('ACTIVE', 'IN_PROGRESS') 
-            AND start_time IS NOT NULL
-        """.trimIndent()
+    val expiredRentals = DatabaseRepository.getExpiredRentals()
+    
+    for (rental in expiredRentals) {
+        val rentalId = rental["id"] as Int
+        val startTime = (rental["start_time"] as java.sql.Timestamp).toLocalDateTime()
+        val durationHours = rental["duration_hours"] as Int
         
-        val stmt = conn.prepareStatement(sql)
-        val rs = stmt.executeQuery()
+        val expiryTime = startTime.plusHours(durationHours.toLong())
+        val now = LocalDateTime.now()
         
-        while (rs.next()) {
-            val rentalId = rs.getInt("id")
-            val startTime = rs.getTimestamp("start_time").toLocalDateTime()
-            val durationHours = rs.getInt("duration_hours")
-            
-            val expiryTime = startTime.plusHours(durationHours.toLong())
-            val now = LocalDateTime.now()
-            
-            if (now.isAfter(expiryTime)) {
-                println("DEBUG: Rental $rentalId has expired. Ending it automatically.")
-                
-                // 1. End the rental
-                updateRentalStatusInDb(rentalId, "COMPLETED")
-                
-                // 2. Notify participants
-                notifyRentalEnded(rentalId, isManual = false)
-            }
+        if (now.isAfter(expiryTime)) {
+            println("DEBUG: Rental $rentalId has expired. Ending it automatically.")
+            DatabaseRepository.updateRentalStatus(rentalId, "COMPLETED")
+            notifyRentalEnded(rentalId, isManual = false)
         }
     }
 }
 
 suspend fun notifyRentalEnded(rentalId: Int, isManual: Boolean) {
-    val participants = getRentalParticipants(rentalId) ?: return
+    val participants = DatabaseRepository.getRentalParticipants(rentalId) ?: return
     
     val title = if (isManual) "Rental Ended" else "Rental Period Over"
     val body = if (isManual) 

@@ -6,6 +6,7 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import java.util.concurrent.ConcurrentHashMap
 import com.example.famekodriver.core.domain.model.*
+import com.example.famekodriver.backend.db.DatabaseRepository
 import com.google.gson.Gson
 import kotlin.time.Duration.Companion.seconds
 
@@ -49,9 +50,9 @@ fun Application.configureSockets() {
                                     val callId = data["call_id"]?.toString() ?: ""
                                     
                                     val recipientId: String? = if (userId.startsWith("DRIVER_")) {
-                                        getCustomerIdForOrder(orderId)?.let { "CUSTOMER_$it" }
+                                        DatabaseRepository.getCustomerIdForOrder(orderId)?.let { "CUSTOMER_$it" }
                                     } else {
-                                        getDriverIdForOrder(orderId)?.let { "DRIVER_$it" }
+                                        DatabaseRepository.getDriverIdForOrder(orderId)?.let { "DRIVER_$it" }
                                     }
                                     
                                     if (recipientId != null) {
@@ -158,7 +159,7 @@ suspend fun sendToUser(userId: String, type: String, payload: Any) {
             val userType = parts[0].lowercase() // "driver" or "customer"
             val id = parts[1].toIntOrNull()
             if (id != null) {
-                val token = getUserFcmToken(id, userType)
+                val token = DatabaseRepository.getUserFcmToken(id, userType)
                 if (token != null) {
                     val title = when (type) {
                         "CALL_INCOMING" -> "Incoming Call"

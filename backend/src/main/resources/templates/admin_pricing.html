@@ -219,26 +219,62 @@
     <div class="card">
         <div class="card-header">
             <div class="card-title">
-                <i class="fas fa-money-bill-wave" style="color: var(--primary-color)"></i> Fare Parameters
+                <i class="fas fa-car" style="color: var(--primary-color)"></i> Ride Hailing & Delivery Categories
+            </div>
+        </div>
+        <div th:each="cat : ${rideCategories}" style="border-bottom: 1px solid var(--border-color); padding: 10px 0;">
+            <div style="padding: 10px 20px; font-weight: 700; font-size: 0.9rem; color: var(--primary-color); display: flex; align-items: center; gap: 10px;">
+                <i th:class="'fas fa-' + ${cat.icon != null ? cat.icon : 'car'}"></i>
+                <span th:text="${cat.name + ' (' + cat.serviceType + ')'}"></span>
+            </div>
+            <form action="/admin/pricing/category/update" method="post">
+                <input type="hidden" th:value="${cat.serviceId}" name="serviceId"/>
+                <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="form-group">
+                        <label>Base Fare (GHS)</label>
+                        <input type="number" step="0.01" th:value="${cat.baseFare}" name="baseFare" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Rate Per KM (GHS)</label>
+                        <input type="number" step="0.01" th:value="${cat.perKmRate}" name="perKmRate" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Rate Per Min (GHS)</label>
+                        <input type="number" step="0.01" th:value="${cat.perMinuteRate}" name="perMinuteRate" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Min Fare (GHS)</label>
+                        <input type="number" step="0.01" th:value="${cat.minFare}" name="minFare" required="required"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Commission (%)</label>
+                        <input type="number" step="0.1" th:value="${cat.driverCommissionPercent}" name="driverCommission" required="required"/>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button type="submit" class="btn" style="width: 100%;">Update [[${cat.name}]]</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-money-bill-wave" style="color: var(--primary-color)"></i> Global & Promo Configuration
             </div>
         </div>
         <form action="/admin/pricing/update" method="post">
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Base Fare (GHS)</label>
-                    <input type="number" step="0.01" th:value="${pricing.baseFare}" name="baseFare" required="required"/>
+                    <label>Peak Multiplier</label>
+                    <input type="number" step="0.1" th:value="${pricing.peakMultiplier}" name="peakMultiplier" required="required"/>
+                    <small style="color: var(--muted-text); font-size: 0.6rem;">Applies to all categories.</small>
                 </div>
                 <div class="form-group">
-                    <label>Rate Per KM (GHS)</label>
-                    <input type="number" step="0.01" th:value="${pricing.perKmRate}" name="perKmRate" required="required"/>
-                </div>
-                <div class="form-group">
-                    <label>Rate Per Minute (GHS)</label>
-                    <input type="number" step="0.01" th:value="${pricing.perMinuteRate}" name="perMinuteRate" required="required"/>
-                </div>
-                <div class="form-group">
-                    <label>Minimum Fare (GHS)</label>
-                    <input type="number" step="0.01" th:value="${pricing.minFare}" name="minFare" required="required"/>
+                    <label>Daily Service Fee (GHS)</label>
+                    <input type="number" step="0.01" th:value="${pricing.dailyServiceFee}" name="dailyServiceFee" required="required"/>
+                    <small style="color: var(--muted-text); font-size: 0.6rem;">Driver online fee.</small>
                 </div>
                 <div class="form-group">
                     <label>Milestone Interval (Rides)</label>
@@ -248,21 +284,9 @@
                     <label>Milestone Discount (%)</label>
                     <input type="number" th:value="${pricing.milestoneDiscountPercent}" name="milestoneDiscount" required="required"/>
                 </div>
-                <div class="form-group">
-                    <label>Driver Commission (%)</label>
-                    <input type="number" step="0.1" th:value="${pricing.driverCommissionPercent}" name="driverCommission" required="required"/>
-                </div>
-                <div class="form-group">
-                    <label>Peak Multiplier</label>
-                    <input type="number" step="0.1" th:value="${pricing.peakMultiplier}" name="peakMultiplier" required="required"/>
-                </div>
-                <div class="form-group">
-                    <label>Daily Service Fee (GHS)</label>
-                    <input type="number" step="0.01" th:value="${pricing.dailyServiceFee}" name="dailyServiceFee" required="required"/>
-                </div>
             </div>
             <div style="padding: 0 20px 20px 20px">
-                <button type="submit" class="btn">Update Pricing Strategy</button>
+                <button type="submit" class="btn">Update Global Parameters</button>
             </div>
         </form>
     </div>

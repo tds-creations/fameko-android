@@ -7,7 +7,7 @@ import io.ktor.server.sessions.*
 import io.ktor.server.response.*
 import io.ktor.server.request.*
 import kotlinx.serialization.Serializable
-import com.example.famekodriver.backend.db.DatabaseInitializer
+import com.example.famekodriver.backend.db.DatabaseRepository
 
 @Serializable
 data class AdminSession(val username: String, val role: String, val region: String?, val canViewAnalytics: Boolean = true)
@@ -40,23 +40,7 @@ fun Application.configureSecurity() {
             userParamName = "username"
             passwordParamName = "password"
             validate { credentials ->
-                DatabaseInitializer.getDataSource().connection.use { conn ->
-                    val sql = "SELECT role, region, can_view_analytics FROM admins WHERE username = ? AND password = ? AND is_active = true"
-                    val stmt = conn.prepareStatement(sql)
-                    stmt.setString(1, credentials.name)
-                    stmt.setString(2, credentials.password)
-                    val rs = stmt.executeQuery()
-                    if (rs.next()) {
-                        AdminPrincipal(
-                            credentials.name,
-                            rs.getString("role"),
-                            rs.getString("region"),
-                            rs.getBoolean("can_view_analytics")
-                        )
-                    } else {
-                        null
-                    }
-                }
+                DatabaseRepository.validateAdmin(credentials.name, credentials.password)
             }
         }
     }

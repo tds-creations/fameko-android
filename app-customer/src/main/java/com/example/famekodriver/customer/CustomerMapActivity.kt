@@ -1991,12 +1991,8 @@ fun ServiceSelectionSheet(
 ) {
     val filteredEstimates = estimates.filter { estimate ->
         when (activeServiceMode) {
-            ServiceType.RIDE_HAILING -> {
-                estimate.serviceId in listOf("Economy", "Comfort", "Pragya")
-            }
-            ServiceType.PACKAGE_DELIVERY -> {
-                estimate.serviceId in listOf("Okada", "Bicycle", "bicycle", "Aboboyaa", "Truck")
-            }
+            ServiceType.RIDE_HAILING -> estimate.serviceType == "RIDE_HAILING"
+            ServiceType.PACKAGE_DELIVERY -> estimate.serviceType == "PACKAGE_DELIVERY"
             else -> true
         }
     }

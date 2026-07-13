@@ -34,6 +34,7 @@ dependencies {
     implementation(libs.jakarta.mail)
     implementation(libs.google.api.client)
     implementation(libs.google.auth.library.oauth2.http)
+    implementation(libs.jbcrypt)
 }
 
 kotlin {

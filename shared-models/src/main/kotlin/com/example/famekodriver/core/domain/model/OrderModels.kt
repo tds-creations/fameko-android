@@ -68,6 +68,7 @@ data class RideEstimateResponse(
     val fare: Double,
     val pickupEtaMin: Int,
     val icon: String, // Icon key
+    val serviceType: String = "RIDE_HAILING", // RIDE_HAILING or PACKAGE_DELIVERY
     val isAvailableInRegion: Boolean = true,
     val availabilityStatus: String = "AVAILABLE" // AVAILABLE, BUSY, UNAVAILABLE
 )

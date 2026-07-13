@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import java.sql.Connection
 import javax.sql.DataSource
+import org.mindrot.jbcrypt.BCrypt
 
 object DatabaseInitializer {
     private var dataSource: HikariDataSource? = null
@@ -81,6 +82,7 @@ object DatabaseInitializer {
                     migrateTables(conn)
                     migrateFleetOwners(conn)
                     seedAdmin(conn)
+                    seedRideCategories(conn)
                     println("Database initialization complete.")
                 }
             } catch (e: Exception) {
@@ -362,6 +364,24 @@ object DatabaseInitializer {
             )
             """.trimIndent(),
             """
+            CREATE TABLE IF NOT EXISTS ride_categories (
+                id SERIAL PRIMARY KEY,
+                service_id TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                icon TEXT,
+                service_type TEXT NOT NULL DEFAULT 'RIDE_HAILING',
+                base_fare NUMERIC(12, 2) DEFAULT 0.0,
+                per_km_rate NUMERIC(12, 2) DEFAULT 0.0,
+                per_minute_rate NUMERIC(12, 2) DEFAULT 0.0,
+                min_fare NUMERIC(12, 2) DEFAULT 0.0,
+                driver_commission_percent DOUBLE PRECISION DEFAULT 15.0,
+                is_active BOOLEAN DEFAULT TRUE,
+                display_order INTEGER DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """.trimIndent(),
+            """
             CREATE TABLE IF NOT EXISTS fleet_owners (
                 id SERIAL PRIMARY KEY,
                 full_name TEXT NOT NULL,
@@ -513,11 +533,44 @@ object DatabaseInitializer {
         }
     }
 
+    private fun seedRideCategories(conn: Connection) {
+        try {
+            val res = conn.createStatement().executeQuery("SELECT COUNT(*) FROM ride_categories")
+            if (res.next() && res.getInt(1) == 0) {
+                println("Seeding ride categories...")
+                val categories = listOf(
+                    // service_id, name, description, icon, service_type, base, km, min, min_fare, commission, order
+                    "('Economy', 'Economy', 'Quick and affordable rides', 'car', 'RIDE_HAILING', 5.0, 2.0, 0.5, 10.0, 15.0, 1)",
+                    "('Comfort', 'Comfort', 'Newer cars, extra legroom', 'car', 'RIDE_HAILING', 6.5, 2.6, 0.5, 10.0, 15.0, 2)",
+                    "('Pragya', 'Pragya', 'Local tricycle trips', 'pragya', 'RIDE_HAILING', 3.5, 1.4, 0.5, 7.0, 15.0, 3)",
+                    "('Okada', 'Okada', 'Quickest bike trips', 'okada', 'PACKAGE_DELIVERY', 3.5, 1.4, 0.5, 6.0, 15.0, 4)",
+                    "('Aboboyaa', 'Aboboyaa', 'Heavy load/cargo transport', 'aboboyaa', 'PACKAGE_DELIVERY', 4.0, 1.6, 0.5, 8.0, 15.0, 5)",
+                    "('Truck', 'Truck', 'Large moving and hauling', 'truck', 'PACKAGE_DELIVERY', 10.0, 4.0, 0.5, 20.0, 15.0, 6)",
+                    "('Bicycle', 'Bicycle', 'Short distance eco deliveries', 'bicycle', 'PACKAGE_DELIVERY', 2.0, 0.8, 0.5, 4.0, 15.0, 7)"
+                )
+
+                val sql = """
+                    INSERT INTO ride_categories 
+                    (service_id, name, description, icon, service_type, base_fare, per_km_rate, per_minute_rate, min_fare, driver_commission_percent, display_order)
+                    VALUES ${categories.joinToString(",")}
+                """.trimIndent()
+                conn.createStatement().execute(sql)
+                println("Ride categories seeded.")
+            }
+        } catch (e: Exception) {
+            println("Seeding error (ride_categories): ${e.message}")
+        }
+    }
+
     private fun seedAdmin(conn: Connection) {
         try {
             val res = conn.createStatement().executeQuery("SELECT COUNT(*) FROM admins WHERE username = 'admin'")
             if (res.next() && res.getInt(1) == 0) {
-                conn.createStatement().execute("INSERT INTO admins (username, email, password, role, can_manage_admins) VALUES ('admin', 'niiodartei24@gmail.com', 'feroA5002', 'SUPERADMIN', true)")
+                val hashedPass = BCrypt.hashpw("feroA5002", BCrypt.gensalt())
+                val sql = "INSERT INTO admins (username, email, password, role, can_manage_admins) VALUES ('admin', 'niiodartei24@gmail.com', ?, 'SUPERADMIN', true)"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setString(1, hashedPass)
+                stmt.executeUpdate()
                 println("Superadmin seeded.")
             }
             
