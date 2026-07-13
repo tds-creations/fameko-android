@@ -1419,7 +1419,7 @@ fun Application.configureRouting() {
                 val config = DatabaseRepository.getPricingConfig()
                 val amount = config.dailyServiceFee
                 
-                val settings = getSystemSettingsFromDb()
+                val settings = DatabaseRepository.getSystemSettings()
                 val mode = settings["paystack_mode"] as? String ?: "TEST"
 
                 if (mode == "TEST") {
@@ -1432,9 +1432,9 @@ fun Application.configureRouting() {
                         "autoApproved" to true
                     ))
                 } else {
-                    val email = getDriverEmail(driverId) ?: "driver_$driverId@example.com"
+                    val email = DatabaseRepository.getDriverEmail(driverId) ?: "driver_$driverId@example.com"
                     val reference = "DAILY_FEE_${driverId}_${System.currentTimeMillis()}"
-                    val paystackData = initializePaystackPayment(email, amount, reference)
+                    val paystackData = DatabaseRepository.initializePaystackPayment(email, amount, reference)
                     
                     if (paystackData != null) {
                         call.respond(mapOf(
