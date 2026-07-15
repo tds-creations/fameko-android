@@ -762,15 +762,19 @@ fun Application.configureRouting() {
         }
 
         post("/customer/login") {
-            val req = call.receive<LoginRequest>()
-            val phone = req.phone
-            val password = req.password
-            if (phone.isNullOrBlank() || password.isNullOrBlank()) {
-                call.respond(AuthResponse(false, "Phone and password are required", null, null))
-                return@post
+            try {
+                val req = call.receive<LoginRequest>()
+                val phone = req.phone
+                val password = req.password
+                if (phone.isNullOrBlank() || password.isNullOrBlank()) {
+                    call.respond(AuthResponse(false, "Phone and password are required", null, null))
+                    return@post
+                }
+                
+                call.respond(DatabaseRepository.loginCustomer(phone, password))
+            } catch (e: Throwable) {
+                call.respond(AuthResponse(false, "Login error: ${e.localizedMessage}", null, null))
             }
-            
-            call.respond(DatabaseRepository.loginCustomer(phone, password))
         }
 
 
@@ -886,15 +890,19 @@ fun Application.configureRouting() {
         }
 
         post("/driver/login") {
-            val req = call.receive<LoginRequest>()
-            val phone = req.phone
-            val password = req.password
-            if (phone.isNullOrBlank() || password.isNullOrBlank()) {
-                call.respond(AuthResponse(false, "Phone and password are required", null, null))
-                return@post
-            }
+            try {
+                val req = call.receive<LoginRequest>()
+                val phone = req.phone
+                val password = req.password
+                if (phone.isNullOrBlank() || password.isNullOrBlank()) {
+                    call.respond(AuthResponse(false, "Phone and password are required", null, null))
+                    return@post
+                }
 
-            call.respond(DatabaseRepository.loginDriver(phone, password))
+                call.respond(DatabaseRepository.loginDriver(phone, password))
+            } catch (e: Throwable) {
+                call.respond(AuthResponse(false, "Login error: ${e.localizedMessage}", null, null))
+            }
         }
 
 

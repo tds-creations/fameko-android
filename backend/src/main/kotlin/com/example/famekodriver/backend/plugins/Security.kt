@@ -42,6 +42,9 @@ fun Application.configureSecurity() {
             validate { credentials ->
                 DatabaseRepository.validateAdmin(credentials.name, credentials.password)
             }
+            challenge {
+                call.respondRedirect("/admin/login?error=invalid")
+            }
         }
     }
 }

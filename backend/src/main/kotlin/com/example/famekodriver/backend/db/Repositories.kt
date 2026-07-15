@@ -1336,8 +1336,34 @@ object DatabaseRepository {
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 val dbPass = rs.getString("password")
-                if (dbPass == "GOOGLE_AUTH" || (dbPass != null && BCrypt.checkpw(password, dbPass))) {
-                    return AuthResponse(true, "Success", rs.getInt("id").toString(), rs.getString("name"))
+                val customerId = rs.getInt("id")
+                
+                var isMatch = false
+                var needsMigration = false
+                
+                if (dbPass == "GOOGLE_AUTH") {
+                    isMatch = true
+                } else if (dbPass != null) {
+                    try {
+                        isMatch = BCrypt.checkpw(password, dbPass)
+                    } catch (e: Throwable) {
+                        if (dbPass == password) {
+                            isMatch = true
+                            needsMigration = true
+                        }
+                    }
+                }
+
+                if (isMatch) {
+                    if (needsMigration) {
+                        val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
+                        conn.prepareStatement("UPDATE customers SET password = ? WHERE id = ?").apply {
+                            setString(1, hashed)
+                            setInt(2, customerId)
+                            executeUpdate()
+                        }
+                    }
+                    return AuthResponse(true, "Success", customerId.toString(), rs.getString("name"))
                 } else {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
@@ -1595,11 +1621,37 @@ object DatabaseRepository {
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 val dbPass = rs.getString("password")
-                if (dbPass == "GOOGLE_AUTH" || (dbPass != null && BCrypt.checkpw(password, dbPass))) {
+                val driverId = rs.getInt("id")
+                
+                var isMatch = false
+                var needsMigration = false
+                
+                if (dbPass == "GOOGLE_AUTH") {
+                    isMatch = true
+                } else if (dbPass != null) {
+                    try {
+                        isMatch = BCrypt.checkpw(password, dbPass)
+                    } catch (e: Throwable) {
+                        if (dbPass == password) {
+                            isMatch = true
+                            needsMigration = true
+                        }
+                    }
+                }
+
+                if (isMatch) {
+                    if (needsMigration) {
+                        val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
+                        conn.prepareStatement("UPDATE drivers SET password = ? WHERE id = ?").apply {
+                            setString(1, hashed)
+                            setInt(2, driverId)
+                            executeUpdate()
+                        }
+                    }
                     return AuthResponse(
                         success = true, 
                         message = "Success", 
-                        user_id = rs.getInt("id").toString(), 
+                        user_id = driverId.toString(), 
                         name = rs.getString("full_name"), 
                         status = rs.getString("status"), 
                         profile_picture = rs.getString("profile_picture"),
@@ -1616,11 +1668,37 @@ object DatabaseRepository {
                 val rsOwner = stmtOwner.executeQuery()
                 if (rsOwner.next()) {
                     val dbPass = rsOwner.getString("password")
-                    if (dbPass == "GOOGLE_AUTH" || (dbPass != null && BCrypt.checkpw(password, dbPass))) {
+                    val ownerId = rsOwner.getInt("id")
+                    
+                    var isMatch = false
+                    var needsMigration = false
+                    
+                    if (dbPass == "GOOGLE_AUTH") {
+                        isMatch = true
+                    } else if (dbPass != null) {
+                        try {
+                            isMatch = BCrypt.checkpw(password, dbPass)
+                        } catch (e: Throwable) {
+                            if (dbPass == password) {
+                                isMatch = true
+                                needsMigration = true
+                            }
+                        }
+                    }
+
+                    if (isMatch) {
+                        if (needsMigration) {
+                            val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
+                            conn.prepareStatement("UPDATE fleet_owners SET password = ? WHERE id = ?").apply {
+                                setString(1, hashed)
+                                setInt(2, ownerId)
+                                executeUpdate()
+                            }
+                        }
                         return AuthResponse(
                             success = true,
                             message = "Success",
-                            user_id = rsOwner.getInt("id").toString(),
+                            user_id = ownerId.toString(),
                             name = rsOwner.getString("full_name"),
                             status = rsOwner.getString("status"),
                             profile_picture = rsOwner.getString("profile_picture"),
@@ -1638,13 +1716,37 @@ object DatabaseRepository {
 
     fun validateAdmin(user: String, pass: String): AdminPrincipal? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT role, region, can_view_analytics, password FROM admins WHERE username = ? AND is_active = true"
+            val sql = "SELECT id, role, region, can_view_analytics, password FROM admins WHERE username = ? AND is_active = true"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, user)
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 val dbPass = rs.getString("password")
-                if (dbPass != null && BCrypt.checkpw(pass, dbPass)) {
+                val adminId = rs.getInt("id")
+                
+                var isMatch = false
+                var needsMigration = false
+                
+                if (dbPass != null) {
+                    try {
+                        isMatch = BCrypt.checkpw(pass, dbPass)
+                    } catch (e: Throwable) {
+                        if (dbPass == pass) {
+                            isMatch = true
+                            needsMigration = true
+                        }
+                    }
+                }
+
+                if (isMatch) {
+                    if (needsMigration) {
+                        val hashed = BCrypt.hashpw(pass, BCrypt.gensalt())
+                        conn.prepareStatement("UPDATE admins SET password = ? WHERE id = ?").apply {
+                            setString(1, hashed)
+                            setInt(2, adminId)
+                            executeUpdate()
+                        }
+                    }
                     return AdminPrincipal(
                         user,
                         rs.getString("role"),
@@ -1833,9 +1935,33 @@ object DatabaseRepository {
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 val dbPass = rs.getString("password")
-                if (dbPass != null && BCrypt.checkpw(pass, dbPass)) {
+                val adminId = rs.getInt("id")
+
+                var isMatch = false
+                var needsMigration = false
+                
+                if (dbPass != null) {
+                    try {
+                        isMatch = BCrypt.checkpw(pass, dbPass)
+                    } catch (e: Throwable) {
+                        if (dbPass == pass) {
+                            isMatch = true
+                            needsMigration = true
+                        }
+                    }
+                }
+
+                if (isMatch) {
+                    if (needsMigration) {
+                        val hashed = BCrypt.hashpw(pass, BCrypt.gensalt())
+                        conn.prepareStatement("UPDATE admins SET password = ? WHERE id = ?").apply {
+                            setString(1, hashed)
+                            setInt(2, adminId)
+                            executeUpdate()
+                        }
+                    }
                     return mapOf(
-                        "id" to rs.getInt("id"),
+                        "id" to adminId,
                         "username" to rs.getString("username"),
                         "role" to rs.getString("role")
                     )
