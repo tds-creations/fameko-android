@@ -61,7 +61,35 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     var pendingDocType by remember { mutableStateOf<String?>(null) }
 
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        // ... (existing logic)
+        uri?.let {
+            scope.launch {
+                isLoading = true
+                val file = uriToFile(context, it)
+                if (file != null) {
+                    val docType = pendingDocType ?: "profile_pic"
+                    repository.uploadDocument(driverId, docType, file).onSuccess {
+                        isLoading = false
+                        Toast.makeText(context, "Upload successful!", Toast.LENGTH_SHORT).show()
+                        
+                        // Refresh status to update checkmarks
+                        repository.getDriverStatus(driverId).onSuccess { resp ->
+                            missingDocs = resp.missingDocs
+                            status = resp.status
+                            sessionManager.updateStatus(resp.status)
+                            if (docType == "profile_pic") {
+                                profilePicUrl = resp.profilePicture
+                            }
+                        }
+                    }.onFailure { err ->
+                        isLoading = false
+                        Toast.makeText(context, "Upload failed: ${err.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    isLoading = false
+                    Toast.makeText(context, "Failed to process image", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {

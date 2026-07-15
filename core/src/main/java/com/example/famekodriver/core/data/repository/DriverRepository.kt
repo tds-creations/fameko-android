@@ -534,18 +534,26 @@ class DriverRepository {
 
     suspend fun uploadDocument(driverId: String, docType: String, file: File): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            uploadImage(file).onSuccess { fileUrl ->
-                val backendResponse = NetworkClient.famekoApi.uploadDriverDocument(driverId, docType, fileUrl)
-                return@withContext if (backendResponse.success) {
-                    Result.success(Unit)
-                } else {
-                    Result.failure(Exception(backendResponse.message ?: "Backend rejected the link"))
-                }
-            }.onFailure {
-                return@withContext Result.failure(it)
+            val uploadResult = uploadImage(file)
+            if (uploadResult.isFailure) {
+                val error = uploadResult.exceptionOrNull()
+                Log.e("FamekoRepo", "Cloudinary upload failed for $docType", error)
+                return@withContext Result.failure(error ?: Exception("Cloudinary upload failed"))
             }
-            Result.failure(Exception("Unknown error"))
+
+            val fileUrl = uploadResult.getOrThrow()
+            Log.d("FamekoRepo", "Image uploaded to Cloudinary: $fileUrl. Updating backend...")
+
+            val backendResponse = NetworkClient.famekoApi.uploadDriverDocument(driverId, docType, fileUrl)
+            if (backendResponse.success) {
+                Log.d("FamekoRepo", "Backend document update successful for $docType")
+                Result.success(Unit)
+            } else {
+                Log.e("FamekoRepo", "Backend rejected document link: ${backendResponse.message}")
+                Result.failure(Exception(backendResponse.message ?: "Backend rejected the link"))
+            }
         } catch (e: Exception) {
+            Log.e("FamekoRepo", "uploadDocument operation failed", e)
             Result.failure(e)
         }
     }
