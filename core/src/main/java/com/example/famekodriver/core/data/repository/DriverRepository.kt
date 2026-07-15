@@ -501,7 +501,9 @@ class DriverRepository {
 
     suspend fun uploadImage(file: File, preset: String = "fameko_docs"): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val cloudinaryUrl = "https://api.cloudinary.com/v1_1/df3jnubvy/image/upload"
+            // Both presets use the same cloud name 'df3jnubvy' as seen in Cloudinary dashboard
+            val cloudName = "df3jnubvy"
+            val cloudinaryUrl = "https://api.cloudinary.com/v1_1/$cloudName/image/upload"
             
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)

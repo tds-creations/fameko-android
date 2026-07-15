@@ -158,7 +158,10 @@ class CustomerLoginActivity : AppCompatActivity() {
         if (cleaned.startsWith("0")) {
             cleaned = cleaned.substring(1)
         }
-        return if (cleaned.startsWith("+")) cleaned else "+233$cleaned"
+        if (cleaned.startsWith("+233")) return cleaned
+        if (cleaned.startsWith("233")) return "+$cleaned"
+        if (cleaned.startsWith("+")) return cleaned
+        return "+233$cleaned"
     }
 
     private fun setupCarousel() {

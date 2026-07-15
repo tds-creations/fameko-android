@@ -33,6 +33,9 @@ object DatabaseRepository {
         if (cleaned.startsWith("233")) {
             return "+$cleaned"
         }
+        if (cleaned.startsWith("+")) {
+            return cleaned
+        }
         return "+233$cleaned"
     }
 
@@ -1375,16 +1378,17 @@ object DatabaseRepository {
 
     fun syncCustomerWithFirebase(email: String, firebaseUid: String): Map<String, Any>? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val selectSql = "SELECT id, name, firebase_uid FROM customers WHERE email = ?"
+            // Use LOWER() for case-insensitive email matching
+            val selectSql = "SELECT id, name, firebase_uid FROM customers WHERE LOWER(email) = LOWER(?)"
             val selectStmt = conn.prepareStatement(selectSql)
-            selectStmt.setString(1, email.lowercase())
+            selectStmt.setString(1, email.trim())
             val rs = selectStmt.executeQuery()
             if (rs.next()) {
                 val dbUid = rs.getString("firebase_uid")
                 if (dbUid == null) {
-                    conn.prepareStatement("UPDATE customers SET firebase_uid = ? WHERE email = ?").apply {
+                    conn.prepareStatement("UPDATE customers SET firebase_uid = ? WHERE id = ?").apply {
                         setString(1, firebaseUid)
-                        setString(2, email.lowercase())
+                        setInt(2, rs.getInt("id"))
                         executeUpdate()
                     }
                 }
