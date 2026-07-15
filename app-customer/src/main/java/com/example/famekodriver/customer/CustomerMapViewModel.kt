@@ -199,15 +199,33 @@ class CustomerMapViewModel(
                 }.distinctBy { it.displayName }.take(5)
             }
 
-            currentOrderId?.let { id ->
-                orderRepository.getOrderStatus(id).onSuccess { response ->
-                    orderStatusData = response
-                    if (response.status != "DELIVERED" && response.status != "CANCELLED") {
+            // Restore active session from backend (Redis-backed on server)
+            orderRepository.getActiveOrder(customerId).onSuccess { response ->
+                if (response.success && response.status != "DELIVERED" && response.status != "CANCELLED") {
+                    val orderId = response.orderId
+                    if (orderId != null) {
+                        currentOrderId = orderId
+                        orderStatusData = response
+                        sessionManager.setActiveOrderId(orderId)
+                        
+                        // Restore locations for map reconstruction
+                        response.pickupLocation?.let { pickupLocation = it }
+                        response.pickupLat?.let { pickupLat = it }
+                        response.pickupLng?.let { pickupLng = it }
+                        response.dropOffLocation?.let { dropOffLocation = it }
+                        response.dropOffLat?.let { dropOffLat = it }
+                        response.dropOffLng?.let { dropOffLng = it }
+                        
+                        if (pickupLat != null && dropOffLat != null) {
+                            calculateRoute()
+                        }
+
                         currentScreen = CustomerScreen.MainMap
-                        startStatusPolling(id)
+                        startStatusPolling(orderId)
                     }
                 }
             }
+
         }
     }
 
@@ -342,6 +360,7 @@ class CustomerMapViewModel(
         orderStatusData = null
         scheduledRideTime = null
         isTimedOut = false
+        isOrderPlacing = false
     }
 
     fun resetSearch() {
@@ -358,6 +377,7 @@ class CustomerMapViewModel(
         rentalPickupLocation = ""
         rentalPickupLat = null
         rentalPickupLng = null
+        isOrderPlacing = false
     }
 
     private fun startActiveRentalPolling() {
@@ -659,7 +679,10 @@ class CustomerMapViewModel(
         }
         isOrderPlacing = true
         viewModelScope.launch {
-            val customerId = sessionManager.getDriverId() ?: return@launch
+            val customerId = sessionManager.getCustomerId() ?: run {
+                isOrderPlacing = false
+                return@launch
+            }
             
             // The estimatedFare already includes vehicle-specific multipliers from the backend.
             // We only need to apply the customer's personal discount rate here.
@@ -680,15 +703,16 @@ class CustomerMapViewModel(
                 sessionManager.setActiveOrderId(newId)
                 scheduledRideTime = null
                 isTimedOut = false
+                isOrderPlacing = false
             }.onFailure {
                 isOrderPlacing = false
             }
         }
     }
 
-    fun cancelOrder() {
+    fun cancelOrder(reason: String? = null) {
         viewModelScope.launch {
-            currentOrderId?.let { orderRepository.cancelOrder(it) }
+            currentOrderId?.let { orderRepository.cancelOrder(it, reason) }
             clearActiveOrder()
         }
     }

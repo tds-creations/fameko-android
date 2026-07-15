@@ -311,7 +311,10 @@ fun CustomerMapScreen() {
 
     Scaffold(
         bottomBar = {
-            if (mapViewModel.currentScreen == CustomerScreen.Landing || mapViewModel.currentScreen == CustomerScreen.MainMap || mapViewModel.currentScreen == CustomerScreen.Account) {
+            val showBottomBar = (mapViewModel.currentScreen == CustomerScreen.Landing || mapViewModel.currentScreen == CustomerScreen.MainMap || mapViewModel.currentScreen == CustomerScreen.Account)
+                    && mapViewModel.polylinePoints.isEmpty() && mapViewModel.currentOrderId == null && mapViewModel.activeRental == null
+            
+            if (showBottomBar) {
                 NavigationBar(
                     containerColor = Color.White,
                     tonalElevation = 8.dp
@@ -507,6 +510,9 @@ fun CustomerMapScreen() {
                         onBack = { 
                             mapViewModel.resetSearch()
                             mapViewModel.navigateTo(CustomerScreen.Landing)
+                        },
+                        onComplete = {
+                            mapViewModel.navigateTo(CustomerScreen.MainMap)
                         }
                     )
                 }
@@ -684,7 +690,7 @@ fun MainMapContent(
             viewModel.orderStatusData?.status != null && viewModel.orderStatusData?.status != "CANCELLED" && viewModel.orderStatusData?.status != "DELIVERED" -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null && !viewModel.isSearchMode -> CustomerSheetState.ACTIVE_RENTAL
             (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && viewModel.estimatedFare != null && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
-            viewModel.isSearchMode || ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) || (viewModel.activeServiceMode == ServiceType.RENTAL && viewModel.rentalPickupLocation.isNotEmpty()) -> CustomerSheetState.PICKING_ADDRESS
+            viewModel.isSearchMode || ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) || (viewModel.activeServiceMode == ServiceType.RENTAL && viewModel.rentalPickupLocation.isNotEmpty()) || viewModel.polylinePoints.isNotEmpty() -> CustomerSheetState.PICKING_ADDRESS
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             else -> CustomerSheetState.IDLE
         }
@@ -1267,24 +1273,57 @@ fun MainMapContent(
                 }
 
                 if (viewModel.showCancelConfirmation) {
+                    var selectedReason by remember { mutableStateOf("") }
+                    val reasons = listOf(
+                        "Driver is too far away",
+                        "Wait time is too long",
+                        "Changed my mind",
+                        "Order placed by mistake",
+                        "Incorrect pickup location",
+                        "Driver asked me to cancel",
+                        "Other"
+                    )
+
                     AlertDialog(
                         onDismissRequest = { viewModel.showCancelConfirmation = false },
                         title = { Text("Cancel Ride?", fontWeight = FontWeight.Bold) },
-                        text = { Text("Are you sure you want to cancel your ride request?") },
+                        text = {
+                            Column {
+                                Text("Please tell us why you're cancelling:")
+                                Spacer(Modifier.height(12.dp))
+                                reasons.forEach { reason ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { selectedReason = reason }
+                                            .padding(vertical = 4.dp)
+                                    ) {
+                                        RadioButton(
+                                            selected = selectedReason == reason,
+                                            onClick = { selectedReason = reason },
+                                            colors = RadioButtonDefaults.colors(selectedColor = BoltGreen)
+                                        )
+                                        Text(text = reason, modifier = Modifier.padding(start = 8.dp))
+                                    }
+                                }
+                            }
+                        },
                         confirmButton = {
                             Button(
                                 onClick = {
                                     viewModel.showCancelConfirmation = false
-                                    viewModel.cancelOrder()
+                                    viewModel.cancelOrder(selectedReason.ifEmpty { "Not specified" })
                                 },
+                                enabled = selectedReason.isNotEmpty(),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                             ) {
-                                Text("Yes, Cancel")
+                                Text("Confirm Cancellation")
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { viewModel.showCancelConfirmation = false }) {
-                                Text("No, Keep")
+                                Text("No, Keep Ride")
                             }
                         },
                         shape = RoundedCornerShape(24.dp),
@@ -2421,7 +2460,8 @@ fun LocationSearchItem(suggestion: LocationSuggestion, onClick: () -> Unit) {
 @Composable
 fun RouteSelectionScreen(
     viewModel: CustomerMapViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onComplete: () -> Unit = onBack
 ) {
     val focusManager = LocalFocusManager.current
     val pickupFocusRequester = remember { FocusRequester() }
@@ -2664,7 +2704,7 @@ fun RouteSelectionScreen(
                         viewModel.selectSuggestion(suggestion, isPickupFocused)
                         if (viewModel.pickupLat != null && viewModel.dropOffLat != null) {
                             viewModel.calculateRoute()
-                            onBack()
+                            onComplete()
                         }
                     }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))

@@ -1125,9 +1125,9 @@ class DriverRepository {
         }
     }
 
-    suspend fun cancelOrder(orderId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun cancelOrder(orderId: Int, reason: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.cancelOrder(orderId)
+            val response = NetworkClient.famekoApi.cancelOrder(orderId, reason)
             if (response["success"] == true) {
                 Result.success(Unit)
             } else {

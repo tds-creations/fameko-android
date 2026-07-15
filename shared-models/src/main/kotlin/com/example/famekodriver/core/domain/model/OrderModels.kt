@@ -45,6 +45,7 @@ data class OrderCreateRequest(
 data class OrderStatusResponse(
     val success: Boolean,
     val status: String,
+    val orderId: Int? = null,
     val driverId: String? = null,
     val driverName: String? = null,
     val driverPhone: String? = null,
@@ -58,7 +59,13 @@ data class OrderStatusResponse(
     val driverBearing: Float? = null,
     val verificationPin: String? = null,
     val deliveryId: String? = null,
-    val fare: Double? = null
+    val fare: Double? = null,
+    val pickupLocation: String? = null,
+    val dropOffLocation: String? = null,
+    val pickupLat: Double? = null,
+    val pickupLng: Double? = null,
+    val dropOffLat: Double? = null,
+    val dropOffLng: Double? = null
 )
 
 data class RideEstimateResponse(

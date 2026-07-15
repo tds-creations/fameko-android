@@ -93,9 +93,9 @@ class OrderRepository {
         }
     }
 
-    suspend fun cancelOrder(orderId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun cancelOrder(orderId: Int, reason: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.cancelOrder(orderId)
+            val response = NetworkClient.famekoApi.cancelOrder(orderId, reason)
             if (response["success"] == true) {
                 Result.success(Unit)
             } else {
@@ -103,6 +103,19 @@ class OrderRepository {
             }
         } catch (e: Exception) {
             Log.e("OrderRepo", "Order cancellation via API failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getActiveOrder(customerId: String): Result<OrderStatusResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getActiveOrder(customerId)
+            if (response.success) {
+                Result.success(response)
+            } else {
+                Result.failure(Exception("No active order"))
+            }
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
