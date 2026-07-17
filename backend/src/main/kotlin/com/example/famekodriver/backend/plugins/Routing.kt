@@ -1071,26 +1071,30 @@ fun Application.configureRouting() {
                                         totalFare = req.estimatedFare
                                     )
 
-                                    // Try to lock and offer to drivers
-                                    var offerSent = false
+                                    // Try to lock and offer to multiple drivers (top 5)
+                                    var offersCount = 0
+                                    val maxOffersPerAttempt = 5
+
                                     for (driver in nearby) {
-                                        if (RedisManager.tryLockDriver(driver.id)) {
+                                        if (RedisManager.tryLockDriver(driver.id, ttlSeconds = 20)) {
                                             println("DEBUG: Offering order $orderId to DRIVER_${driver.id}")
                                             sendToUser("DRIVER_${driver.id}", "NEW_DELIVERY", deliveryObj)
-                                            offerSent = true
-                                            break 
+                                            offersCount++
+                                            if (offersCount >= maxOffersPerAttempt) break
                                         }
                                     }
 
-                                    if (offerSent) {
+                                    if (offersCount > 0) {
                                         delay(15000)
                                         val status = DatabaseRepository.getOrderStatus(orderId)
                                         if (status != "PENDING") {
                                             println("DEBUG: Order $orderId no longer pending ($status). Dispatch finished.")
                                             break
                                         } else {
-                                            println("DEBUG: Order $orderId still pending after 15s. Retrying...")
+                                            println("DEBUG: Order $orderId still pending after 15s delay. Expanding search...")
                                         }
+                                    } else {
+                                        println("DEBUG: No available/unlocked drivers found for order $orderId in radius ${currentRadius}km. Immediate expansion.")
                                     }
 
                                     attempt++

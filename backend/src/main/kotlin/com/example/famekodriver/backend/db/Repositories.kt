@@ -577,13 +577,11 @@ object DatabaseRepository {
     }
 
     fun getNearbyDrivers(lat: Double, lng: Double, radius: Double, vehicleType: String? = null): List<DriverLocation> {
-        try {
-            val nearbyIds = RedisManager.getNearbyDrivers(lat, lng, radius)
-            if (nearbyIds.isNotEmpty()) {
-                println("Redis: Found ${nearbyIds.size} nearby drivers for dispatch.")
-            }
+        val redisIds = try {
+            RedisManager.getNearbyDrivers(lat, lng, radius)
         } catch (e: Exception) {
-            println("Redis lookup failed, falling back to PostgreSQL: ${e.message}")
+            println("Redis lookup failed: ${e.message}")
+            emptyList<String>()
         }
 
         val list = mutableListOf<DriverLocation>()
@@ -603,9 +601,15 @@ object DatabaseRepository {
                 }
             } else ""
 
+            // Use H3 as a pre-filter but with a radius-aware K-ring to avoid missing drivers
             val h3Index = H3Helper.getIndex(lat, lng)
-            val neighbors = H3Helper.getNeighbors(h3Index)
-            val h3Filter = "AND ds.h3_index IN (${neighbors.joinToString(",") { "'$it'" }})"
+            val k = (radius / 1.1).toInt().coerceAtLeast(1).coerceAtMost(10) // Approx km to K-ring
+            val neighbors = H3Helper.getNeighborsInRadius(h3Index, k)
+            
+            // Combine H3 filter with Redis IDs for maximum reach
+            val h3List = neighbors.joinToString(",") { "'$it'" }
+            val redisIdList = if (redisIds.isNotEmpty()) redisIds.joinToString(",") else "0"
+            val geoFilter = "AND (ds.h3_index IN ($h3List) OR d.id IN ($redisIdList))"
 
             val useDistanceLimit = radius < 500.0 && !(lat == 0.0 && lng == 0.0)
 
@@ -617,13 +621,10 @@ object DatabaseRepository {
                     JOIN drivers d ON ds.driver_id = d.id
                     WHERE ds.is_online = true AND d.status = 'APPROVED'
                     AND ds.latitude IS NOT NULL AND ds.longitude IS NOT NULL
-                    $h3Filter
+                    $geoFilter
                     $vehicleFilter
                     AND (6371 * acos(least(1.0, cos(radians(?)) * cos(radians(ds.latitude)) * cos(radians(ds.longitude) - radians(?)) + sin(radians(?)) * sin(radians(ds.latitude)))) ) <= ?
-                    ORDER BY (
-                        (6371 * acos(least(1.0, cos(radians(?)) * cos(radians(ds.latitude)) * cos(radians(ds.longitude) - radians(?)) + sin(radians(?)) * sin(radians(ds.latitude))))) * 0.7 
-                        + (ds.completed_today * 0.5)
-                    ) ASC
+                    ORDER BY distance ASC, ds.completed_today ASC
                 """.trimIndent()
             } else {
                 """
@@ -631,6 +632,7 @@ object DatabaseRepository {
                     FROM driver_stats ds
                     JOIN drivers d ON ds.driver_id = d.id
                     WHERE ds.is_online = true AND d.status = 'APPROVED'
+                    $geoFilter
                     $vehicleFilter
                     ORDER BY ds.completed_today ASC, d.id DESC
                 """.trimIndent()
@@ -2060,13 +2062,37 @@ object DatabaseRepository {
 
         val h3Index = H3Helper.getIndex(lat, lng)
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            conn.prepareStatement("INSERT INTO driver_stats (driver_id, latitude, longitude, bearing, h3_index) VALUES (?, ?, ?, ?, ?) ON CONFLICT (driver_id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, bearing = EXCLUDED.bearing, h3_index = EXCLUDED.h3_index, updated_at = CURRENT_TIMESTAMP").apply {
-                setInt(1, id.toInt())
+            // Ensure is_online is true if receiving location updates (and daily fee is paid)
+            val driverId = id.toIntOrNull() ?: 0
+            val shouldBeOnline = if (driverId != 0) isDailyFeePaid(driverId) else false
+
+            val sql = """
+                INSERT INTO driver_stats (driver_id, latitude, longitude, bearing, h3_index, is_online) 
+                VALUES (?, ?, ?, ?, ?, ?) 
+                ON CONFLICT (driver_id) DO UPDATE SET 
+                    latitude = EXCLUDED.latitude, 
+                    longitude = EXCLUDED.longitude, 
+                    bearing = EXCLUDED.bearing, 
+                    h3_index = EXCLUDED.h3_index,
+                    is_online = CASE WHEN EXCLUDED.is_online = true THEN true ELSE driver_stats.is_online END,
+                    updated_at = CURRENT_TIMESTAMP
+            """.trimIndent()
+            
+            conn.prepareStatement(sql).apply {
+                setInt(1, driverId)
                 setDouble(2, lat)
                 setDouble(3, lng)
                 setFloat(4, bearing)
                 setString(5, h3Index)
+                setBoolean(6, shouldBeOnline)
                 executeUpdate()
+            }
+            
+            if (shouldBeOnline) {
+                conn.prepareStatement("UPDATE drivers SET is_online = true WHERE id = ? AND is_online = false").apply {
+                    setInt(1, driverId)
+                    executeUpdate()
+                }
             }
             
             val logSql = "INSERT INTO movement_logs (entity_id, entity_type, latitude, longitude) VALUES (?, 'DRIVER', ?, ?)"
