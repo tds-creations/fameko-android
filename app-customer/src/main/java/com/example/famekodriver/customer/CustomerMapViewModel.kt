@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.*
 import com.example.famekodriver.core.domain.model.*
+import com.example.famekodriver.core.utils.LocationUtils
 import com.example.famekodriver.core.utils.RegionUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -120,6 +121,8 @@ class CustomerMapViewModel(
     private var pickupSearchJob: Job? = null
     private var dropOffSearchJob: Job? = null
     private var managePlacesSearchJob: Job? = null
+    private var routeJob: Job? = null
+    private var lastRouteCalcLatLng: LatLng? = null
     private var isSelectingSuggestion = false
 
     init {
@@ -322,6 +325,7 @@ class CustomerMapViewModel(
                         driverLng = event.lng,
                         driverBearing = event.bearing
                     )
+                    calculateRouteForActiveTrip(event.lat, event.lng, status.status)
                 }
             }
             is FamekoEvent.NotificationReceived -> {
@@ -608,24 +612,39 @@ class CustomerMapViewModel(
             isLoading = false
             return
         }
-        performRouteCalculation()
+        performRouteCalculation(pickupLat!!, pickupLng!!, dropOffLat!!, dropOffLng!!)
     }
 
-    private fun performRouteCalculation() {
-        val pLat = pickupLat ?: return
-        val pLng = pickupLng ?: return
-        val dLat = dropOffLat ?: return
-        val dLng = dropOffLng ?: return
+    private fun calculateRouteForActiveTrip(driverLat: Double, driverLng: Double, status: String) {
+        val destLat = if (status == "ASSIGNED" || status == "ARRIVED") pickupLat else dropOffLat
+        val destLng = if (status == "ASSIGNED" || status == "ARRIVED") pickupLng else dropOffLng
 
-        isLoading = true
-        viewModelScope.launch {
+        if (destLat == null || destLng == null || destLat == 0.0) return
+
+        // Threshold to avoid spamming
+        lastRouteCalcLatLng?.let { last ->
+            val dist = LocationUtils.calculateDistance(driverLat, driverLng, last.latitude, last.longitude)
+            if (dist < 50.0 && polylinePoints.isNotEmpty()) return
+        }
+
+        performRouteCalculation(driverLat, driverLng, destLat, destLng, isUpdate = true)
+    }
+
+    private fun performRouteCalculation(pLat: Double, pLng: Double, dLat: Double, dLng: Double, isUpdate: Boolean = false) {
+        if (!isUpdate) isLoading = true
+        
+        routeJob?.cancel()
+        routeJob = viewModelScope.launch {
             orderRepository.calculateRoute(RouteRequest(RouteLocation(pLat, pLng), RouteLocation(dLat, dLng), "car"))
                 .onSuccess { response ->
                     polylinePoints = response.routeCoords.map { LatLng(it[1], it[0]) }
-                    distanceKm = response.distanceM / 1000.0
-                    durationMin = response.etaMin
+                    if (!isUpdate) {
+                        distanceKm = response.distanceM / 1000.0
+                        durationMin = response.etaMin
+                        updateEstimatedFare()
+                    }
+                    lastRouteCalcLatLng = LatLng(pLat, pLng)
                     isLoading = false
-                    updateEstimatedFare()
                 }
                 .onFailure {
                     isLoading = false

@@ -59,6 +59,20 @@ class CustomerLoginActivity : AppCompatActivity() {
         val btnGoogleLogin = findViewById<MaterialButton>(R.id.btnGoogleLogin)
         val tvBackToHome = findViewById<TextView>(R.id.tvBackToHome)
         val etPassword = findViewById<EditText>(R.id.etPassword)
+        val ivPasswordVisibility = findViewById<ImageView>(R.id.ivPasswordVisibility)
+
+        var isPasswordVisible = false
+        ivPasswordVisibility.setOnClickListener {
+            isPasswordVisible = !isPasswordVisible
+            if (isPasswordVisible) {
+                etPassword.transformationMethod = android.text.method.HideReturnsTransformationMethod.getInstance()
+                ivPasswordVisibility.setImageResource(android.R.drawable.ic_menu_close_clear_cancel) // Temporary "hide" icon
+            } else {
+                etPassword.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+                ivPasswordVisibility.setImageResource(android.R.drawable.ic_menu_view)
+            }
+            etPassword.setSelection(etPassword.text.length)
+        }
 
         btnLogin.setOnClickListener {
             val phone = etPhone.text?.toString() ?: ""

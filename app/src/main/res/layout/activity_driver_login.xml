@@ -12,6 +12,7 @@
         android:id="@+id/viewPagerCarousel"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:contentDescription="@string/cd_carousel_image"
         app:layout_constraintHeight_percent="0.4"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -35,7 +36,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Enter your number"
+                android:text="@string/title_enter_number"
                 android:textColor="#1A1C1E"
                 android:textSize="24sp"
                 android:textStyle="bold" />
@@ -55,13 +56,14 @@
                     android:id="@+id/ivFlag"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:contentDescription="@string/cd_ghana_flag"
                     android:src="@drawable/ic_ghana_flag" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="+233"
+                    android:text="@string/country_code_ghana"
                     android:textColor="#1A1C1E"
                     android:textSize="16sp" />
 
@@ -69,6 +71,7 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_marginStart="4dp"
+                    android:contentDescription="@string/cd_dropdown_arrow"
                     android:src="@android:drawable/arrow_down_float"
                     app:tint="#44474E" />
 
@@ -82,8 +85,9 @@
                     android:id="@+id/etPhone"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
+                    android:autofillHints="phone"
                     android:background="@null"
-                    android:hint="24 827 5667"
+                    android:hint="@string/hint_phone_placeholder"
                     android:inputType="phone"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
@@ -106,20 +110,35 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:contentDescription="@string/cd_lock_icon"
                     android:src="@android:drawable/ic_lock_idle_lock"
                     app:tint="#44474E" />
 
                 <EditText
                     android:id="@+id/etPassword"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:autofillHints="password"
                     android:background="@null"
-                    android:hint="Enter password"
+                    android:hint="@string/hint_enter_password"
                     android:inputType="textPassword"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
                     android:textColor="#1A1C1E"
                     android:textSize="16sp" />
+
+                <ImageView
+                    android:id="@+id/ivPasswordVisibility"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="@string/cd_password_visibility"
+                    android:focusable="true"
+                    android:padding="12dp"
+                    android:src="@android:drawable/ic_menu_view"
+                    app:tint="#44474E" />
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
@@ -127,7 +146,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="24dp"
-                android:text="Log In"
+                android:text="@string/btn_log_in"
                 android:textAllCaps="false"
                 android:textColor="@android:color/white"
                 android:textSize="16sp"
@@ -154,7 +173,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
-                    android:text="Or"
+                    android:text="@string/label_or"
                     android:textColor="#999999"
                     android:textSize="12sp" />
 
@@ -172,7 +191,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="24dp"
-                android:text="Sign in with Google"
+                android:text="@string/btn_google_sign_in"
                 android:textAllCaps="false"
                 android:textColor="#44474E"
                 android:textSize="16sp"
@@ -190,7 +209,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_marginTop="24dp"
-                android:text="Don't have an account? Register here"
+                android:text="@string/tv_register_prompt"
                 android:textColor="#44474E"
                 android:textSize="14sp" />
 
@@ -200,7 +219,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:gravity="center"
-                android:text="By signing up, you agree to our Terms &amp; Conditions, acknowledge our Privacy Policy, and confirm that you're over 18."
+                android:text="@string/tv_terms_policy"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 

@@ -129,8 +129,7 @@ fun MapScreen(
                 object : com.google.android.gms.location.LocationCallback() {
                     override fun onLocationResult(res: com.google.android.gms.location.LocationResult) {
                         res.lastLocation?.let { 
-                            viewModel.driverLatLng = LatLng(it.latitude, it.longitude)
-                            viewModel.driverBearing = it.bearing
+                            viewModel.updateDriverLocation(it.latitude, it.longitude, it.bearing)
                         }
                     }
                 },
@@ -190,7 +189,7 @@ fun MapScreen(
         val delivery = viewModel.currentDelivery
         val driverPos = viewModel.driverLatLng
         if (delivery != null && driverPos != null) {
-            val dest = if (delivery.status == DeliveryStatus.ASSIGNED) {
+            val dest = if (delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.ARRIVED) {
                 LatLng(delivery.pickupLat ?: 0.0, delivery.pickupLng ?: 0.0)
             } else {
                 LatLng(delivery.dropOffLat ?: 0.0, delivery.dropOffLng ?: 0.0)
@@ -217,6 +216,18 @@ fun MapScreen(
                     }
                 }
                 if (hasLocationPermission && viewModel.activeRequest == null) {
+                    FloatingActionButton(
+                        onClick = { viewModel.toggleVoice(!viewModel.isVoiceEnabled) },
+                        containerColor = if (viewModel.isVoiceEnabled) BoltGreen else Color.White,
+                        contentColor = if (viewModel.isVoiceEnabled) Color.White else Color.Gray,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            if (viewModel.isVoiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            null
+                        )
+                    }
+
                     FloatingActionButton(
                         onClick = {
                             @SuppressLint("MissingPermission")

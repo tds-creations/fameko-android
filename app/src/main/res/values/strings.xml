@@ -146,4 +146,19 @@
     <string name="helper_phone_reachable">Must be reachable for trips</string>
     <string name="helper_license_verification">Required for verification</string>
     <string name="helper_password_length">Use at least 6 characters</string>
+    <!-- Driver Login -->
+    <string name="title_enter_number">Enter your number</string>
+    <string name="country_code_ghana">+233</string>
+    <string name="hint_phone_placeholder">24 827 5667</string>
+    <string name="hint_enter_password">Enter password</string>
+    <string name="btn_log_in">Log In</string>
+    <string name="label_or">Or</string>
+    <string name="btn_google_sign_in">Sign in with Google</string>
+    <string name="tv_register_prompt">Don\'t have an account? Register here</string>
+    <string name="tv_terms_policy">By signing up, you agree to our Terms &amp; Conditions, acknowledge our Privacy Policy, and confirm that you\'re over 18.</string>
+    <string name="cd_ghana_flag">Ghana Flag</string>
+    <string name="cd_dropdown_arrow">Dropdown Arrow</string>
+    <string name="cd_lock_icon">Lock Icon</string>
+    <string name="cd_password_visibility">Toggle Password Visibility</string>
+    <string name="cd_carousel_image">Carousel Image</string>
 </resources>

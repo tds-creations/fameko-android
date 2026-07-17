@@ -58,23 +58,38 @@ class DriverLoginActivity : AppCompatActivity() {
         val btnGoogleLogin = findViewById<MaterialButton>(R.id.btnGoogleLogin)
         val tvRegister = findViewById<TextView>(R.id.tvRegister)
         val etPassword = findViewById<EditText>(R.id.etPassword)
+        val ivPasswordVisibility = findViewById<ImageView>(R.id.ivPasswordVisibility)
 
-        val registerText = "Don't have an account? Register here"
+        var isPasswordVisible = false
+        ivPasswordVisibility.setOnClickListener {
+            isPasswordVisible = !isPasswordVisible
+            if (isPasswordVisible) {
+                etPassword.transformationMethod = android.text.method.HideReturnsTransformationMethod.getInstance()
+                ivPasswordVisibility.setImageResource(android.R.drawable.ic_menu_close_clear_cancel) // Temporary "hide" icon
+            } else {
+                etPassword.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+                ivPasswordVisibility.setImageResource(android.R.drawable.ic_menu_view)
+            }
+            etPassword.setSelection(etPassword.text.length)
+        }
+
+        val registerText = getString(R.string.tv_register_prompt)
         val spannableRegister = android.text.SpannableString(registerText)
         val brandBlue = "#0047AB".toColorInt()
         
-        val regStart = registerText.indexOf("Register here")
+        val highlightedPart = "Register here"
+        val regStart = registerText.indexOf(highlightedPart)
         if (regStart != -1) {
             spannableRegister.setSpan(
                 android.text.style.ForegroundColorSpan(brandBlue),
                 regStart,
-                registerText.length,
+                regStart + highlightedPart.length,
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
             spannableRegister.setSpan(
                 android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
                 regStart,
-                registerText.length,
+                regStart + highlightedPart.length,
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }
@@ -182,7 +197,10 @@ class DriverLoginActivity : AppCompatActivity() {
         if (cleaned.startsWith("0")) {
             cleaned = cleaned.substring(1)
         }
-        return if (cleaned.startsWith("+")) cleaned else "+233$cleaned"
+        if (cleaned.startsWith("+233")) return cleaned
+        if (cleaned.startsWith("233")) return "+$cleaned"
+        if (cleaned.startsWith("+")) return cleaned
+        return "+233$cleaned"
     }
 
     private fun setupCarousel() {

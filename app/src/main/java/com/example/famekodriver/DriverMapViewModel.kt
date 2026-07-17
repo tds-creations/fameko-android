@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.*
+import com.example.famekodriver.core.utils.LocationUtils
+import com.example.famekodriver.core.utils.VoiceNavigationManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -60,8 +62,13 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var finalFare by mutableDoubleStateOf(0.0)
     var finalTotalFare by mutableDoubleStateOf(0.0)
 
+    var isVoiceEnabled by mutableStateOf(true)
+    private val voiceNavManager = VoiceNavigationManager(application)
+
     private var timerJob: Job? = null
     private var countdownJob: Job? = null
+    private var routeJob: Job? = null
+    private var lastRouteCalcLatLng: LatLng? = null
 
     init {
         fetchDriverStatus()
@@ -319,6 +326,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repository.updateDeliveryStatus(delivery.id, nextStatus).onSuccess {
                 if (nextStatus == DeliveryStatus.DELIVERED) {
+                    voiceNavManager.announceArrival()
                     finalFare = delivery.estimatedEarnings
                     finalTotalFare = delivery.totalFare ?: (delivery.estimatedEarnings / 0.8)
                     showTripSummary = true
@@ -421,11 +429,51 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun calculateRoute(start: LatLng, end: LatLng) {
-        viewModelScope.launch {
+        // If we already calculated for this position (within 50m), don't spam
+        lastRouteCalcLatLng?.let { last ->
+            val dist = LocationUtils.calculateDistance(start.latitude, start.longitude, last.latitude, last.longitude)
+            if (dist < 50.0 && navigationPath.isNotEmpty()) return
+        }
+
+        routeJob?.cancel()
+        routeJob = viewModelScope.launch {
             repository.calculateRoute(RouteRequest(RouteLocation(start.latitude, start.longitude), RouteLocation(end.latitude, end.longitude)))
                 .onSuccess { response ->
+                    val isFirstCalc = navigationPath.isEmpty()
                     navigationPath = response.routeCoords.map { LatLng(it[1], it[0]) }
+                    lastRouteCalcLatLng = start
+                    
+                    if (isFirstCalc) {
+                        val destName = if (currentDelivery?.status == DeliveryStatus.ASSIGNED) "pickup" else "destination"
+                        voiceNavManager.announceTripStart(destName)
+                    }
                 }
         }
+    }
+
+    fun updateDriverLocation(lat: Double, lng: Double, bearing: Float) {
+        driverLatLng = LatLng(lat, lng)
+        driverBearing = bearing
+        
+        currentDelivery?.let { delivery ->
+            if (navigationPath.isNotEmpty()) {
+                voiceNavManager.updateProgress(
+                    lat, lng, 
+                    navigationPath.map { it.latitude to it.longitude },
+                    delivery.pickupEtaMin ?: 5.0, // Placeholder ETA
+                    delivery.distanceKm
+                )
+            }
+        }
+    }
+
+    fun toggleVoice(enabled: Boolean) {
+        isVoiceEnabled = enabled
+        voiceNavManager.setEnabled(enabled)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        voiceNavManager.shutdown()
     }
 }

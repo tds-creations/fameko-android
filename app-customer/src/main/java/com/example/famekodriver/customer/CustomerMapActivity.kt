@@ -828,6 +828,15 @@ fun MainMapContent(
 
     // Auto-Zoom to fit route
     LaunchedEffect(viewModel.polylinePoints, mapLibreMap) {
+        val status = viewModel.orderStatusData?.status
+        val isOnTrip = status != null && status != "PENDING" && status != "CANCELLED" && status != "DELIVERED"
+        
+        // If on trip, we only zoom if the camera was recently reset or if it's the first route load
+        if (isOnTrip && hasCentredOnLocation) {
+            // Don't auto-zoom during trip to avoid annoying the user if they've manually panned
+            return@LaunchedEffect
+        }
+
         if (viewModel.polylinePoints.isNotEmpty() && mapLibreMap != null) {
             try {
                 val boundsBuilder = org.maplibre.android.geometry.LatLngBounds.Builder()
