@@ -511,6 +511,9 @@ fun CustomerMapScreen() {
                             mapViewModel.resetSearch()
                             mapViewModel.navigateTo(CustomerScreen.Landing)
                         },
+                        onMapClick = {
+                            mapViewModel.navigateTo(CustomerScreen.MainMap)
+                        },
                         onComplete = {
                             mapViewModel.navigateTo(CustomerScreen.MainMap)
                         }
@@ -2470,20 +2473,23 @@ fun LocationSearchItem(suggestion: LocationSuggestion, onClick: () -> Unit) {
 fun RouteSelectionScreen(
     viewModel: CustomerMapViewModel,
     onBack: () -> Unit,
+    onMapClick: () -> Unit = {},
     onComplete: () -> Unit = onBack
 ) {
     val focusManager = LocalFocusManager.current
     val pickupFocusRequester = remember { FocusRequester() }
     val dropOffFocusRequester = remember { FocusRequester() }
     
-    var isPickupFocused by remember { mutableStateOf(false) }
-    var isDropOffFocused by remember { mutableStateOf(true) }
+    var isPickupFocused by remember { mutableStateOf(true) }
+    var isDropOffFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (viewModel.dropOffLocation.isEmpty()) {
+        if (viewModel.pickupLocation.isEmpty()) {
+            pickupFocusRequester.requestFocus()
+        } else if (viewModel.dropOffLocation.isEmpty()) {
             dropOffFocusRequester.requestFocus()
         } else {
-            pickupFocusRequester.requestFocus()
+            dropOffFocusRequester.requestFocus()
         }
     }
 
@@ -2570,7 +2576,7 @@ fun RouteSelectionScreen(
 
                         if (isPickupFocused) {
                             Surface(
-                                modifier = Modifier.clickable { onBack() },
+                                modifier = Modifier.clickable { onMapClick() },
                                 color = FamekoBlue,
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -2635,7 +2641,7 @@ fun RouteSelectionScreen(
                         
                         if (isDropOffFocused) {
                             Surface(
-                                modifier = Modifier.clickable { onBack() },
+                                modifier = Modifier.clickable { onMapClick() },
                                 color = FamekoBlue,
                                 shape = RoundedCornerShape(12.dp)
                             ) {

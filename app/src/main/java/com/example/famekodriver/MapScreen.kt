@@ -873,39 +873,24 @@ fun IncomingRequestSheet(
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "GH₵${request.estimatedEarnings.toInt()}",
-                        fontWeight = FontWeight.Black,
-                        fontSize = 32.sp,
-                        color = BoltDark
-                    )
-                    Text(
-                        text = "Est. Earnings",
-                        fontSize = 13.sp,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                
                 Surface(
                     color = FamekoLightBlue,
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(16.dp), tint = FamekoPrimary)
-                        Spacer(Modifier.width(6.dp))
+                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(18.dp), tint = FamekoPrimary)
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = "${request.pickupEtaMin?.toInt() ?: 5} min away",
                             fontWeight = FontWeight.Bold,
                             color = FamekoPrimary,
-                            fontSize = 14.sp
+                            fontSize = 16.sp
                         )
                     }
                 }
