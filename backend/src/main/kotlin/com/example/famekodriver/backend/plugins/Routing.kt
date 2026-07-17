@@ -123,15 +123,15 @@ fun Application.configureRouting() {
                     val liveDeliveries = DatabaseRepository.getActiveDeliveries()
                     val sosCount = RedisManager.getActiveSOSCount()
 
-                    call.respond(ThymeleafContent("admin_dashboard", mapOf(
+                    call.respond(ThymeleafContent("admin_dashboard", mapOf<String, Any>(
                         "drivers" to drivers.take(10),
                         "totalDrivers" to drivers.size,
                         "totalFleetOwners" to fleetOwners.size,
                         "pendingCount" to drivers.count { it["status"] == "PENDING" || it["status"] == "PENDING_DOCS" },
                         "pendingFleetOwners" to fleetOwners.count { it["status"] == "PENDING" },
                         "onlineCount" to drivers.count { it["is_online"] == true },
-                        "totalRevenue" to stats["totalRevenue"],
-                        "totalDebt" to stats["totalDebt"],
+                        "totalRevenue" to (stats["totalRevenue"] ?: 0),
+                        "totalDebt" to (stats["totalDebt"] ?: 0),
                         "totalDeliveries" to liveDeliveries.size,
                         "pendingRentals" to rentals.count { it["status"] == "PENDING" },
                         "activeSOSCount" to sosCount,
@@ -581,11 +581,11 @@ fun Application.configureRouting() {
                     if (principal.role != "SUPERADMIN") return@get call.respondRedirect("/admin/dashboard")
                     
                     val tables = DatabaseRepository.getAllTables()
-                    call.respond(ThymeleafContent("admin_db_explorer", mapOf(
+                    call.respond(ThymeleafContent("admin_db_explorer", mapOf<String, Any>(
                         "activePage" to "database",
                         "admin" to principal,
                         "tables" to tables,
-                        "selectedTable" to null
+                        "selectedTable" to ""
                     )))
                 }
 
@@ -601,7 +601,7 @@ fun Application.configureRouting() {
                     
                     val (columns, rows) = DatabaseRepository.getTableData(tableName)
                     
-                    call.respond(ThymeleafContent("admin_db_explorer", mapOf(
+                    call.respond(ThymeleafContent("admin_db_explorer", mapOf<String, Any>(
                         "activePage" to "database",
                         "admin" to principal,
                         "tables" to tables,

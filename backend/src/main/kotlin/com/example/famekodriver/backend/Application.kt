@@ -16,8 +16,9 @@ fun main() {
         println("Database initialized successfully.")
         val port = System.getenv("PORT")?.toInt() ?: 8080
         println("Starting Ktor server on port $port...")
-        embeddedServer(Netty, port = port, host = "0.0.0.0", module = Application::module)
-            .start(wait = true)
+        embeddedServer(Netty, port = port, host = "0.0.0.0") {
+            module()
+        }.start(wait = true)
     } catch (e: Exception) {
         println("CRITICAL ERROR during startup: ${e.message}")
         e.printStackTrace()
