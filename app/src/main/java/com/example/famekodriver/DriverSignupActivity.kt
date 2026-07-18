@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class DriverSignupActivity : AppCompatActivity() {
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private var selectedVehicleType: String = "Car"
 
     override fun onCreate(savedInstanceState: Bundle?) {

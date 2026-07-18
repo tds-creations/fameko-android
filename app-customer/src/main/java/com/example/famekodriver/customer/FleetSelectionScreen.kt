@@ -76,7 +76,7 @@ fun FleetSelectionScreen(
     onVehicleDetails: (Map<String, Any>) -> Unit
 ) {
     val context = LocalContext.current
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val scope = rememberCoroutineScope()
 
     var vehicles by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }

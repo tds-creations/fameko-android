@@ -11,7 +11,7 @@ import kotlinx.coroutines.*
 
 class AdminSOSService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private val activePlayers = mutableMapOf<Int, MediaPlayer>()
     private val CHANNEL_ID = "admin_sos_service"
     private var isRunning = false

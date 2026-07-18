@@ -39,7 +39,7 @@ fun SupportChatScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val sessionManager = remember { SessionManager(context) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()

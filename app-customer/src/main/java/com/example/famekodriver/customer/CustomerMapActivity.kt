@@ -164,7 +164,7 @@ class CustomerMapActivity : ComponentActivity() {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val token = task.result
-                val repository = DriverRepository()
+                val repository = DriverRepository.getInstance()
                 lifecycleScope.launch {
                     repository.updateFcmToken(customerId, token, "customer")
                 }
@@ -251,7 +251,7 @@ sealed class CustomerScreen {
 @Composable
 fun CustomerMapScreen() {
     val context = LocalContext.current
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val orderRepository = remember { OrderRepository() }
     val rentalRepository = remember { RentalRepository() }
     val userRepository = remember { UserRepository() }
@@ -577,7 +577,7 @@ fun MainMapContent(
     onNavigateToChat: (Int, String) -> Unit
 ) {
     val context = LocalContext.current
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val focusManager = LocalFocusManager.current
     val pickupFocusRequester = remember { FocusRequester() }
     val dropOffFocusRequester = remember { FocusRequester() }

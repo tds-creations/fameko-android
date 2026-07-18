@@ -10,7 +10,7 @@ import com.example.famekodriver.core.domain.model.DriverStats
 import kotlinx.coroutines.launch
 
 class EarningsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private val sessionManager = SessionManager(application)
 
     var stats by mutableStateOf(DriverStats())

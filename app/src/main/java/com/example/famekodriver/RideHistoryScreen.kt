@@ -30,7 +30,7 @@ import com.example.famekodriver.core.domain.model.DeliveryStatus
 @Composable
 fun RideHistoryScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val sessionManager = remember { SessionManager(context) }
     val driverId = sessionManager.getDriverId() ?: ""
 

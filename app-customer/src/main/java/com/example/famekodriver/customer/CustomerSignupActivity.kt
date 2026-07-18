@@ -19,7 +19,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class CustomerSignupActivity : AppCompatActivity() {
     private lateinit var sessionManager: SessionManager
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

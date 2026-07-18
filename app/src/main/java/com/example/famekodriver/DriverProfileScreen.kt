@@ -44,7 +44,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val sessionManager = remember { SessionManager(context) }
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val driverId = sessionManager.getDriverId() ?: ""
 
     var status by remember { mutableStateOf(sessionManager.getDriverStatus()) }

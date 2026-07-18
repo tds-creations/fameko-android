@@ -48,7 +48,7 @@ fun AddRentalVehicleScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val sessionManager = remember { SessionManager(context) }
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val ownerId = sessionManager.getDriverId()?.toIntOrNull() ?: 0
     val isEditing = vehicle != null
 

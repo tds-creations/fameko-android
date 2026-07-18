@@ -38,7 +38,7 @@ fun VehicleDetailsScreen(
     onBack: () -> Unit,
     onBookNow: (Map<String, Any>) -> Unit,
 ) {
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     var pricingConfig by remember { mutableStateOf<PricingConfig?>(null) }
     
     LaunchedEffect(Unit) {

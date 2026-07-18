@@ -9,7 +9,7 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 import kotlinx.coroutines.launch
 
 class FleetManagementViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private val sessionManager = SessionManager(application.applicationContext)
     
     var vehicles by mutableStateOf<List<Map<String, Any>>>(emptyList())

@@ -13,7 +13,7 @@ class CustomerLocationService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private var vehicleId: Int = 0
 
     override fun onCreate() {

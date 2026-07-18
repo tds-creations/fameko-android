@@ -40,7 +40,7 @@ fun RentalBookingScreen(
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     var pricingConfig by remember { mutableStateOf<PricingConfig?>(null) }
     
     LaunchedEffect(Unit) {

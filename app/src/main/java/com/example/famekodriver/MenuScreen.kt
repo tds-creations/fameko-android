@@ -48,7 +48,7 @@ fun MenuScreen(
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
     val driverId = sessionManager.getDriverId() ?: ""

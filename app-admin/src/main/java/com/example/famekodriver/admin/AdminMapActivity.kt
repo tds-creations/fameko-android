@@ -181,7 +181,7 @@ fun AdminMainContent() {
 }
 
 class AdminViewModel : ViewModel() {
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     
     var liveDrivers by mutableStateOf<List<Map<String, Any>>>(emptyList())
         private set

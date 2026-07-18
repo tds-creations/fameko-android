@@ -42,7 +42,7 @@ class AdminLoginActivity : ComponentActivity() {
         setContent {
             AdminLoginScreen { username, password ->
                 lifecycleScope.launch {
-                    val repository = DriverRepository()
+                    val repository = DriverRepository.getInstance()
                     repository.adminLogin(username, password).onSuccess { admin ->
                         sessionManager.saveDriverSession(
                             admin.id.toString(),

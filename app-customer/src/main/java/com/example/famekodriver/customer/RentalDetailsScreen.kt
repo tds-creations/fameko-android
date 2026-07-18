@@ -44,7 +44,7 @@ fun RentalDetailsScreen(
     onNavigateToMainMap: () -> Unit
 ) {
     val context = LocalContext.current
-    val repository = remember { DriverRepository() }
+    val repository = remember { DriverRepository.getInstance() }
     val scope = rememberCoroutineScope()
     
     var currentRental by remember { mutableStateOf(rental) }
