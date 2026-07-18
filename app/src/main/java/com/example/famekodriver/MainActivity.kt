@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val userRole = remember { sessionManager.getUserRole() }
             var currentStatus by rememberSaveable { mutableStateOf(sessionManager.getDriverStatus()) }
+            var currentVehicleType by rememberSaveable { mutableStateOf(sessionManager.getVehicleType() ?: "") }
             var currentScreen by remember { 
                 mutableStateOf<Screen>(if (userRole == "OWNER") Screen.FleetManagement else Screen.DriverMap) 
             }
@@ -108,6 +109,7 @@ class MainActivity : ComponentActivity() {
                 while(true) {
                     delay(5000)
                     currentStatus = sessionManager.getDriverStatus()
+                    currentVehicleType = sessionManager.getVehicleType() ?: ""
                 }
             }
 
@@ -118,6 +120,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         MapScreen(
                             status = currentStatus,
+                            vehicleTypeFromSession = currentVehicleType,
                             onNavigateToMenu = {
                                 currentScreen = Screen.Menu
                             },
@@ -272,6 +275,11 @@ class MainActivity : ComponentActivity() {
                         } else if (response.status == "SUSPENDED") {
                             Toast.makeText(this@MainActivity, "Account Suspended!", Toast.LENGTH_LONG).show()
                         }
+                    }
+                    
+                    val oldVehicle = sessionManager.getVehicleType()
+                    if (response.vehicleType != null && response.vehicleType != oldVehicle) {
+                        sessionManager.updateVehicleType(response.vehicleType)
                     }
                 }
             }

@@ -52,6 +52,7 @@ data class DriverStatusResponse(
     val dailyFeeAmount: Double = 0.0,
     val dailyFeeExpiryTime: String? = null,
     val vehicleCategory: String? = "Economy",
+    val vehicleType: String? = null,
     val plateNumber: String? = null,
     val vehicleModel: String? = null
 )

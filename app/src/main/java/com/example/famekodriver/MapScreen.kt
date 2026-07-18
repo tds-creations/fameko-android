@@ -68,6 +68,7 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun MapScreen(
     status: String,
+    vehicleTypeFromSession: String = "",
     onNavigateToMenu: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToChat: (Int, String) -> Unit,
@@ -103,14 +104,10 @@ fun MapScreen(
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
 
-    val sessionManager = remember { SessionManager(context) }
-    var vehicleType by remember { mutableStateOf(sessionManager.getVehicleType()?.lowercase() ?: "") }
+    var vehicleType by remember(vehicleTypeFromSession) { mutableStateOf(vehicleTypeFromSession.lowercase()) }
 
     var vehicleBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(Unit) {
-        // Re-read vehicle type to ensure it's fresh
-        vehicleType = sessionManager.getVehicleType()?.lowercase() ?: ""
-        
+    LaunchedEffect(vehicleType) {
         val type = vehicleType
         val iconUrl = when {
             type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor") -> ImageLinks.IC_OKADA

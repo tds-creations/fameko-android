@@ -93,6 +93,10 @@ class SessionManager(context: Context) {
         prefs.edit().putString(KEY_DRIVER_STATUS, status).apply()
     }
 
+    fun updateVehicleType(type: String?) {
+        prefs.edit().putString(KEY_VEHICLE_TYPE, type).apply()
+    }
+
     fun setActiveOrderId(orderId: Int?) {
         if (orderId == null) {
             prefs.edit().remove(KEY_ACTIVE_ORDER_ID).apply()

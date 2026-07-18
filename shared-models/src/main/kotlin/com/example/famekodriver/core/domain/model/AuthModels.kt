@@ -36,5 +36,6 @@ data class AuthResponse(
     val status: String? = null,
     val profile_picture: String? = null,
     val user_role: String? = "DRIVER",
-    val company_name: String? = null
+    val company_name: String? = null,
+    val vehicle_type: String? = null
 )

@@ -1002,7 +1002,8 @@ fun Application.configureRouting() {
                             user_id = user.id.toString(), 
                             name = user.fullName,
                             status = user.status,
-                            user_role = user.userRole
+                            user_role = user.userRole,
+                            vehicle_type = user.vehicleType
                         ))
                     } else {
                         call.respond(AuthResponse(false, "USER_NOT_FOUND", null, null))

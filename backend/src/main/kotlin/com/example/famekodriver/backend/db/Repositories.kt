@@ -251,7 +251,7 @@ object DatabaseRepository {
 
     fun getDriverStatus(id: Int): DriverStatusResponse? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val rs = conn.prepareStatement("SELECT status, profile_picture, license_image, insurance_cert, roadworthy_cert, id_front_image, emergency_contact_1, emergency_contact_2, daily_fee_paid_at, daily_fee_expires_at, vehicle_category, vehicle_number, vehicle_model, is_online FROM drivers WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+            val rs = conn.prepareStatement("SELECT status, profile_picture, license_image, insurance_cert, roadworthy_cert, id_front_image, emergency_contact_1, emergency_contact_2, daily_fee_paid_at, daily_fee_expires_at, vehicle_category, vehicle_type, vehicle_number, vehicle_model, is_online FROM drivers WHERE id = ?").apply { setInt(1, id) }.executeQuery()
             if (rs.next()) {
                 val missing = mutableListOf<String>()
                 
@@ -286,8 +286,9 @@ object DatabaseRepository {
                     dailyFeeAmount = config.dailyServiceFee,
                     dailyFeeExpiryTime = expiryTime,
                     vehicleCategory = rs.getString("vehicle_category") ?: "Economy",
-                    plateNumber = rs.getString(12),
-                    vehicleModel = rs.getString(13)
+                    vehicleType = rs.getString("vehicle_type"),
+                    plateNumber = rs.getString("vehicle_number"),
+                    vehicleModel = rs.getString("vehicle_model")
                 )
             }
         }
@@ -1679,7 +1680,7 @@ object DatabaseRepository {
     fun loginDriver(phone: String, password: String): AuthResponse {
         val normalizedPhone = normalizePhone(phone)
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, password FROM drivers WHERE TRIM(phone) = ?"
+            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE TRIM(phone) = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, normalizedPhone)
             val rs = stmt.executeQuery()
@@ -1720,7 +1721,8 @@ object DatabaseRepository {
                         status = rs.getString("status"), 
                         profile_picture = rs.getString("profile_picture"),
                         user_role = rs.getString("user_role"),
-                        company_name = rs.getString("company_name")
+                        company_name = rs.getString("company_name"),
+                        vehicle_type = rs.getString("vehicle_type")
                     )
                 } else {
                     return AuthResponse(false, "Invalid password", null, null)
