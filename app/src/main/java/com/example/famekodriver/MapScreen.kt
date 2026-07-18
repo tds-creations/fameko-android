@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.scale
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -103,22 +104,27 @@ fun MapScreen(
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val sessionManager = remember { SessionManager(context) }
-    val vehicleType = remember { sessionManager.getVehicleType()?.lowercase() }
+    val vehicleType = remember { sessionManager.getVehicleType()?.lowercase() ?: "" }
 
-    var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var vehicleBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(vehicleType) {
-        if (vehicleType == "okada" || vehicleType == "bike") {
-            val loader = context.imageLoader
-            val request = ImageRequest.Builder(context)
-                .data(ImageLinks.IC_OKADA)
-                .build()
-            val result = (loader.execute(request) as? SuccessResult)?.drawable?.let {
-                val bitmap = (it as android.graphics.drawable.BitmapDrawable).bitmap
-                bitmap.scale(40, 40)
-            }
-            if (result != null) {
-                motorbikeBitmap = result
-            }
+        val type = vehicleType.lowercase()
+        val iconUrl = when {
+            type.contains("okada") || type.contains("motorcycle") -> ImageLinks.IC_OKADA
+            type.contains("pragya") -> ImageLinks.IC_PRAGYA
+            type.contains("bicycle") || type.contains("bike") -> ImageLinks.IC_BICYCLE
+            type.contains("aboboyaa") -> ImageLinks.IC_ABOBOYAA
+            type.contains("truck") -> ImageLinks.IC_TRUCK
+            else -> ImageLinks.IC_CAR_SALOON
+        }
+
+        val loader = context.imageLoader
+        val request = ImageRequest.Builder(context)
+            .data(iconUrl)
+            .build()
+        val result = (loader.execute(request) as? SuccessResult)?.drawable
+        if (result != null) {
+            vehicleBitmap = result.toBitmap().scale(40, 40)
         }
     }
 
@@ -286,11 +292,7 @@ fun MapScreen(
                     
                     // Driver Marker
                     viewModel.driverLatLng?.let { pos ->
-                        val baseBitmap = if (vehicleType == "okada" || vehicleType == "bike") {
-                            motorbikeBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.let { (it as android.graphics.drawable.BitmapDrawable).bitmap }
-                        } else {
-                            ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.let { (it as android.graphics.drawable.BitmapDrawable).bitmap }
-                        }
+                        val baseBitmap = vehicleBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.let { (it as android.graphics.drawable.BitmapDrawable).bitmap }
 
                         val carIcon = baseBitmap?.let { 
                             val matrix = Matrix()
