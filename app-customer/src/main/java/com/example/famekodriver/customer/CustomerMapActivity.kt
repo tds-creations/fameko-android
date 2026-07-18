@@ -775,8 +775,8 @@ fun MainMapContent(
             val endPos = LatLng(driver.latitude, driver.longitude)
             val bearing = driver.bearing
 
-            val vehicleType = driver.vehicleType?.lowercase()
-            val baseBitmap = if (vehicleType == "okada" || vehicleType == "bike") {
+            val vehicleType = driver.vehicleType?.lowercase() ?: ""
+            val baseBitmap = if (vehicleType.contains("okada") || vehicleType.contains("bike") || vehicleType.contains("motorcycle") || vehicleType.contains("rider")) {
                 motorbikeBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
             } else {
                 ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
@@ -2245,9 +2245,12 @@ fun ServiceItem(
                     "comfort" -> ImageLinks.IC_CAR_SALOON
                     "pragya" -> ImageLinks.IC_PRAGYA
                     "okada" -> ImageLinks.IC_OKADA
+                    "motorcycle" -> ImageLinks.IC_OKADA
+                    "rider" -> ImageLinks.IC_OKADA
                     "aboboyaa" -> ImageLinks.IC_ABOBOYAA
                     "truck" -> ImageLinks.IC_TRUCK
                     "bicycle" -> ImageLinks.IC_BICYCLE
+                    "bike" -> ImageLinks.IC_OKADA
                     else -> ImageLinks.IC_CAR_SALOON
                 }
                 AsyncImage(

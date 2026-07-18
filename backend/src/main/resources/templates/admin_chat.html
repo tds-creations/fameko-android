@@ -1,153 +1,294 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Support Chat | Fameko Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #004E89;
+            --primary-light: #0077D3;
+            --secondary-color: #28A745;
+            --danger-color: #DC3545;
+            --warning-color: #FFC107;
+            --light-bg: #F8F9FA;
+            --dark-text: #2D333A;
+            --sidebar-width: 240px;
+            --sidebar-collapsed-width: 70px;
+            --card-border: 1px solid #E9ECEF;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF;
+            --header-text: #1A202C;
+            --border-color: #EDF2F7;
+            --muted-text: #718096;
+            --table-header-bg: #F7FAFC;
+        }
+
+        [data-theme="dark"] {
+            --light-bg: #121826;
+            --dark-text: #E2E8F0;
+            --sidebar-bg: #1A202C;
+            --card-bg: #1F2937;
+            --header-text: #F7FAFC;
+            --border-color: #374151;
+            --muted-text: #9CA3AF;
+            --card-border: 1px solid #374151;
+            --table-header-bg: #1A202C;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            display: flex;
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.4;
+            transition: background-color 0.3s, color 0.3s;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 32px;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-shrink: 0;
+        }
+
+        .header-left h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--header-text);
+        }
+
+        .header-left p {
+            font-size: 0.85rem;
+            color: var(--muted-text);
+            margin: 4px 0 0 0;
+        }
+
+        .search-bar {
+            background: var(--card-bg);
+            padding: 6px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            width: 300px;
+            transition: background 0.3s, border 0.3s;
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            width: 100%;
+            margin-left: 8px;
+            font-size: 0.8rem;
+            background: transparent;
+            color: var(--dark-text);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 4px 12px 4px 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .user-name { font-weight: 600; font-size: 0.8rem; color: var(--dark-text); }
+
         .chat-container {
             display: flex;
-            height: calc(100vh - 100px);
-            background: white;
+            flex: 1;
+            background: var(--card-bg);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            margin: 20px;
+            border: var(--card-border);
+            margin-bottom: 20px;
+            min-height: 0;
         }
 
         /* Contacts List */
         .chat-sidebar {
-            width: 350px;
-            border-right: 1px solid #eee;
+            width: 320px;
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
+            background: var(--card-bg);
         }
         .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            font-weight: bold;
-            font-size: 1.1rem;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 700;
+            font-size: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            color: var(--header-text);
         }
         .search-box {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
         }
         .search-box input {
             width: 100%;
-            padding: 10px 15px;
+            padding: 8px 16px;
             border-radius: 20px;
-            border: 1px solid #eee;
-            background: #f9f9f9;
+            border: 1px solid var(--border-color);
+            background: var(--light-bg);
+            color: var(--dark-text);
             outline: none;
+            font-size: 0.85rem;
         }
         .contacts-list {
             flex: 1;
             overflow-y: auto;
         }
         .contact-item {
-            padding: 15px 20px;
+            padding: 12px 20px;
             display: flex;
             align-items: center;
             cursor: pointer;
             transition: 0.2s;
-            border-bottom: 1px solid #f9f9f9;
+            border-bottom: 1px solid var(--border-color);
         }
-        .contact-item:hover { background: #f5f5f5; }
-        .contact-item.active { background: #e8f5e9; border-left: 4px solid #2ecc71; }
+        .contact-item:hover { background: var(--light-bg); }
+        .contact-item.active {
+            background: var(--primary-light);
+        }
+        .contact-item.active .contact-name,
+        .contact-item.active .contact-last-msg {
+            color: white;
+        }
         .contact-img {
-            width: 45px;
-            height: 45px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
-            background: #eee;
-            margin-right: 15px;
+            background: var(--border-color);
+            margin-right: 12px;
             object-fit: cover;
+            border: 2px solid transparent;
         }
-        .contact-info { flex: 1; }
-        .contact-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
-        .contact-last-msg { font-size: 0.8rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .contact-item.active .contact-img {
+            border-color: rgba(255,255,255,0.3);
+        }
+        .contact-info { flex: 1; min-width: 0; }
+        .contact-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 2px; color: var(--dark-text); }
+        .contact-last-msg { font-size: 0.75rem; color: var(--muted-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* Chat Area */
         .chat-main {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: #fbfbfb;
+            background: var(--light-bg);
         }
         .chat-header {
-            padding: 15px 25px;
-            background: white;
-            border-bottom: 1px solid #eee;
+            padding: 12px 24px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
+            flex-shrink: 0;
         }
         .messages-container {
             flex: 1;
-            padding: 25px;
+            padding: 24px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
         .message {
             max-width: 70%;
-            padding: 12px 18px;
-            border-radius: 18px;
-            font-size: 0.95rem;
-            line-height: 1.4;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
             position: relative;
         }
         .message.received {
             align-self: flex-start;
-            background: white;
-            color: #333;
+            background: var(--card-bg);
+            color: var(--dark-text);
+            border: var(--card-border);
             border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
         }
         .message.sent {
             align-self: flex-end;
-            background: #2ecc71;
+            background: var(--primary-color);
             color: white;
             border-bottom-right-radius: 4px;
         }
         .message-time {
-            font-size: 0.7rem;
-            margin-top: 5px;
+            font-size: 0.65rem;
+            margin-top: 4px;
             opacity: 0.7;
             text-align: right;
         }
 
         .chat-input-area {
-            padding: 20px 25px;
-            background: white;
-            border-top: 1px solid #eee;
+            padding: 16px 24px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border-color);
             display: flex;
-            gap: 15px;
+            gap: 12px;
             align-items: center;
+            flex-shrink: 0;
         }
         .chat-input-area input {
             flex: 1;
-            padding: 12px 20px;
+            padding: 10px 20px;
             border-radius: 25px;
-            border: 1px solid #eee;
-            background: #f9f9f9;
+            border: 1px solid var(--border-color);
+            background: var(--light-bg);
+            color: var(--dark-text);
             outline: none;
+            font-size: 0.9rem;
         }
         .send-btn {
-            background: #2ecc71;
+            background: var(--primary-color);
             color: white;
-            width: 45px;
-            height: 45px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             border: none;
-            transition: 0.2s;
+            transition: var(--transition);
         }
-        .send-btn:hover { transform: scale(1.05); background: #27ae60; }
+        .send-btn:hover { transform: scale(1.05); background: var(--primary-light); }
 
         .empty-state {
             display: flex;
@@ -155,74 +296,91 @@
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: #ccc;
+            color: var(--muted-text);
         }
-        .empty-state i { font-size: 4rem; margin-bottom: 20px; }
+        .empty-state i { font-size: 3.5rem; margin-bottom: 16px; opacity: 0.3; }
+        .empty-state p { font-weight: 500; }
     </style>
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
 </head>
 <body>
-    <div class="admin-container">
-        <div th:replace="~{admin_sidebar :: sidebar}"></div>
+    <div th:replace="~{admin_sidebar :: sidebar}"></div>
 
-        <main class="main-content">
-            <header class="top-header">
-                <div class="header-left">
-                    <h1>Support Chat</h1>
-                    <p>Real-time driver assistance</p>
+    <main class="main-content">
+        <div class="header">
+            <div class="header-left">
+                <h1>Support Chat</h1>
+                <p>Real-time driver assistance</p>
+            </div>
+
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div class="search-bar">
+                    <i class="fas fa-search" style="color: #adb5bd"></i>
+                    <input type="text" placeholder="Search messages..." aria-label="Search">
                 </div>
+
                 <div class="user-profile">
-                    <span th:text="${admin.username}">Admin</span>
-                    <img src="https://ui-avatars.com/api/?name=Admin&background=2ecc71&color=fff" alt="Profile">
-                </div>
-            </header>
-
-            <div class="chat-container">
-                <!-- Sidebar -->
-                <div class="chat-sidebar">
-                    <div class="sidebar-header">
-                        <span>Conversations</span>
-                        <i class="fas fa-sync-alt" onclick="loadContacts()" style="cursor:pointer; font-size: 0.9rem; opacity: 0.6"></i>
+                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                    <div style="display:flex; flex-direction:column">
+                        <span class="user-name" th:text="${admin.username}">Administrator</span>
+                        <span style="font-size:0.7rem; color:#6c757d; font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
                     </div>
-                    <div class="search-box">
-                        <input type="text" placeholder="Search drivers...">
-                    </div>
-                    <div class="contacts-list" id="contactsList">
-                        <!-- Contacts will be loaded here -->
-                        <div style="padding: 20px; text-align: center; color: #999">Loading drivers...</div>
-                    </div>
-                </div>
-
-                <!-- Main Chat -->
-                <div class="chat-main">
-                    <div id="chatWindow" style="display: none; flex-direction: column; height: 100%">
-                        <div class="chat-header">
-                            <img id="activeContactImg" src="" class="contact-img" alt="">
-                            <div>
-                                <div id="activeContactName" class="contact-name">Select a driver</div>
-                                <div id="activeContactStatus" style="font-size: 0.75rem; color: #2ecc71">Online</div>
-                            </div>
-                        </div>
-                        <div class="messages-container" id="messagesContainer">
-                            <!-- Messages will be loaded here -->
-                        </div>
-                        <form class="chat-input-area" id="chatForm">
-                            <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off">
-                            <button type="submit" class="send-btn">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </form>
-                    </div>
-                    <div id="emptyState" class="empty-state">
-                        <i class="fas fa-comments"></i>
-                        <p>Select a driver to start chatting</p>
-                    </div>
+                    <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #adb5bd"></i>
                 </div>
             </div>
-        </main>
-    </div>
+        </div>
+
+        <div class="chat-container">
+            <!-- Sidebar -->
+            <div class="chat-sidebar">
+                <div class="sidebar-header">
+                    <span>Conversations</span>
+                    <i class="fas fa-sync-alt" onclick="loadContacts()" style="cursor:pointer; font-size: 0.9rem; opacity: 0.6"></i>
+                </div>
+                <div class="search-box">
+                    <input type="text" placeholder="Search drivers...">
+                </div>
+                <div class="contacts-list" id="contactsList">
+                    <!-- Contacts will be loaded here -->
+                    <div style="padding: 20px; text-align: center; color: var(--muted-text)">Loading drivers...</div>
+                </div>
+            </div>
+
+            <!-- Main Chat -->
+            <div class="chat-main">
+                <div id="chatWindow" style="display: none; flex-direction: column; height: 100%">
+                    <div class="chat-header">
+                        <img id="activeContactImg" src="" class="contact-img" alt="">
+                        <div>
+                            <div id="activeContactName" class="contact-name">Select a driver</div>
+                            <div id="activeContactStatus" style="font-size: 0.75rem; color: var(--secondary-color)">Online</div>
+                        </div>
+                    </div>
+                    <div class="messages-container" id="messagesContainer">
+                        <!-- Messages will be loaded here -->
+                    </div>
+                    <form class="chat-input-area" id="chatForm">
+                        <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off">
+                        <button type="submit" class="send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+                <div id="emptyState" class="empty-state">
+                    <i class="fas fa-comments"></i>
+                    <p>Select a driver to start chatting</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
 
     <script th:inline="javascript">
-        const adminId = [[${admin.username}]]; // Using username as ID for WS session
+        const adminId = [[${admin.username}]];
         let activeConversationId = null;
         let ws = null;
 
@@ -239,7 +397,7 @@
                         appendMessage(msg);
                         scrollToBottom();
                     }
-                    loadContacts(); // Refresh list to show latest message/badge
+                    loadContacts();
                 }
             };
             ws.onclose = () => setTimeout(connectWebSocket, 5000);
@@ -251,14 +409,14 @@
             const list = document.getElementById('contactsList');
 
             if (drivers.length === 0) {
-                list.innerHTML = '<div style="padding: 20px; text-align: center; color: #999">No active support chats</div>';
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted-text)">No active support chats</div>';
                 return;
             }
 
             list.innerHTML = drivers.map(d => `
                 <div class="contact-item ${activeConversationId === d.conversationId ? 'active' : ''}"
                      onclick="selectDriver(${d.conversationId}, '${d.name}', '${d.profilePic}')">
-                    <img src="${d.profilePic || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(d.name)}" class="contact-img">
+                    <img src="${d.profilePic || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(d.name) + '&background=004E89&color=fff'}" class="contact-img">
                     <div class="contact-info">
                         <div class="contact-name">${d.name}</div>
                         <div class="contact-last-msg">Active support session</div>
@@ -272,13 +430,17 @@
             document.getElementById('emptyState').style.display = 'none';
             document.getElementById('chatWindow').style.display = 'flex';
             document.getElementById('activeContactName').innerText = name;
-            document.getElementById('activeContactImg').src = pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`;
+            document.getElementById('activeContactImg').src = pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=004E89&color=fff`;
 
-            // Highlight in list
             document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
-            loadContacts(); // Refresh to set active class
 
-            // Load History
+            const items = document.querySelectorAll('.contact-item');
+            items.forEach(item => {
+                if (item.getAttribute('onclick').includes(convId)) {
+                    item.classList.add('active');
+                }
+            });
+
             const response = await fetch(`/chat/history/${convId}`);
             const messages = await response.json();
             const container = document.getElementById('messagesContainer');
@@ -316,7 +478,7 @@
             const msg = {
                 conversationId: activeConversationId,
                 senderType: 'admin',
-                senderId: 1, // System admin ID
+                senderId: 1,
                 body: body,
                 createdAt: new Date().toISOString(),
                 read: false

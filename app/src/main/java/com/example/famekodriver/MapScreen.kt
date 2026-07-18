@@ -104,15 +104,18 @@ fun MapScreen(
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val sessionManager = remember { SessionManager(context) }
-    val vehicleType = remember { sessionManager.getVehicleType()?.lowercase() ?: "" }
+    var vehicleType by remember { mutableStateOf(sessionManager.getVehicleType()?.lowercase() ?: "") }
 
     var vehicleBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(vehicleType) {
-        val type = vehicleType.lowercase()
+    LaunchedEffect(Unit) {
+        // Re-read vehicle type to ensure it's fresh
+        vehicleType = sessionManager.getVehicleType()?.lowercase() ?: ""
+        
+        val type = vehicleType
         val iconUrl = when {
-            type.contains("okada") || type.contains("motorcycle") -> ImageLinks.IC_OKADA
+            type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") -> ImageLinks.IC_OKADA
             type.contains("pragya") -> ImageLinks.IC_PRAGYA
-            type.contains("bicycle") || type.contains("bike") -> ImageLinks.IC_BICYCLE
+            type.contains("bicycle") -> ImageLinks.IC_BICYCLE
             type.contains("aboboyaa") -> ImageLinks.IC_ABOBOYAA
             type.contains("truck") -> ImageLinks.IC_TRUCK
             else -> ImageLinks.IC_CAR_SALOON
@@ -122,9 +125,14 @@ fun MapScreen(
         val request = ImageRequest.Builder(context)
             .data(iconUrl)
             .build()
-        val result = (loader.execute(request) as? SuccessResult)?.drawable
-        if (result != null) {
-            vehicleBitmap = result.toBitmap().scale(40, 40)
+        
+        try {
+            val result = (loader.execute(request) as? SuccessResult)?.drawable
+            if (result != null) {
+                vehicleBitmap = result.toBitmap().scale(40, 40)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -292,7 +300,17 @@ fun MapScreen(
                     
                     // Driver Marker
                     viewModel.driverLatLng?.let { pos ->
-                        val baseBitmap = vehicleBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.let { (it as android.graphics.drawable.BitmapDrawable).bitmap }
+                        val baseBitmap = vehicleBitmap ?: run {
+                            val type = vehicleType.lowercase()
+                            if (type.contains("okada") || type.contains("motorcycle") || type.contains("rider")) {
+                                // If it's supposed to be an okada but icon hasn't loaded, 
+                                // we might want to avoid showing a car, but we have no other choice for now.
+                                // Let's just use the car but log it or something.
+                                ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+                            } else {
+                                ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+                            }
+                        }
 
                         val carIcon = baseBitmap?.let { 
                             val matrix = Matrix()
