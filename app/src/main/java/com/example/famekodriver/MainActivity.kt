@@ -37,6 +37,7 @@ sealed class Screen {
     object VehicleRegistration : Screen()
     object Payment : Screen()
     data class Chat(val conversationId: Int, val customerName: String) : Screen()
+    object TermsAndConditions : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -81,7 +82,7 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(context, "Double tap back to exit", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    is Screen.Settings, is Screen.Earnings, is Screen.Rentals, is Screen.RideHistory, is Screen.VehicleRegistration, is Screen.Payment -> {
+                    is Screen.Settings, is Screen.Earnings, is Screen.Rentals, is Screen.RideHistory, is Screen.VehicleRegistration, is Screen.Payment, is Screen.TermsAndConditions -> {
                         currentScreen = Screen.Menu
                     }
                     is Screen.AddRentalVehicle, is Screen.EditRentalVehicle -> {
@@ -164,6 +165,9 @@ class MainActivity : ComponentActivity() {
                         onNavigateToNotificationSettings = {
                             currentScreen = Screen.NotificationSettings
                         },
+                        onNavigateToTerms = {
+                            currentScreen = Screen.TermsAndConditions
+                        },
                         onLogout = {
                             sessionManager.logout()
                             val intent = Intent(this@MainActivity, DriverLoginActivity::class.java)
@@ -231,6 +235,9 @@ class MainActivity : ComponentActivity() {
                         customerName = screen.customerName,
                         onBack = { currentScreen = Screen.DriverMap }
                     )
+                }
+                is Screen.TermsAndConditions -> {
+                    TermsAndConditionsScreen(onBack = { currentScreen = Screen.Settings })
                 }
             }
         }

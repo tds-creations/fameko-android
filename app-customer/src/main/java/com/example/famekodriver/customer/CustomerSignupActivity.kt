@@ -84,6 +84,26 @@ class CustomerSignupActivity : AppCompatActivity() {
         actRegion.setAdapter(adapter)
 
         // Final Submission
+        val termsText = "I agree to terms and conditions"
+        val spannableTerms = android.text.SpannableString(termsText)
+        val termsStart = termsText.indexOf("terms and conditions")
+        if (termsStart != -1) {
+            val clickableSpan = object : android.text.style.ClickableSpan() {
+                override fun onClick(view: View) {
+                    startActivity(Intent(this@CustomerSignupActivity, TermsAndConditionsActivity::class.java))
+                }
+                override fun updateDrawState(ds: android.text.TextPaint) {
+                    super.updateDrawState(ds)
+                    ds.isUnderlineText = true
+                    ds.color = "#004E89".toColorInt()
+                    ds.isFakeBoldText = true
+                }
+            }
+            spannableTerms.setSpan(clickableSpan, termsStart, termsText.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        cbTerms.text = spannableTerms
+        cbTerms.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+
         btnSignup.setOnClickListener {
             val name = etName.text?.toString() ?: ""
             val email = etEmail.text?.toString() ?: ""

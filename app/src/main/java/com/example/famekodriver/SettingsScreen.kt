@@ -27,7 +27,8 @@ import java.util.Locale
 fun SettingsScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
-    onNavigateToNotificationSettings: () -> Unit
+    onNavigateToNotificationSettings: () -> Unit,
+    onNavigateToTerms: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -69,6 +70,13 @@ fun SettingsScreen(
                 title = "Privacy & Security",
                 subtitle = "Manage your data and password",
                 onClick = { /* Future: Privacy Screen */ }
+            )
+
+            SettingsItem(
+                icon = Icons.Default.Description,
+                title = "Terms and Conditions",
+                subtitle = "Read our service agreements",
+                onClick = onNavigateToTerms
             )
 
             Spacer(modifier = Modifier.weight(1f))

@@ -10,11 +10,41 @@ fun Application.configureOrderScheduler() {
         while (isActive) {
             try {
                 checkAndTimeoutOrders()
+                autoCompleteReachedTrips()
             } catch (e: Exception) {
-                log.error("Error in order timeout scheduler: ${e.message}", e)
+                log.error("Error in order scheduler: ${e.message}", e)
             }
             delay(1.minutes) // Check every minute
         }
+    }
+}
+
+private suspend fun autoCompleteReachedTrips() {
+    val reached = DatabaseRepository.getReachedDeliveries()
+    
+    for (trip in reached) {
+        val deliveryId = trip["deliveryId"] as Int
+        val orderId = trip["orderId"] as Int
+        val driverId = trip["driverId"] as Int
+        val customerId = trip["customerId"] as Int
+
+        println("DEBUG: Auto-completing Trip $deliveryId for Order $orderId (Destination Reached)")
+        
+        DatabaseRepository.updateDeliveryStatus(deliveryId, "DELIVERED")
+
+        // Notify Driver
+        sendToUser("DRIVER_$driverId", "ORDER_STATUS_UPDATE", mapOf(
+            "orderId" to orderId,
+            "status" to "DELIVERED",
+            "message" to "Trip completed automatically (Destination Reached)"
+        ))
+
+        // Notify Customer
+        sendToUser("CUSTOMER_$customerId", "ORDER_STATUS_UPDATE", mapOf(
+            "orderId" to orderId,
+            "status" to "DELIVERED",
+            "message" to "Your trip has been completed."
+        ))
     }
 }
 

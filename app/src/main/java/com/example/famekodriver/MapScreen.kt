@@ -486,6 +486,7 @@ fun MapScreen(
                 TripSummaryDialog(
                     totalFare = viewModel.finalTotalFare,
                     earnings = viewModel.finalFare,
+                    isRental = viewModel.isFinalTripRental,
                     onDismiss = { viewModel.showTripSummary = false }
                 )
             }
@@ -514,6 +515,7 @@ private fun createCirclePoints(center: LatLng, radiusInMeters: Double): List<Lat
 fun TripSummaryDialog(
     totalFare: Double,
     earnings: Double,
+    isRental: Boolean,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -549,15 +551,17 @@ fun TripSummaryDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SummaryRow("Total Trip Fare", "GH₵${totalFare.toInt()}")
-                        SummaryRow("Fameko Commission", "-GH₵${(totalFare - earnings).toInt()}")
-                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+                        if (isRental) {
+                            SummaryRow("Total Trip Fare", "GH₵${totalFare.toInt()}")
+                            SummaryRow("Fameko Commission", "-GH₵${(totalFare - earnings).toInt()}")
+                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Your Net Earnings", fontWeight = FontWeight.Bold, color = BoltDark)
+                            Text(if (isRental) "Your Net Earnings" else "Total Earnings", fontWeight = FontWeight.Bold, color = BoltDark)
                             Text("GH₵${earnings.toInt()}", fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltGreen)
                         }
                     }

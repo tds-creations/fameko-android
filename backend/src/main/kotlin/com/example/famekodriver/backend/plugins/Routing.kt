@@ -1046,7 +1046,11 @@ fun Application.configureRouting() {
                                 
                                 val config = DatabaseRepository.getPricingConfig()
                                 val commissionPercent = config.driverCommissionPercent
-                                val driverEarnings = req.estimatedFare * (1.0 - (commissionPercent / 100.0))
+                                val driverEarnings = if (req.serviceType == ServiceType.RENTAL) {
+                                    req.estimatedFare * (1.0 - (commissionPercent / 100.0))
+                                } else {
+                                    req.estimatedFare
+                                }
 
                                 while (attempt <= maxAttempts) {
                                     println("DEBUG: Dispatch attempt $attempt for order $orderId (radius: ${currentRadius}km)")

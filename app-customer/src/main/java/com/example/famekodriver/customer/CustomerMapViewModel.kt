@@ -287,6 +287,11 @@ class CustomerMapViewModel(
                 }
             }
             is FamekoEvent.DeliveryStatusChanged, is FamekoEvent.OrderStatusUpdate -> {
+                val eventFare = when (event) {
+                    is FamekoEvent.DeliveryStatusChanged -> event.fare
+                    is FamekoEvent.OrderStatusUpdate -> event.fare
+                    else -> null
+                }
                 val id = currentOrderId ?: (event as? FamekoEvent.OrderStatusUpdate)?.orderId
                 if (id != null) {
                     viewModelScope.launch {
@@ -297,7 +302,7 @@ class CustomerMapViewModel(
                                 ratingDriverName = response.driverName ?: "Your Driver"
                                 ratingDriverPic = response.driverProfilePic
                                 ratingOrderId = id
-                                finalFare = response.fare ?: 0.0
+                                finalFare = eventFare ?: response.fare ?: 0.0
                                 showTripSummary = true
                                 clearActiveOrder()
                             } else if (response.status == "CANCELLED") {

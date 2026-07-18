@@ -61,6 +61,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var showTripSummary by mutableStateOf(false)
     var finalFare by mutableDoubleStateOf(0.0)
     var finalTotalFare by mutableDoubleStateOf(0.0)
+    var isFinalTripRental by mutableStateOf(false)
 
     var isVoiceEnabled by mutableStateOf(true)
     private val voiceNavManager = VoiceNavigationManager(application)
@@ -328,7 +329,12 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 if (nextStatus == DeliveryStatus.DELIVERED) {
                     voiceNavManager.announceArrival()
                     finalFare = delivery.estimatedEarnings
-                    finalTotalFare = delivery.totalFare ?: (delivery.estimatedEarnings / 0.8)
+                    isFinalTripRental = delivery.serviceType == ServiceType.RENTAL
+                    finalTotalFare = delivery.totalFare ?: if (isFinalTripRental) {
+                        delivery.estimatedEarnings / 0.85
+                    } else {
+                        delivery.estimatedEarnings
+                    }
                     showTripSummary = true
                     currentDelivery = null
                     navigationPath = emptyList()

@@ -2,7 +2,7 @@ package com.example.famekodriver.core.domain.model
 
 sealed class FamekoEvent {
     data class NewDeliveryRequest(val delivery: Delivery) : FamekoEvent()
-    data class DeliveryStatusChanged(val deliveryId: String, val status: DeliveryStatus) : FamekoEvent()
+    data class DeliveryStatusChanged(val deliveryId: String, val status: DeliveryStatus, val fare: Double? = null) : FamekoEvent()
     data class NewMessage(val message: Message) : FamekoEvent()
     data class IncomingCall(val callId: String, val callerName: String, val customerId: Int? = null, val driverId: Int? = null) : FamekoEvent()
     data class CallAccepted(val callId: String) : FamekoEvent()
@@ -10,7 +10,7 @@ sealed class FamekoEvent {
     data class CallEnded(val callId: String) : FamekoEvent()
     data class OrderCancelled(val orderId: Int) : FamekoEvent()
     data class OrderAccepted(val orderId: Int) : FamekoEvent()
-    data class OrderStatusUpdate(val orderId: Int) : FamekoEvent()
+    data class OrderStatusUpdate(val orderId: Int, val fare: Double? = null) : FamekoEvent()
     data class DriverLocationUpdate(val driverId: String, val lat: Double, val lng: Double, val bearing: Float) : FamekoEvent()
     data class NearbyDriversUpdate(val drivers: List<DriverLocation>) : FamekoEvent()
     data class DriverStatsUpdate(val stats: DriverStats) : FamekoEvent()

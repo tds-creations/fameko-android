@@ -241,6 +241,7 @@ sealed class CustomerScreen {
     data class SaveLocationSearch(val label: String, val placeId: String? = null) : CustomerScreen()
     object FamilyProfile : CustomerScreen()
     object WorkProfile : CustomerScreen()
+    object TermsAndConditions : CustomerScreen()
 }
 
 
@@ -552,6 +553,9 @@ fun CustomerMapScreen() {
                 }
                 CustomerScreen.WorkProfile -> {
                     CustomerWorkProfileScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+                }
+                CustomerScreen.TermsAndConditions -> {
+                    TermsAndConditionsScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
             }
         }

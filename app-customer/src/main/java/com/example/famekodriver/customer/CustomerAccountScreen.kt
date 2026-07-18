@@ -170,6 +170,13 @@ fun CustomerAccountScreen(
             subtitle = "Expense your rides",
             onClick = { onNavigate(CustomerScreen.WorkProfile) }
         )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
+        AccountMenuItem(
+            icon = Icons.Default.Description,
+            title = "Terms and Conditions",
+            subtitle = "Learn about our policies",
+            onClick = { onNavigate(CustomerScreen.TermsAndConditions) }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
         

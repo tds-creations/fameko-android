@@ -1472,7 +1472,11 @@ object DatabaseRepository {
                             commissionPercent = rsCat.getDouble(1)
                         }
                     }
-                    val driverEarnings = req.estimatedFare * (1.0 - (commissionPercent / 100.0))
+                    val driverEarnings = if (req.serviceType == ServiceType.RENTAL) {
+                        req.estimatedFare * (1.0 - (commissionPercent / 100.0))
+                    } else {
+                        req.estimatedFare
+                    }
 
                     val deliverySql = "INSERT INTO deliveries (order_id, pickup_location, dropoff_location, status, service_type, estimated_earnings, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                     val delStmt = conn.prepareStatement(deliverySql)
@@ -2658,6 +2662,32 @@ object DatabaseRepository {
             if (rs.next()) return rs.getInt(1)
         }
         return null
+    }
+
+    fun getReachedDeliveries(): List<Map<String, Any>> {
+        val list = mutableListOf<Map<String, Any>>()
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val sql = """
+                SELECT d.id, d.order_id, d.driver_id, o.customer_id
+                FROM deliveries d
+                JOIN orders o ON d.order_id = o.id
+                JOIN driver_stats ds ON d.driver_id = ds.driver_id
+                WHERE d.status = 'IN_PROGRESS'
+                AND d.dropoff_lat IS NOT NULL AND d.dropoff_lng IS NOT NULL
+                AND ds.latitude IS NOT NULL AND ds.longitude IS NOT NULL
+                AND (6371 * acos(least(1.0, cos(radians(d.dropoff_lat)) * cos(radians(ds.latitude)) * cos(radians(ds.longitude) - radians(d.dropoff_lng)) + sin(radians(d.dropoff_lat)) * sin(radians(ds.latitude))))) <= 0.15
+            """.trimIndent()
+            val rs = conn.createStatement().executeQuery(sql)
+            while (rs.next()) {
+                list.add(mapOf(
+                    "deliveryId" to rs.getInt("id"),
+                    "orderId" to rs.getInt("order_id"),
+                    "driverId" to rs.getInt("driver_id"),
+                    "customerId" to rs.getInt("customer_id")
+                ))
+            }
+        }
+        return list
     }
 
     fun getUserFcmToken(userId: Int, type: String): String? {

@@ -100,12 +100,13 @@ class DriverRepository {
                             val deliveryId = data["delivery_id"]?.toString() ?: ""
                             val statusStr = data["status"]?.toString() ?: ""
                             val orderId = (data["order_id"] ?: data["orderId"] ?: data["id"])?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+                            val fare = (data["fare"] ?: data["total_fare"] ?: data["amount"])?.toString()?.toDoubleOrNull()
                             try {
                                 val status = DeliveryStatus.valueOf(statusStr.uppercase())
-                                _events.tryEmit(FamekoEvent.DeliveryStatusChanged(deliveryId, status))
+                                _events.tryEmit(FamekoEvent.DeliveryStatusChanged(deliveryId, status, fare))
                                 if (orderId != 0) _events.tryEmit(FamekoEvent.OrderAccepted(orderId))
                             } catch (_: Exception) {
-                                if (orderId != 0) _events.tryEmit(FamekoEvent.OrderStatusUpdate(orderId))
+                                if (orderId != 0) _events.tryEmit(FamekoEvent.OrderStatusUpdate(orderId, fare))
                             }
                         }
                         "NEW_MESSAGE" -> {
@@ -136,12 +137,13 @@ class DriverRepository {
                         "ORDER_STATUS_UPDATE" -> {
                             val data = gson.fromJson(wsMessage.payload, Map::class.java)
                             val orderId = (data["orderId"] ?: data["order_id"])?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+                            val fare = (data["fare"] ?: data["total_fare"] ?: data["amount"])?.toString()?.toDoubleOrNull()
                             if (orderId != 0) {
-                                _events.tryEmit(FamekoEvent.OrderStatusUpdate(orderId))
+                                _events.tryEmit(FamekoEvent.OrderStatusUpdate(orderId, fare))
                             } else {
                                 try {
                                     val delivery = gson.fromJson(wsMessage.payload, Delivery::class.java)
-                                    _events.tryEmit(FamekoEvent.OrderStatusUpdate(delivery.orderId))
+                                    _events.tryEmit(FamekoEvent.OrderStatusUpdate(delivery.orderId, fare))
                                 } catch (_: Exception) {}
                             }
                         }
@@ -505,6 +507,8 @@ class DriverRepository {
             val cloudName = "df3jnubvy"
             val cloudinaryUrl = "https://api.cloudinary.com/v1_1/$cloudName/image/upload"
             
+            Log.d("FamekoRepo", "Starting Cloudinary upload to $cloudName using preset $preset")
+            
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, file.asRequestBody("image/*".toMediaTypeOrNull()))
@@ -517,17 +521,24 @@ class DriverRepository {
                 .build()
 
             val response = NetworkClient.okHttpClient.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
             
             if (!response.isSuccessful) {
+                Log.e("FamekoRepo", "Cloudinary upload failed: ${response.code} ${response.message}\nBody: $responseBody")
                 throw Exception("Cloudinary upload failed: ${response.message}")
             }
 
-            val responseBody = response.body?.string() ?: throw Exception("Empty response from Cloudinary")
+            if (responseBody.isEmpty()) {
+                throw Exception("Empty response from Cloudinary")
+            }
+            
             val jsonResponse = JsonParser.parseString(responseBody).asJsonObject
             val fileUrl = jsonResponse.get("secure_url").asString
 
+            Log.d("FamekoRepo", "Cloudinary upload success: $fileUrl")
             Result.success(fileUrl)
         } catch (e: Exception) {
+            Log.e("FamekoRepo", "Cloudinary upload exception", e)
             Result.failure(e)
         }
     }

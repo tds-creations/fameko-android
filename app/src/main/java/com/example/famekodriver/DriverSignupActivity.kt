@@ -109,8 +109,34 @@ class DriverSignupActivity : AppCompatActivity() {
 
         setupRoleToggle()
 
+        // Setup Terms and Conditions Clickable Text
+        val cbTerms = findViewById<CheckBox>(R.id.cbTerms)
+        val termsText = "I agree to terms and conditions"
+        val spannableTerms = android.text.SpannableString(termsText)
+        val termsStart = termsText.indexOf("terms and conditions")
+        if (termsStart != -1) {
+            val clickableSpan = object : android.text.style.ClickableSpan() {
+                override fun onClick(view: View) {
+                    startActivity(android.content.Intent(this@DriverSignupActivity, TermsAndConditionsActivity::class.java))
+                }
+                override fun updateDrawState(ds: android.text.TextPaint) {
+                    super.updateDrawState(ds)
+                    ds.isUnderlineText = true
+                    ds.color = "#0047AB".toColorInt()
+                    ds.isFakeBoldText = true
+                }
+            }
+            spannableTerms.setSpan(clickableSpan, termsStart, termsText.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        cbTerms.text = spannableTerms
+        cbTerms.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+
         findViewById<MaterialButton>(R.id.btnSubmit).setOnClickListener {
             if (validateForm()) {
+                if (!cbTerms.isChecked) {
+                    Toast.makeText(this, "Please agree to terms and conditions", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
                 submitRegistration()
             }
         }
