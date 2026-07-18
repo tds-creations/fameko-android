@@ -776,8 +776,8 @@ fun MainMapContent(
             val bearing = driver.bearing
 
             val vehicleType = driver.vehicleType?.lowercase() ?: ""
-            val baseBitmap = if (vehicleType.contains("okada") || vehicleType.contains("bike") || vehicleType.contains("motorcycle") || vehicleType.contains("rider")) {
-                motorbikeBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+            val baseBitmap = if (vehicleType.contains("okada") || vehicleType.contains("bike") || vehicleType.contains("motorcycle") || vehicleType.contains("rider") || vehicleType.contains("motorbike") || vehicleType.contains("motor")) {
+                motorbikeBitmap ?: null // Wait for network bitmap, don't use car fallback
             } else {
                 ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
             }
@@ -2240,18 +2240,15 @@ fun ServiceItem(
                     .clip(CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                val iconUrl = when(estimate.icon.lowercase()) {
-                    "car" -> ImageLinks.IC_CAR_SALOON
-                    "comfort" -> ImageLinks.IC_CAR_SALOON
-                    "pragya" -> ImageLinks.IC_PRAGYA
-                    "okada" -> ImageLinks.IC_OKADA
-                    "motorcycle" -> ImageLinks.IC_OKADA
-                    "rider" -> ImageLinks.IC_OKADA
-                    "aboboyaa" -> ImageLinks.IC_ABOBOYAA
-                    "truck" -> ImageLinks.IC_TRUCK
-                    "bicycle" -> ImageLinks.IC_BICYCLE
-                    "bike" -> ImageLinks.IC_OKADA
-                    else -> ImageLinks.IC_CAR_SALOON
+                val iconUrl = estimate.icon.lowercase().let { lowIcon ->
+                    when {
+                        lowIcon.contains("okada") || lowIcon.contains("motorcycle") || lowIcon.contains("rider") || lowIcon.contains("bike") || lowIcon.contains("motorbike") || lowIcon.contains("motor") -> ImageLinks.IC_OKADA
+                        lowIcon.contains("pragya") -> ImageLinks.IC_PRAGYA
+                        lowIcon.contains("aboboyaa") -> ImageLinks.IC_ABOBOYAA
+                        lowIcon.contains("truck") -> ImageLinks.IC_TRUCK
+                        lowIcon.contains("bicycle") -> ImageLinks.IC_BICYCLE
+                        else -> ImageLinks.IC_CAR_SALOON
+                    }
                 }
                 AsyncImage(
                     model = iconUrl,

@@ -113,7 +113,7 @@ fun MapScreen(
         
         val type = vehicleType
         val iconUrl = when {
-            type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") -> ImageLinks.IC_OKADA
+            type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor") -> ImageLinks.IC_OKADA
             type.contains("pragya") -> ImageLinks.IC_PRAGYA
             type.contains("bicycle") -> ImageLinks.IC_BICYCLE
             type.contains("aboboyaa") -> ImageLinks.IC_ABOBOYAA
@@ -302,11 +302,13 @@ fun MapScreen(
                     viewModel.driverLatLng?.let { pos ->
                         val baseBitmap = vehicleBitmap ?: run {
                             val type = vehicleType.lowercase()
-                            if (type.contains("okada") || type.contains("motorcycle") || type.contains("rider")) {
-                                // If it's supposed to be an okada but icon hasn't loaded, 
-                                // we might want to avoid showing a car, but we have no other choice for now.
-                                // Let's just use the car but log it or something.
-                                ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+                            if (type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor")) {
+                                // Fallback for motorbike types if network image hasn't loaded yet
+                                // Since we don't have a local motorbike resource in 'app' module drawables (checked earlier),
+                                // we'll use a generic placeholder or wait for the async load.
+                                // If absolutely necessary to show something, and it's a bike, 
+                                // using the car is what the user wants to avoid.
+                                null
                             } else {
                                 ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
                             }

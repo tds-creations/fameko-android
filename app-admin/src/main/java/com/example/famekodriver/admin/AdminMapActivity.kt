@@ -293,7 +293,7 @@ fun AdminMapScreen(
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                             
                             val vehicleType = (driver["vehicle"] as? String)?.lowercase() ?: ""
-                            if (vehicleType.contains("okada") || vehicleType.contains("bike") || vehicleType.contains("motorcycle") || vehicleType.contains("rider")) {
+                            if (vehicleType.contains("okada") || vehicleType.contains("bike") || vehicleType.contains("motorcycle") || vehicleType.contains("rider") || vehicleType.contains("motorbike") || vehicleType.contains("motor")) {
                                 motorbikeBitmap?.let { 
                                     icon = BitmapDrawable(context.resources, it)
                                 }
