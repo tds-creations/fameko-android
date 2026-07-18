@@ -247,7 +247,7 @@
         }
 
         async function loadContacts() {
-            const response = await fetch('/chat/active-support');
+            const response = await fetch('/admin/active-support');
             const drivers = await response.json();
             const list = document.getElementById('contactsList');
 

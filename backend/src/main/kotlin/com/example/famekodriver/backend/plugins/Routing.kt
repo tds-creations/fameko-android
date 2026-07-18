@@ -645,6 +645,34 @@ fun Application.configureRouting() {
                         println("Admin SOS WS: Disconnected")
                     }
                 }
+
+                get("/active-support") {
+                    val allConvIds = RedisManager.getActiveConversationIds()
+                    val supportConvIds = allConvIds.filter { it >= 1000000 }
+                    
+                    val driversWithActiveChat = supportConvIds.mapNotNull { convId ->
+                        val driverId = convId - 1000000
+                        val driver = DatabaseRepository.getDriverProfile(driverId)
+                        if (driver != null) {
+                            mapOf(
+                                "driverId" to driverId,
+                                "name" to (driver["fullName"] ?: "Driver $driverId"),
+                                "phone" to (driver["phone"] ?: ""),
+                                "profilePic" to (driver["profilePicture"] ?: ""),
+                                "conversationId" to convId
+                            )
+                        } else null
+                    }
+                    call.respond(driversWithActiveChat)
+                }
+
+                get("/support") {
+                    val principal = call.principal<AdminPrincipal>()!!
+                    call.respond(ThymeleafContent("admin_chat", mapOf(
+                        "activePage" to "support",
+                        "admin" to principal
+                    )))
+                }
             }
         }
 
@@ -1805,36 +1833,6 @@ fun Application.configureRouting() {
                 val gson = com.google.gson.Gson()
                 val list = jsonList.map { gson.fromJson(it, Message::class.java) }
                 call.respond(list)
-            }
-
-            authenticate("admin-auth") {
-                get("/active-support") {
-                    val allConvIds = RedisManager.getActiveConversationIds()
-                    val supportConvIds = allConvIds.filter { it >= 1000000 }
-                    
-                    val driversWithActiveChat = supportConvIds.mapNotNull { convId ->
-                        val driverId = convId - 1000000
-                        val driver = DatabaseRepository.getDriverProfile(driverId)
-                        if (driver != null) {
-                            mapOf(
-                                "driverId" to driverId,
-                                "name" to (driver["fullName"] ?: "Driver $driverId"),
-                                "phone" to (driver["phone"] ?: ""),
-                                "profilePic" to (driver["profilePicture"] ?: ""),
-                                "conversationId" to convId
-                            )
-                        } else null
-                    }
-                    call.respond(driversWithActiveChat)
-                }
-
-                get("/support") {
-                    val principal = call.principal<AdminPrincipal>()!!
-                    call.respond(ThymeleafContent("admin_chat", mapOf(
-                        "activePage" to "support",
-                        "admin" to principal
-                    )))
-                }
             }
         }
     }
