@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.graphics.Bitmap
+import coil.compose.AsyncImage
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toColorInt
@@ -698,10 +699,28 @@ fun DeliveryControlSheet(
         Column(modifier = Modifier.padding(24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Surface(
+                    shape = CircleShape,
+                    color = BoltLightGray,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    if (!delivery.customerProfilePic.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = delivery.customerProfilePic,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(16.dp), tint = Color.Gray)
+                    }
+                }
+                
+                Spacer(Modifier.width(16.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
                     val statusText = when (delivery.status) {
                         DeliveryStatus.ASSIGNED -> "PICKING UP"
                         DeliveryStatus.IN_TRANSIT -> "ON TRIP"
@@ -725,7 +744,9 @@ fun DeliveryControlSheet(
                         text = delivery.customerName ?: "Customer",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 24.sp,
-                        color = BoltDark
+                        color = BoltDark,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -873,6 +894,34 @@ fun IncomingRequestSheet(
                 color = BoltDark
             )
             
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = BoltLightGray,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    if (!request.customerProfilePic.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = request.customerProfilePic,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(12.dp), tint = Color.Gray)
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = request.customerName ?: "Customer",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = BoltDark
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
             
             Row(

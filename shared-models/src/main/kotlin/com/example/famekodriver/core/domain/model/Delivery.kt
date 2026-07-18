@@ -16,6 +16,7 @@ data class Delivery(
     val customerName: String? = null,
     val customerPhone: String? = null,
     val customerAddress: String? = null,
+    val customerProfilePic: String? = null,
     val serviceType: ServiceType = ServiceType.PACKAGE_DELIVERY,
     val pickupEtaMin: Double? = null,
     val totalFare: Double? = null,

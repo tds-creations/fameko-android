@@ -146,6 +146,9 @@
         <li th:class="${activePage == 'dashboard' ? 'active' : ''}" onclick="window.location='/admin/dashboard'" data-title="Dashboard">
             <i class="fas fa-th-large"></i> <span>Dashboard</span>
         </li>
+        <li th:class="${activePage == 'support' ? 'active' : ''}" onclick="window.location='/admin/support'" data-title="Support Chat">
+            <i class="fas fa-comments"></i> <span>Support Chat</span>
+        </li>
         <li th:class="${activePage == 'map' ? 'active' : ''}" onclick="window.location='/admin/map'" data-title="Live Map">
             <i class="fas fa-map-location-dot"></i> <span>Live Map</span>
         </li>

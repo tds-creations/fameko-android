@@ -522,6 +522,7 @@ fun CustomerMapScreen() {
                 }
                 CustomerScreen.Profile -> {
                     CustomerProfileScreen(
+                        viewModel = mapViewModel,
                         profile = mapViewModel.customerProfile,
                         onBack = { mapViewModel.navigateTo(CustomerScreen.Account) }
                     )
@@ -1272,6 +1273,7 @@ fun MainMapContent(
                 if (viewModel.showRatingDialog) {
                     RatingDialog(
                         driverName = viewModel.ratingDriverName ?: "Your Driver",
+                        driverProfilePic = viewModel.ratingDriverPic,
                         onRate = { rating, comment -> viewModel.submitRating(rating, comment) },
                         onDismiss = { viewModel.showRatingDialog = false }
                     )
@@ -1455,6 +1457,7 @@ fun TripSummaryDialog(
 @Composable
 fun RatingDialog(
     driverName: String,
+    driverProfilePic: String? = null,
     onRate: (Float, String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1466,7 +1469,16 @@ fun RatingDialog(
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Surface(shape = CircleShape, color = BoltLightGray, modifier = Modifier.size(80.dp)) {
-                    Icon(Icons.Default.Person, null, modifier = Modifier.padding(20.dp), tint = Color.Gray)
+                    if (!driverProfilePic.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = driverProfilePic,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(20.dp), tint = Color.Gray)
+                    }
                 }
                 Spacer(Modifier.height(16.dp))
                 Text("Rate your trip", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
@@ -1848,13 +1860,24 @@ fun DriverInfoSheetContent(
                         fontSize = 15.sp,
                         color = BoltDark
                     )
-                    Text(
-                        text = data.driverVehicleNumber ?: "PLATE NUMBER",
-                        fontSize = 13.sp,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 1.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = data.driverVehicleNumber ?: "PLATE NUMBER",
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 1.sp
+                        )
+                        val phone = data.driverPhone
+                        if (!phone.isNullOrEmpty()) {
+                            Text(" • ", color = Color.Gray)
+                            Text(
+                                text = phone,
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 if (data.status == "ASSIGNED" && pin != null) {

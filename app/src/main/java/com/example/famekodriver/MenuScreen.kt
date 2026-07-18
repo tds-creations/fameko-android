@@ -43,7 +43,8 @@ fun MenuScreen(
     onNavigateToRideHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToFleet: () -> Unit = {},
-    onNavigateToVehicleReg: () -> Unit = {}
+    onNavigateToVehicleReg: () -> Unit = {},
+    onNavigateToSupport: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
@@ -72,6 +73,7 @@ fun MenuScreen(
         if (userRole == "OWNER" || userRole == "BOTH") {
             list.add(MenuItem("fleet", "Fleet Management", "Manage your vehicles", Icons.Default.DirectionsCar))
         }
+        list.add(MenuItem("support", "Fameko Support", "Chat with our support team", Icons.Default.SupportAgent, BoltGreen))
         list.add(MenuItem("settings", "App Settings", "Notifications and preferences", Icons.Default.Settings, Color.Gray))
         list
     }
@@ -168,6 +170,7 @@ fun MenuScreen(
                         "settings" -> onNavigateToSettings()
                         "fleet" -> onNavigateToFleet()
                         "vehicle_reg" -> onNavigateToVehicleReg()
+                        "support" -> onNavigateToSupport()
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), color = BoltLightGray, thickness = 0.5.dp)

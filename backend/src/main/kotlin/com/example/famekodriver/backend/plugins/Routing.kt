@@ -842,6 +842,44 @@ fun Application.configureRouting() {
             }
         }
 
+        post("/customer/update-profile") {
+            try {
+                val p = call.receiveParameters()
+                val idStr = p["customer_id"] ?: ""
+                val id = idStr.toIntOrNull() ?: return@post call.respond(AuthResponse(false, "Invalid ID format: $idStr", null, null))
+                
+                val name = p["name"] ?: ""
+                val email = p["email"] ?: ""
+                val phone = DatabaseRepository.normalizePhone(p["phone"])
+                val address = p["address"] ?: ""
+                val region = p["region"] ?: ""
+                val profilePicture = p["profile_picture"]
+
+                println("DEBUG: Updating profile for customer ID: $id")
+                val success = DatabaseRepository.updateCustomerProfile(
+                    id = id,
+                    name = name,
+                    email = email,
+                    phone = phone,
+                    address = address,
+                    region = region,
+                    profilePicture = profilePicture
+                )
+                
+                if (success) {
+                    call.respond(AuthResponse(true, "Profile updated successfully", id.toString(), name))
+                } else {
+                    val exists = DatabaseRepository.getCustomerProfile(id) != null
+                    val errorMsg = if (!exists) "Customer ID $id not found" else "Update failed (Check for duplicate email or phone)"
+                    println("DEBUG: Profile update failed for ID $id. Exists: $exists")
+                    call.respond(AuthResponse(false, errorMsg, null, null))
+                }
+            } catch (e: Exception) {
+                println("DEBUG: Profile update error: ${e.message}")
+                call.respond(AuthResponse(false, "Server Error: ${e.message}", null, null))
+            }
+        }
+
         get("/customer/saved-places/{customerId}") {
             val customerId = call.parameters["customerId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
             call.respond(DatabaseRepository.getSavedPlaces(customerId))
@@ -1072,6 +1110,7 @@ fun Application.configureRouting() {
                                         pickupEtaMin = 5.0,
                                         customerName = DatabaseRepository.getCustomerName(req.customerId.toInt()) ?: "Customer",
                                         customerPhone = DatabaseRepository.getCustomerPhone(req.customerId.toInt()) ?: "",
+                                        customerProfilePic = DatabaseRepository.getCustomerProfilePic(req.customerId.toInt()),
                                         totalFare = req.estimatedFare
                                     )
 
@@ -1716,15 +1755,27 @@ fun Application.configureRouting() {
                 RedisManager.saveChatMessage(savedMsg.conversationId, com.google.gson.Gson().toJson(savedMsg))
                 
                 // 1. Find recipient
-                val recipientId = if (savedMsg.senderType == "customer") {
-                    DatabaseRepository.getDriverIdForOrder(savedMsg.conversationId)?.let { "DRIVER_$it" }
+                if (savedMsg.conversationId >= 1000000) {
+                    // Support Chat (Admin <-> Driver)
+                    if (savedMsg.senderType == "driver") {
+                        // Notify all online admins
+                        broadcastToAdmins("NEW_MESSAGE", savedMsg)
+                    } else if (savedMsg.senderType == "admin") {
+                        // Notify specific driver
+                        val driverId = savedMsg.conversationId - 1000000
+                        sendToUser("DRIVER_$driverId", "NEW_MESSAGE", savedMsg)
+                    }
                 } else {
-                    DatabaseRepository.getCustomerIdForOrder(savedMsg.conversationId)?.let { "CUSTOMER_$it" }
-                }
-                
-                // 2. Broadcast via WS and Push
-                if (recipientId != null) {
-                    sendToUser(recipientId, "NEW_MESSAGE", savedMsg)
+                    // Trip Chat (Customer <-> Driver)
+                    val recipientId = if (savedMsg.senderType == "customer") {
+                        DatabaseRepository.getDriverIdForOrder(savedMsg.conversationId)?.let { "DRIVER_$it" }
+                    } else {
+                        DatabaseRepository.getCustomerIdForOrder(savedMsg.conversationId)?.let { "CUSTOMER_$it" }
+                    }
+                    
+                    if (recipientId != null) {
+                        sendToUser(recipientId, "NEW_MESSAGE", savedMsg)
+                    }
                 }
                 
                 call.respond(savedMsg)
@@ -1736,6 +1787,36 @@ fun Application.configureRouting() {
                 val gson = com.google.gson.Gson()
                 val list = jsonList.map { gson.fromJson(it, Message::class.java) }
                 call.respond(list)
+            }
+
+            authenticate("admin-auth") {
+                get("/active-support") {
+                    val allConvIds = RedisManager.getActiveConversationIds()
+                    val supportConvIds = allConvIds.filter { it >= 1000000 }
+                    
+                    val driversWithActiveChat = supportConvIds.mapNotNull { convId ->
+                        val driverId = convId - 1000000
+                        val driver = DatabaseRepository.getDriverProfile(driverId)
+                        if (driver != null) {
+                            mapOf(
+                                "driverId" to driverId,
+                                "name" to (driver["fullName"] ?: "Driver $driverId"),
+                                "phone" to (driver["phone"] ?: ""),
+                                "profilePic" to (driver["profilePicture"] ?: ""),
+                                "conversationId" to convId
+                            )
+                        } else null
+                    }
+                    call.respond(driversWithActiveChat)
+                }
+
+                get("/support") {
+                    val principal = call.principal<AdminPrincipal>()!!
+                    call.respond(ThymeleafContent("admin_chat", mapOf(
+                        "activePage" to "support",
+                        "admin" to principal
+                    )))
+                }
             }
         }
     }

@@ -288,6 +288,21 @@ object RedisManager {
     }
 
     /**
+     * Retrieve all conversation IDs that have active chats in Redis.
+     */
+    fun getActiveConversationIds(): List<Int> {
+        return try {
+            pool.resource.use { jedis ->
+                val keys = jedis.keys("chat:*")
+                keys.map { it.removePrefix("chat:").toInt() }
+            }
+        } catch (e: Exception) {
+            println("Redis Keys Error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
      * Once ride ends, keep chat for 24 hours only for dispute resolution/safety.
      */
     fun setChatRetention(convId: Int) {

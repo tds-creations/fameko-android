@@ -3,10 +3,12 @@ package com.example.famekodriver.core.data.repository
 import android.util.Log
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
+import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
@@ -304,6 +306,60 @@ class UserRepository {
             val response = NetworkClient.famekoApi.getCustomerProfile(id)
             Result.success(response)
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadImage(file: File, preset: String = "fameko_docs"): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val cloudName = "df3jnubvy"
+            val cloudinaryUrl = "https://api.cloudinary.com/v1_1/$cloudName/image/upload"
+            
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.name, file.asRequestBody("image/*".toMediaTypeOrNull()))
+                .addFormDataPart("upload_preset", preset)
+                .build()
+
+            val request = Request.Builder()
+                .url(cloudinaryUrl)
+                .post(requestBody)
+                .build()
+
+            val response = NetworkClient.okHttpClient.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+            
+            if (!response.isSuccessful) {
+                throw Exception("Cloudinary upload failed: ${response.message}")
+            }
+
+            val jsonResponse = JsonParser.parseString(responseBody).asJsonObject
+            val fileUrl = jsonResponse.get("secure_url").asString
+            Result.success(fileUrl)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateCustomerProfile(
+        id: String, name: String, email: String, phone: String, address: String, region: String,
+        profilePic: File? = null
+    ): Result<AuthResponse> = withContext(Dispatchers.IO) {
+        try {
+            var profilePicUrl: String? = null
+            if (profilePic != null) {
+                val uploadResult = uploadImage(profilePic, "customer_profiles")
+                if (uploadResult.isSuccess) {
+                    profilePicUrl = uploadResult.getOrNull()
+                }
+            }
+
+            val response = NetworkClient.famekoApi.updateCustomerProfile(
+                id, name, email, phone, address, region, profilePicUrl
+            )
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e("UserRepo", "Update Customer Profile failed", e)
             Result.failure(e)
         }
     }

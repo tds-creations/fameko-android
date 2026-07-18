@@ -321,6 +321,18 @@ interface FamekoApiService {
     @GET("customer/profile/{id}")
     suspend fun getCustomerProfile(@Path("id") id: String): Map<String, Any>
 
+    @FormUrlEncoded
+    @POST("customer/update-profile")
+    suspend fun updateCustomerProfile(
+        @Field("customer_id") id: String,
+        @Field("name") name: String,
+        @Field("email") email: String,
+        @Field("phone") phone: String,
+        @Field("address") address: String,
+        @Field("region") region: String,
+        @Field("profile_picture") profilePicture: String? = null
+    ): AuthResponse
+
     @GET("driver/profile/{id}")
     suspend fun getDriverProfile(@Path("id") id: String): Map<String, Any>
 

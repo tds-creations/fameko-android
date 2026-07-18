@@ -545,7 +545,8 @@ class DriverRepository {
 
     suspend fun uploadDocument(driverId: String, docType: String, file: File): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val uploadResult = uploadImage(file)
+            val preset = if (docType == "profile_pic") "driver_profiles" else "fameko_docs"
+            val uploadResult = uploadImage(file, preset)
             if (uploadResult.isFailure) {
                 val error = uploadResult.exceptionOrNull()
                 Log.e("FamekoRepo", "Cloudinary upload failed for $docType", error)
@@ -773,6 +774,23 @@ class DriverRepository {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getSupportChatHistory(driverId: Int): Result<List<Message>> {
+        return getChatHistory(1000000 + driverId)
+    }
+
+    suspend fun sendSupportMessage(driverId: Int, body: String): Result<Message> {
+        val msg = Message(
+            id = 0,
+            conversationId = 1000000 + driverId,
+            senderType = "driver",
+            senderId = driverId,
+            body = body,
+            createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date()),
+            read = false
+        )
+        return sendMessage(msg)
     }
 
     suspend fun getWalletBalance(driverId: String): Result<Double> = withContext(Dispatchers.IO) {

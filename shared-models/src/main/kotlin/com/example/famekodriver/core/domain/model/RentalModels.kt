@@ -19,6 +19,7 @@ data class Rental(
     val customerId: Int,
     val customerName: String,
     val customerPhone: String,
+    val customerProfilePic: String? = null,
     val vehicleName: String,
     val pickupLocation: String,
     val pickupLat: Double,

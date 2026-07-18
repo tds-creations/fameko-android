@@ -37,6 +37,7 @@ sealed class Screen {
     object VehicleRegistration : Screen()
     object Payment : Screen()
     data class Chat(val conversationId: Int, val customerName: String) : Screen()
+    object SupportChat : Screen()
     object TermsAndConditions : Screen()
 }
 
@@ -70,7 +71,7 @@ class MainActivity : ComponentActivity() {
 
             BackHandler {
                 when (currentScreen) {
-                    is Screen.Menu, is Screen.Chat -> {
+                    is Screen.Menu, is Screen.Chat, is Screen.SupportChat -> {
                         currentScreen = if (userRole == "OWNER") Screen.FleetManagement else Screen.DriverMap
                     }
                     is Screen.FleetManagement -> {
@@ -156,6 +157,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onNavigateToVehicleReg = {
                             currentScreen = Screen.VehicleRegistration
+                        },
+                        onNavigateToSupport = {
+                            currentScreen = Screen.SupportChat
                         }
                     )
                 }
@@ -234,6 +238,11 @@ class MainActivity : ComponentActivity() {
                         conversationId = screen.conversationId,
                         customerName = screen.customerName,
                         onBack = { currentScreen = Screen.DriverMap }
+                    )
+                }
+                is Screen.SupportChat -> {
+                    SupportChatScreen(
+                        onBack = { currentScreen = Screen.Menu }
                     )
                 }
                 is Screen.TermsAndConditions -> {

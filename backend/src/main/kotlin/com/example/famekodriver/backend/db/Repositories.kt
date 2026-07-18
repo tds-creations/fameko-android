@@ -697,7 +697,7 @@ object DatabaseRepository {
             }
 
             val sql = """
-                SELECT d.*, c.name as customer_name, c.phone as customer_phone, o.total_amount as total_fare,
+                SELECT d.*, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare,
                 (6371 * acos(cos(radians(?)) * cos(radians(d.pickup_lat)) * cos(radians(d.pickup_lng) - radians(?)) + sin(radians(?)) * sin(radians(d.pickup_lat)))) AS distance
                 FROM deliveries d
                 JOIN orders o ON d.order_id = o.id
@@ -740,6 +740,7 @@ object DatabaseRepository {
                     pickupEtaMin = pickupEta,
                     customerName = rs.getString("customer_name"),
                     customerPhone = rs.getString("customer_phone"),
+                    customerProfilePic = rs.getString("customer_profile_pic"),
                     totalFare = rs.getDouble("total_fare")
                 ))
             }
@@ -839,7 +840,7 @@ object DatabaseRepository {
 
     fun getCustomerProfile(id: Int): Map<String, Any>? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, name, email, phone, region, profile_picture FROM customers WHERE id = ?"
+            val sql = "SELECT id, name, email, phone, region, default_address, profile_picture FROM customers WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, id)
             val rs = stmt.executeQuery()
@@ -851,11 +852,27 @@ object DatabaseRepository {
                     "email" to rs.getString("email"),
                     "phone" to rs.getString("phone"),
                     "region" to rs.getString("region"),
-                    "profile_picture" to rs.getString("profile_picture")
+                    "address" to (rs.getString("default_address") ?: ""),
+                    "profile_picture" to (rs.getString("profile_picture") ?: "")
                 )
             }
         }
         return null
+    }
+
+    fun updateCustomerProfile(id: Int, name: String, email: String, phone: String, address: String, region: String, profilePicture: String?): Boolean {
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val sql = "UPDATE customers SET name = ?, email = ?, phone = ?, default_address = ?, region = ?, profile_picture = COALESCE(?, profile_picture) WHERE id = ?"
+            val stmt = conn.prepareStatement(sql)
+            stmt.setString(1, name)
+            stmt.setString(2, email)
+            stmt.setString(3, phone)
+            stmt.setString(4, address)
+            stmt.setString(5, region)
+            stmt.setString(6, profilePicture)
+            stmt.setInt(7, id)
+            return stmt.executeUpdate() > 0
+        }
     }
 
     fun getSavedPlaces(customerId: Int): List<SavedPlace> {
@@ -881,13 +898,29 @@ object DatabaseRepository {
 
     fun getActiveRental(customerId: Int): Map<String, Any>? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT * FROM rentals WHERE customer_id = ? AND status IN ('PENDING', 'ASSIGNED', 'ACTIVE', 'IN_PROGRESS') ORDER BY id DESC LIMIT 1"
+            val sql = """
+                SELECT r.*, c.name as customer_name, c.profile_picture as customer_profile_pic,
+                       dr.full_name as driver_name, dr.phone as driver_phone, dr.profile_picture as driver_profile_pic,
+                       dr.vehicle_number as driver_plate, dr.vehicle_model as driver_model
+                FROM rentals r 
+                JOIN customers c ON r.customer_id = c.id
+                LEFT JOIN drivers dr ON r.driver_id = dr.id
+                WHERE r.customer_id = ? AND r.status IN ('PENDING', 'ASSIGNED', 'ACTIVE', 'IN_PROGRESS') 
+                ORDER BY r.id DESC LIMIT 1
+            """.trimIndent()
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, customerId)
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 return mapOf(
                     "id" to rs.getInt("id"),
+                    "customer_name" to rs.getString("customer_name"),
+                    "customer_profile_pic" to (rs.getString("customer_profile_pic") ?: ""),
+                    "driver_name" to (rs.getString("driver_name") ?: ""),
+                    "driver_phone" to (rs.getString("driver_phone") ?: ""),
+                    "driver_profile_pic" to (rs.getString("driver_profile_pic") ?: ""),
+                    "driver_plate" to (rs.getString("driver_plate") ?: ""),
+                    "driver_model" to (rs.getString("driver_model") ?: ""),
                     "pickup_location" to rs.getString("pickup_location"),
                     "destination_location" to (rs.getString("destination_location") ?: ""),
                     "pickup_lat" to rs.getDouble("pickup_lat"),
@@ -909,7 +942,15 @@ object DatabaseRepository {
     fun getRentalHistory(customerId: Int): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT r.*, v.name as vehicle_name FROM rentals r JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE r.customer_id = ? ORDER BY r.id DESC"
+            val sql = """
+                SELECT r.*, v.name as vehicle_name,
+                       dr.full_name as driver_name, dr.profile_picture as driver_profile_pic,
+                       dr.vehicle_number as driver_plate, dr.vehicle_model as driver_model
+                FROM rentals r 
+                JOIN rental_vehicles v ON r.vehicle_id = v.id 
+                LEFT JOIN drivers dr ON r.driver_id = dr.id
+                WHERE r.customer_id = ? ORDER BY r.id DESC
+            """.trimIndent()
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, customerId)
             val rs = stmt.executeQuery()
@@ -931,7 +972,11 @@ object DatabaseRepository {
                     "start_time" to (rs.getString("start_time") ?: ""),
                     "created_at" to (rs.getString("created_at") ?: ""),
                     "is_self_drive" to rs.getBoolean("is_self_drive"),
-                    "vehicle_id" to rs.getInt("vehicle_id")
+                    "vehicle_id" to rs.getInt("vehicle_id"),
+                    "driver_name" to (rs.getString("driver_name") ?: ""),
+                    "driver_profile_pic" to (rs.getString("driver_profile_pic") ?: ""),
+                    "driver_plate" to (rs.getString("driver_plate") ?: ""),
+                    "driver_model" to (rs.getString("driver_model") ?: "")
                 ))
             }
         }
@@ -943,9 +988,12 @@ object DatabaseRepository {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = """
                 SELECT o.id, o.pickup_location, o.dropoff_location, o.total_amount as fare, 
-                       o.status, o.created_at, d.pickup_lat, d.pickup_lng, d.dropoff_lat, d.dropoff_lng
+                       o.status, o.created_at, d.pickup_lat, d.pickup_lng, d.dropoff_lat, d.dropoff_lng,
+                       dr.full_name as driver_name, dr.profile_picture as driver_profile_pic,
+                       dr.vehicle_number as driver_plate, dr.vehicle_model as driver_model
                 FROM orders o
                 LEFT JOIN deliveries d ON o.id = d.order_id
+                LEFT JOIN drivers dr ON d.driver_id = dr.id
                 WHERE o.customer_id = ?
                 ORDER BY o.id DESC
             """.trimIndent()
@@ -961,7 +1009,11 @@ object DatabaseRepository {
                     "status" to (rs.getString("status") ?: "UNKNOWN"),
                     "created_at" to rs.getTimestamp("created_at").toString(),
                     "dropoff_lat" to rs.getDouble("dropoff_lat"),
-                    "dropoff_lng" to rs.getDouble("dropoff_lng")
+                    "dropoff_lng" to rs.getDouble("dropoff_lng"),
+                    "driver_name" to (rs.getString("driver_name") ?: ""),
+                    "driver_profile_pic" to (rs.getString("driver_profile_pic") ?: ""),
+                    "driver_plate" to (rs.getString("driver_plate") ?: ""),
+                    "driver_model" to (rs.getString("driver_model") ?: "")
                 ))
             }
         }
@@ -1075,7 +1127,7 @@ object DatabaseRepository {
         val list = mutableListOf<Delivery>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = """
-                SELECT d.*, c.name as customer_name, c.phone as customer_phone, o.total_amount as total_fare
+                SELECT d.*, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare
                 FROM deliveries d
                 JOIN orders o ON d.order_id = o.id
                 JOIN customers c ON o.customer_id = c.id
@@ -1101,6 +1153,7 @@ object DatabaseRepository {
                     pickupEtaMin = 5.0,
                     customerName = rs.getString("customer_name"),
                     customerPhone = rs.getString("customer_phone"),
+                    customerProfilePic = rs.getString("customer_profile_pic"),
                     totalFare = rs.getDouble("total_fare")
                 ))
             }
@@ -1111,7 +1164,7 @@ object DatabaseRepository {
     fun getDriverRentals(driverId: Int): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT r.*, c.name as customer_name, v.name as vehicle_name FROM rentals r JOIN customers c ON r.customer_id = c.id JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE r.driver_id = ? ORDER BY r.id DESC"
+            val sql = "SELECT r.*, c.name as customer_name, c.profile_picture as customer_profile_pic, v.name as vehicle_name FROM rentals r JOIN customers c ON r.customer_id = c.id JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE r.driver_id = ? ORDER BY r.id DESC"
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, driverId)
             val rs = stmt.executeQuery()
@@ -1119,6 +1172,7 @@ object DatabaseRepository {
                 list.add(mapOf(
                     "id" to rs.getInt("id"),
                     "customer_name" to rs.getString("customer_name"),
+                    "customer_profile_pic" to (rs.getString("customer_profile_pic") ?: ""),
                     "vehicle_name" to rs.getString("vehicle_name"),
                     "status" to rs.getString("status"),
                     "total_price" to rs.getDouble("total_price"),
@@ -2585,6 +2639,14 @@ object DatabaseRepository {
     fun getCustomerPhone(id: Int): String? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val rs = conn.prepareStatement("SELECT phone FROM customers WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+            if (rs.next()) return rs.getString(1)
+        }
+        return null
+    }
+
+    fun getCustomerProfilePic(id: Int): String? {
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val rs = conn.prepareStatement("SELECT profile_picture FROM customers WHERE id = ?").apply { setInt(1, id) }.executeQuery()
             if (rs.next()) return rs.getString(1)
         }
         return null

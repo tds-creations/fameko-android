@@ -137,6 +137,18 @@ suspend fun broadcastNotificationToDrivers(title: String, message: String, type:
     broadcastToDrivers("NOTIFICATION_RECEIVED", payload)
 }
 
+suspend fun broadcastToAdmins(type: String, payload: Any) {
+    val message = WebSocketMessage(type, gson.toJson(payload))
+    val json = gson.toJson(message)
+    val frame = Frame.Text(json)
+    val adminSessions = sessions.filter { it.key.startsWith("ADMIN_") }
+    adminSessions.values.forEach { session ->
+        try {
+            session.send(frame)
+        } catch (_: Exception) {}
+    }
+}
+
 suspend fun broadcastToCustomers(type: String, payload: Any) {
     val message = WebSocketMessage(type, gson.toJson(payload))
     val json = gson.toJson(message)
@@ -153,18 +165,21 @@ suspend fun sendToUser(userId: String, type: String, payload: Any) {
     if (session == null) {
         println("WS: Session not found for user $userId. Sending Push Notification...")
         
-        // Extract ID and Type from userId (e.g. DRIVER_123 or CUSTOMER_456)
+        // Extract ID and Type from userId (e.g. DRIVER_123, CUSTOMER_456, ADMIN_1)
         val parts = userId.split("_")
         if (parts.size == 2) {
-            val userType = parts[0].lowercase() // "driver" or "customer"
+            val userType = parts[0].lowercase() // "driver", "customer", "admin"
             val id = parts[1].toIntOrNull()
-            if (id != null) {
+            if (id != null && userType != "admin") { // No push for admins for now
                 val token = DatabaseRepository.getUserFcmToken(id, userType)
                 if (token != null) {
                     val title = when (type) {
                         "CALL_INCOMING" -> "Incoming Call"
                         "NEW_DELIVERY" -> "New Delivery Request"
-                        "NEW_MESSAGE" -> "New Message"
+                        "NEW_MESSAGE" -> {
+                            val msg = payload as? Message
+                            if (msg != null && msg.conversationId >= 1000000) "Support Message" else "New Message"
+                        }
                         "NOTIFICATION_RECEIVED" -> (payload as? Map<*, *>)?.get("title")?.toString() ?: "Fameko"
                         else -> "Fameko Update"
                     }

@@ -144,6 +144,24 @@ class CustomerMapViewModel(
         }
     }
 
+    fun updateProfile(name: String, email: String, phone: String, address: String, region: String, profilePic: java.io.File? = null, onResult: (Boolean, String?) -> Unit) {
+        val customerId = sessionManager.getCustomerId() ?: return
+        viewModelScope.launch {
+            userRepository.updateCustomerProfile(customerId, name, email, phone, address, region, profilePic)
+                .onSuccess {
+                    if (it.success) {
+                        loadCustomerProfile()
+                        onResult(true, it.message)
+                    } else {
+                        onResult(false, it.message)
+                    }
+                }
+                .onFailure {
+                    onResult(false, it.message ?: "Network error")
+                }
+        }
+    }
+
     private fun startPricingPolling() {
         viewModelScope.launch {
             while (true) {

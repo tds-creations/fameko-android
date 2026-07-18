@@ -26,6 +26,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import java.io.File
 import com.example.famekodriver.customer.CustomerMapViewModel
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
@@ -65,11 +72,27 @@ fun AccountDetailScreen(
 }
 
 @Composable
-fun CustomerProfileScreen(profile: Map<String, Any>?, onBack: () -> Unit) {
+fun CustomerProfileScreen(
+    viewModel: CustomerMapViewModel,
+    profile: Map<String, Any>?,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
     var name by remember(profile) { mutableStateOf(profile?.get("name")?.toString() ?: "") }
     var email by remember(profile) { mutableStateOf(profile?.get("email")?.toString() ?: "") }
     var phone by remember(profile) { mutableStateOf(profile?.get("phone")?.toString() ?: "") }
+    var address by remember(profile) { mutableStateOf(profile?.get("address")?.toString() ?: "") }
     var region by remember(profile) { mutableStateOf(profile?.get("region")?.toString() ?: "") }
+    var profilePicUrl by remember(profile) { mutableStateOf(profile?.get("profile_picture")?.toString() ?: "") }
+    
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
+    }
 
     AccountDetailScreen(title = "Profile", onBack = onBack) {
         if (profile == null) {
@@ -78,13 +101,33 @@ fun CustomerProfileScreen(profile: Map<String, Any>?, onBack: () -> Unit) {
             }
         } else {
             Spacer(modifier = Modifier.height(20.dp))
-            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clickable { launcher.launch("image/*") }
+            ) {
                 Surface(
                     shape = CircleShape,
                     color = BoltLightGray,
                     modifier = Modifier.size(100.dp)
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(20.dp), tint = Color.Gray)
+                    if (selectedImageUri != null) {
+                        AsyncImage(
+                            model = selectedImageUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else if (profilePicUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = profilePicUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(20.dp), tint = Color.Gray)
+                    }
                 }
                 Surface(
                     shape = CircleShape,
@@ -97,21 +140,72 @@ fun CustomerProfileScreen(profile: Map<String, Any>?, onBack: () -> Unit) {
             }
             
             Spacer(modifier = Modifier.height(32.dp))
-            ProfileField(label = "Full Name", value = name)
-            ProfileField(label = "Phone Number", value = phone)
-            ProfileField(label = "Email", value = email)
-            ProfileField(label = "Region", value = region)
+            EditableProfileField(label = "Full Name", value = name, onValueChange = { name = it })
+            EditableProfileField(label = "Phone Number", value = phone, onValueChange = { phone = it })
+            EditableProfileField(label = "Email", value = email, onValueChange = { email = it })
+            EditableProfileField(label = "Address", value = address, onValueChange = { address = it })
+            EditableProfileField(label = "Region", value = region, onValueChange = { region = it })
             
             Spacer(modifier = Modifier.height(40.dp))
             Button(
-                onClick = { /* TODO: Save */ },
+                onClick = {
+                    isSaving = true
+                    val file = selectedImageUri?.let { getFileFromUri(context, it) }
+                    viewModel.updateProfile(name, email, phone, address, region, file) { success, message ->
+                        isSaving = false
+                        if (success) {
+                            Toast.makeText(context, message ?: "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, message ?: "Failed to update profile", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = !isSaving,
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
             ) {
-                Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                if (isSaving) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
             }
+            Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+fun EditableProfileField(label: String, value: String, onValueChange: (String) -> Unit) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(text = label, fontSize = 14.sp, color = Color.Gray)
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = FamekoBlue,
+                unfocusedIndicatorColor = Color.LightGray
+            ),
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = BoltDark)
+        )
+    }
+}
+
+private fun getFileFromUri(context: android.content.Context, uri: Uri): File? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+        val file = File(context.cacheDir, "profile_pic_${System.currentTimeMillis()}.jpg")
+        file.outputStream().use { outputStream ->
+            inputStream.copyTo(outputStream)
+        }
+        file
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
 

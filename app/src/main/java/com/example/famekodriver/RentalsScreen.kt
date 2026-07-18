@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import kotlinx.coroutines.launch
@@ -160,6 +162,37 @@ fun RentalsScreen(onBack: () -> Unit) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFF0F2F5),
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    val pic = rental["customer_profile_pic"]?.toString()
+                                    if (!pic.isNullOrEmpty()) {
+                                        AsyncImage(
+                                            model = pic,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                        )
+                                    } else {
+                                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(12.dp), tint = Color.Gray)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = rental["customer_name"].toString(),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        text = rental["customer_phone"].toString(),
+                                        fontSize = 13.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                                Spacer(modifier = Modifier.weight(1f))
+                                Surface(
                                     color = if (isUnlocked) Color(0xFFE8F5E9) else Color(0xFFFFF9DB),
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
@@ -171,18 +204,11 @@ fun RentalsScreen(onBack: () -> Unit) {
                                         color = if (isUnlocked) Color(0xFF2E7D32) else Color(0xFFF08C00)
                                     )
                                 }
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    text = rental["vehicle_name"].toString(),
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color(0xFF004E89)
-                                )
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                             
-                            DetailRow(Icons.Default.Person, "Customer", rental["customer_name"].toString())
-                            DetailRow(Icons.Default.Phone, "Phone", rental["customer_phone"].toString())
+                            DetailRow(Icons.Default.DirectionsCar, "Vehicle", rental["vehicle_name"].toString())
                             DetailRow(Icons.Default.LocationOn, "Pickup", rental["pickup_location"].toString())
 
                             if (isUnlocked) {
