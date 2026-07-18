@@ -1067,6 +1067,8 @@ fun Application.configureRouting() {
 
         post("/orders/estimates") {
             val p = call.receiveParameters()
+            val lat = p["lat"]?.toDoubleOrNull() ?: 0.0
+            val lng = p["lng"]?.toDoubleOrNull() ?: 0.0
             val dist = p["dist"]?.toDoubleOrNull() ?: 0.0
             val dur = p["dur"]?.toDoubleOrNull() ?: 0.0
 
@@ -1084,16 +1086,23 @@ fun Application.configureRouting() {
                     true
                 }
                 .map { cat ->
+                    // Find nearest driver for this category to get real ETA
+                    val nearest = if (lat != 0.0) {
+                        DatabaseRepository.getNearbyDrivers(lat, lng, 10.0, cat.serviceId).firstOrNull()
+                    } else null
+                    
+                    val eta = nearest?.pickupEtaMin?.toInt() ?: 5 // Fallback to 5 if no drivers nearby or location missing
+
                     RideEstimateResponse(
                         serviceId = cat.serviceId,
                         name = cat.name,
                         description = cat.description ?: "",
                         fare = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak),
-                        pickupEtaMin = 5,
+                        pickupEtaMin = eta,
                         icon = cat.icon ?: "car",
                         serviceType = cat.serviceType,
                         isAvailableInRegion = true,
-                        availabilityStatus = "AVAILABLE"
+                        availabilityStatus = if (nearest != null) "AVAILABLE" else "BUSY"
                     )
                 }
             
@@ -1140,7 +1149,8 @@ fun Application.configureRouting() {
                                 while (attempt <= maxAttempts) {
                                     println("DEBUG: Dispatch attempt $attempt for order $orderId (radius: ${currentRadius}km)")
                                     val nearby = DatabaseRepository.getNearbyDrivers(req.pickupLat, req.pickupLng, currentRadius, req.requestedVehicleType)
-                                    
+                                    val bestEta = nearby.firstOrNull()?.pickupEtaMin ?: 5.0
+
                                     val deliveryObj = Delivery(
                                         id = deliveryId.toString(),
                                         orderId = orderId,
@@ -1154,7 +1164,7 @@ fun Application.configureRouting() {
                                         status = DeliveryStatus.PENDING,
                                         distanceKm = req.distanceKm,
                                         estimatedEarnings = driverEarnings,
-                                        pickupEtaMin = 5.0,
+                                        pickupEtaMin = bestEta,
                                         customerName = DatabaseRepository.getCustomerName(req.customerId.toInt()) ?: "Customer",
                                         customerPhone = DatabaseRepository.getCustomerPhone(req.customerId.toInt()) ?: "",
                                         customerProfilePic = DatabaseRepository.getCustomerProfilePic(req.customerId.toInt()),
