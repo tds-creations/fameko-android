@@ -4,8 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
+import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.media.RingtoneManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,19 +13,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -35,32 +33,35 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.graphics.Bitmap
-import coil.compose.AsyncImage
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.scale
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.domain.model.*
+import com.example.famekodriver.core.network.NetworkClient
+import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.ui.theme.*
-import com.example.famekodriver.core.network.NetworkClient
 import com.google.android.gms.location.LocationServices
-import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.*
-import org.maplibre.android.MapLibre
+import kotlinx.coroutines.delay
 import org.maplibre.android.annotations.IconFactory
-import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
-import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.annotations.PolygonOptions
-import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import java.util.Locale
+import kotlin.math.*
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,6 +101,26 @@ fun MapScreen(
     ) { hasAudioPermission = it }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
+
+    val sessionManager = remember { SessionManager(context) }
+    val vehicleType = remember { sessionManager.getVehicleType()?.lowercase() }
+
+    var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(vehicleType) {
+        if (vehicleType == "okada" || vehicleType == "bike") {
+            val loader = context.imageLoader
+            val request = ImageRequest.Builder(context)
+                .data(ImageLinks.IC_OKADA)
+                .build()
+            val result = (loader.execute(request) as? SuccessResult)?.drawable?.let {
+                val bitmap = (it as android.graphics.drawable.BitmapDrawable).bitmap
+                bitmap.scale(40, 40)
+            }
+            if (result != null) {
+                motorbikeBitmap = result
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (!hasLocationPermission) locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -176,11 +197,7 @@ fun MapScreen(
             }
         }
         if (viewModel.isOnline || viewModel.currentDelivery != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            context.startForegroundService(intent)
         } else {
             context.stopService(intent)
         }
@@ -224,7 +241,7 @@ fun MapScreen(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            if (viewModel.isVoiceEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            if (viewModel.isVoiceEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
                             null
                         )
                     }
@@ -262,21 +279,28 @@ fun MapScreen(
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
-                update = { mv ->
+                update = { _ ->
                     val map = mapLibreMap ?: return@AndroidView
+                    @Suppress("DEPRECATION")
                     map.clear()
                     
                     // Driver Marker
                     viewModel.driverLatLng?.let { pos ->
-                        val carBitmap = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
-                        val carIcon = carBitmap?.let { 
-                            val matrix = android.graphics.Matrix()
+                        val baseBitmap = if (vehicleType == "okada" || vehicleType == "bike") {
+                            motorbikeBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.let { (it as android.graphics.drawable.BitmapDrawable).bitmap }
+                        } else {
+                            ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.let { (it as android.graphics.drawable.BitmapDrawable).bitmap }
+                        }
+
+                        val carIcon = baseBitmap?.let { 
+                            val matrix = Matrix()
                             matrix.postRotate(viewModel.driverBearing)
-                            val scaled = Bitmap.createScaledBitmap(it, 40, 40, false)
+                            val scaled = if (it.width != 40) it.scale(40, 40) else it
                             val rotated = Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
                             IconFactory.getInstance(context).fromBitmap(rotated) 
                         }
 
+                        @Suppress("DEPRECATION")
                         map.addMarker(MarkerOptions()
                             .position(pos)
                             .apply { if (carIcon != null) icon(carIcon) }
@@ -284,7 +308,8 @@ fun MapScreen(
                     }
                     
                     viewModel.heatmapPoints.forEach { point ->
-                        val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude), 300.0)
+                        val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude))
+                        @Suppress("DEPRECATION")
                         map.addPolygon(PolygonOptions()
                             .addAll(circlePoints)
                             .fillColor(Color(1f, 0f, 0f, (point.intensity * 0.5).toFloat()).toArgb())
@@ -293,12 +318,14 @@ fun MapScreen(
                     }
 
                     if (viewModel.navigationPath.isNotEmpty()) {
+                        @Suppress("DEPRECATION")
                         map.addPolyline(PolylineOptions()
                             .addAll(viewModel.navigationPath)
                             .color("#004E89".toColorInt())
                             .width(5f)
                         )
                         
+                        @Suppress("DEPRECATION")
                         map.addMarker(MarkerOptions()
                             .position(viewModel.navigationPath.last())
                             .title(if (viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED) {
@@ -495,17 +522,17 @@ fun MapScreen(
     }
 }
 
-private fun createCirclePoints(center: LatLng, radiusInMeters: Double): List<LatLng> {
+private fun createCirclePoints(center: LatLng, radiusInMeters: Double = 300.0): List<LatLng> {
     val points = mutableListOf<LatLng>()
     val distanceRadians = radiusInMeters / 6371000.0 // earth radius
     val centerLatRadians = Math.toRadians(center.latitude)
     val centerLonRadians = Math.toRadians(center.longitude)
     for (i in 0 until 360 step 10) {
         val bearingRadians = Math.toRadians(i.toDouble())
-        val pointLatRadians = Math.asin(Math.sin(centerLatRadians) * Math.cos(distanceRadians) +
-                Math.cos(centerLatRadians) * Math.sin(distanceRadians) * Math.cos(bearingRadians))
-        val pointLonRadians = centerLonRadians + Math.atan2(Math.sin(bearingRadians) * Math.sin(distanceRadians) * Math.cos(centerLatRadians),
-                Math.cos(distanceRadians) - Math.sin(centerLatRadians) * Math.sin(pointLatRadians))
+        val pointLatRadians = asin(sin(centerLatRadians) * cos(distanceRadians) +
+                cos(centerLatRadians) * sin(distanceRadians) * cos(bearingRadians))
+        val pointLonRadians = centerLonRadians + atan2(sin(bearingRadians) * sin(distanceRadians) * cos(centerLatRadians),
+                cos(distanceRadians) - sin(centerLatRadians) * sin(pointLatRadians))
         points.add(LatLng(Math.toDegrees(pointLatRadians), Math.toDegrees(pointLonRadians)))
     }
     points.add(points[0])
@@ -837,16 +864,6 @@ fun DeliveryControlSheet(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ActionIcon(icon: ImageVector, color: Color, onClick: () -> Unit) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.background(Color(0xFFF0F0F0), CircleShape)
-    ) {
-        Icon(icon, null, tint = color)
     }
 }
 
@@ -1217,7 +1234,7 @@ fun SOSDialog(
                         border = BorderStroke(1.dp, Color.LightGray)
                     ) {
                         Text(
-                            text = if (sosType.isEmpty()) "Select Emergency Type" else sosType,
+                            text = sosType.ifEmpty { "Select Emergency Type" },
                             color = if (sosType.isEmpty()) Color.Gray else BoltDark,
                             fontWeight = FontWeight.Bold
                         )
@@ -1294,7 +1311,7 @@ fun IncomingCallDialog(call: FamekoEvent.IncomingCall, onAccept: () -> Unit, onR
         confirmButton = {
             Button(
                 onClick = onAccept, 
-                colors = ButtonDefaults.buttonColors(containerColor = FamekoSecondary),
+                colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Default.Call, null)
@@ -1324,7 +1341,7 @@ fun CallOverlay(call: FamekoEvent.IncomingCall, onEnd: () -> Unit) {
     LaunchedEffect(isConnecting) {
         if (!isConnecting) {
             while (true) {
-                delay(1000L)
+                delay(1.seconds)
                 callDuration++
             }
         }
@@ -1357,14 +1374,14 @@ fun CallOverlay(call: FamekoEvent.IncomingCall, onEnd: () -> Unit) {
             
             Surface(
                 shape = CircleShape,
-                color = FamekoSecondary.copy(alpha = 0.2f),
+                color = BoltGreen.copy(alpha = 0.2f),
                 modifier = Modifier.size(140.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (!isConnecting) {
                         Surface(
                             shape = CircleShape, 
-                            color = FamekoSecondary.copy(alpha = 0.1f), 
+                                        color = BoltGreen.copy(alpha = 0.1f), 
                             modifier = Modifier.size(140.dp * scale)
                         ) {
                             Box(modifier = Modifier.fillMaxSize())
@@ -1393,7 +1410,7 @@ fun CallOverlay(call: FamekoEvent.IncomingCall, onEnd: () -> Unit) {
                     val secs = callDuration % 60
                     "In-app Call • %02d:%02d".format(Locale.US, mins, secs)
                 },
-                color = if (isConnecting) Color.Gray else FamekoSecondary,
+                color = if (isConnecting) Color.Gray else BoltGreen,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -1465,7 +1482,7 @@ fun RegistrationNotice(status: String, onGoToProfile: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = androidx.compose.foundation.BorderStroke(1.dp, contentColor)
+        border = BorderStroke(1.dp, contentColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             val title = when (status) {
@@ -1491,7 +1508,7 @@ fun RegistrationNotice(status: String, onGoToProfile: () -> Unit) {
                 Button(
                     onClick = {
                         if (status == "REJECTED" || status == "SUSPENDED") {
-                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:0541234567"))
+                            val intent = Intent(Intent.ACTION_DIAL, "tel:0541234567".toUri())
                             context.startActivity(intent)
                         } else {
                             onGoToProfile()

@@ -8,7 +8,7 @@ object ImageLinks {
     const val IC_CAR_SALOON = "https://i.postimg.cc/Mprn1fCS/ic-car-saloon.png"
     const val IC_FAMEKO_LOGO = "https://i.postimg.cc/CLmRpwJt/ic-fameko-logo.jpg"
     const val IC_FAMEKO_DRIVER_LOGO = "https://i.postimg.cc/m2QSY1Lz/ic-fameko-driver-logo.jpg"
-    const val IC_OKADA = "https://i.postimg.cc/PqpPyrHj/ic-okada.jpg"
+    const val IC_OKADA = "https://i.postimg.cc/nrxnBdGN/motorbike-removebg-preview.png"
     const val IC_PRAGYA = "https://i.postimg.cc/1znfB5S1/ic-praggia.jpg"
     const val IC_TRUCK = "https://i.postimg.cc/cJgrh4WN/ic-truck.jpg"
     const val DRIVER_SIGNUP_BG = "https://i.postimg.cc/dtpd96tY/driver-signup.png"

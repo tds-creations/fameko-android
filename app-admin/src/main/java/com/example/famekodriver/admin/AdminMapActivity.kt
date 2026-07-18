@@ -22,6 +22,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import com.example.famekodriver.core.utils.ImageLinks
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -249,6 +255,18 @@ fun AdminMapScreen(
         }
     }
 
+    var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(Unit) {
+        val loader = context.imageLoader
+        val request = ImageRequest.Builder(context)
+            .data(ImageLinks.IC_OKADA)
+            .build()
+        val result = (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+        if (result != null) {
+            motorbikeBitmap = Bitmap.createScaledBitmap(result, 40, 40, false)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = {
@@ -273,6 +291,13 @@ fun AdminMapScreen(
                             title = driver["name"] as? String ?: "Driver"
                             snippet = "Vehicle: ${driver["vehicle"] ?: "N/A"}"
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                            
+                            val vehicleType = (driver["vehicle"] as? String)?.lowercase()
+                            if (vehicleType == "okada" || vehicleType == "bike") {
+                                motorbikeBitmap?.let { 
+                                    icon = BitmapDrawable(context.resources, it)
+                                }
+                            }
                         }
                         mv.overlays.add(marker)
                     }

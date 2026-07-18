@@ -1045,19 +1045,28 @@ fun Application.configureRouting() {
             val peak = config.peakMultiplier
             
             val categories = DatabaseRepository.getRideCategories()
-            val estimates = categories.map { cat ->
-                RideEstimateResponse(
-                    serviceId = cat.serviceId,
-                    name = cat.name,
-                    description = cat.description ?: "",
-                    fare = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak),
-                    pickupEtaMin = 5,
-                    icon = cat.icon ?: "car",
-                    serviceType = cat.serviceType,
-                    isAvailableInRegion = true,
-                    availabilityStatus = "AVAILABLE"
-                )
-            }
+            val estimates = categories
+                .filter { cat ->
+                    // Set distance limits for specific vehicle types
+                    // Pragya (tricycle) is limited to 10km
+                    if (cat.serviceId.equals("Pragya", ignoreCase = true) && dist > 10.0) return@filter false
+                    // Bicycle is limited to 5km
+                    if (cat.serviceId.equals("Bicycle", ignoreCase = true) && dist > 5.0) return@filter false
+                    true
+                }
+                .map { cat ->
+                    RideEstimateResponse(
+                        serviceId = cat.serviceId,
+                        name = cat.name,
+                        description = cat.description ?: "",
+                        fare = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak),
+                        pickupEtaMin = 5,
+                        icon = cat.icon ?: "car",
+                        serviceType = cat.serviceType,
+                        isAvailableInRegion = true,
+                        availabilityStatus = "AVAILABLE"
+                    )
+                }
             
             call.respond(estimates)
         }
@@ -1066,6 +1075,15 @@ fun Application.configureRouting() {
             post("/create") {
                 try {
                     val req = call.receive<OrderCreateRequest>()
+
+                    // Enforce distance limits for specific vehicle types
+                    if (req.requestedVehicleType?.equals("Pragya", ignoreCase = true) == true && req.distanceKm > 10.0) {
+                        return@post call.respond(mapOf("success" to false, "message" to "Pragya is only available for trips under 10km"))
+                    }
+                    if (req.requestedVehicleType?.equals("Bicycle", ignoreCase = true) == true && req.distanceKm > 5.0) {
+                        return@post call.respond(mapOf("success" to false, "message" to "Bicycle is only available for trips under 5km"))
+                    }
+
                     println("DEBUG: New Order Request from Customer ${req.customerId}: Pickup=(${req.pickupLat}, ${req.pickupLng}), Type=${req.requestedVehicleType}")
                     val pin = (1000..9999).random().toString()
                     

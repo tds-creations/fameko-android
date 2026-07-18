@@ -73,6 +73,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.*
 import com.example.famekodriver.core.domain.model.*
@@ -598,6 +601,18 @@ fun MainMapContent(
     }
     val audioPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasAudioPermission = it }
 
+    var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(Unit) {
+        val loader = context.imageLoader
+        val request = ImageRequest.Builder(context)
+            .data(ImageLinks.IC_OKADA)
+            .build()
+        val result = (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+        if (result != null) {
+            motorbikeBitmap = Bitmap.createScaledBitmap(result, 40, 40, false)
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (!hasLocationPermission) launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
@@ -760,10 +775,17 @@ fun MainMapContent(
             val endPos = LatLng(driver.latitude, driver.longitude)
             val bearing = driver.bearing
 
-            val carIcon = ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()?.let { 
+            val vehicleType = driver.vehicleType?.lowercase()
+            val baseBitmap = if (vehicleType == "okada" || vehicleType == "bike") {
+                motorbikeBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+            } else {
+                ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+            }
+
+            val carIcon = baseBitmap?.let { 
                 val matrix = android.graphics.Matrix()
                 matrix.postRotate(bearing)
-                val scaled = Bitmap.createScaledBitmap(it, 40, 40, false)
+                val scaled = if (it.width != 40) Bitmap.createScaledBitmap(it, 40, 40, false) else it
                 val rotated = Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
                 IconFactory.getInstance(context).fromBitmap(rotated) 
             }
