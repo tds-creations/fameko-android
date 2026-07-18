@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
+import com.example.famekodriver.core.domain.model.*
 import com.google.android.gms.location.*
 import kotlinx.coroutines.*
 
@@ -20,7 +21,7 @@ class LocationService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private lateinit var sessionManager: SessionManager
 
     override fun onCreate() {
@@ -29,6 +30,7 @@ class LocationService : Service() {
         sessionManager = SessionManager(this)
 
         locationCallback = object : LocationCallback() {
+            // ... (keep original logic)
             override fun onLocationResult(locationResult: LocationResult) {
                 if (locationResult.lastLocation == null) {
                     Log.d("LocationService", "Location fix lost or null")
@@ -47,6 +49,55 @@ class LocationService : Service() {
                 }
             }
         }
+
+        // Listen for new delivery requests in background
+        serviceScope.launch {
+            repository.events.collect { event ->
+                if (event is FamekoEvent.NewDeliveryRequest) {
+                    showNewDeliveryNotification(event.delivery)
+                }
+            }
+        }
+    }
+
+    private fun showNewDeliveryNotification(delivery: Delivery) {
+        val channelId = "delivery_request_channel"
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Delivery Requests",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for new delivery requests"
+                enableLights(true)
+                lightColor = android.graphics.Color.GREEN
+                enableVibration(true)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            this, 0, intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("New Ride Request!")
+            .setContentText("Pickup: ${delivery.pickupLocation}")
+            .setSmallIcon(R.drawable.ic_fameko_driver_logo)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setCategory(NotificationCompat.CATEGORY_CALL) // Treat it as important as a call
+            .setFullScreenIntent(pendingIntent, true)
+            .build()
+
+        notificationManager.notify(100, notification)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -60,6 +111,11 @@ class LocationService : Service() {
     private fun start() {
         val channelId = "location_channel"
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        val driverId = sessionManager.getDriverId()
+        if (driverId != null && sessionManager.isOnline()) {
+            repository.startWebSocket("DRIVER_$driverId")
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(

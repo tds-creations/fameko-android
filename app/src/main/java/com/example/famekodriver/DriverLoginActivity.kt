@@ -27,7 +27,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class DriverLoginActivity : AppCompatActivity() {
     private lateinit var sessionManager: SessionManager
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)

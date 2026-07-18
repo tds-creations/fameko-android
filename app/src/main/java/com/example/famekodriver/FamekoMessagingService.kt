@@ -33,7 +33,7 @@ class FamekoMessagingService : FirebaseMessagingService() {
         val userId = sessionManager.getDriverId()
         if (userId != null) {
             CoroutineScope(Dispatchers.IO).launch {
-                DriverRepository().updateFcmToken(userId, token, "driver")
+                DriverRepository.getInstance().updateFcmToken(userId, token, "driver")
             }
         }
     }

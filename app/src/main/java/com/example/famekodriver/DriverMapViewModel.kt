@@ -21,7 +21,7 @@ import java.time.temporal.ChronoUnit
 import kotlin.time.Duration.Companion.seconds
 
 class DriverMapViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private val sessionManager = SessionManager(application)
 
     // --- Screen State ---
@@ -98,9 +98,11 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 }
 
                 startDailyFeeCountdown()
-            }
-            if (isOnline) {
-                refreshHeatmap()
+                
+                if (isOnline) {
+                    refreshDeliveries()
+                    refreshHeatmap()
+                }
             }
         }
     }
@@ -262,7 +264,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private fun refreshDeliveries() {
+    fun refreshDeliveries() {
         val driverId = sessionManager.getDriverId() ?: return
         viewModelScope.launch {
             repository.getMyDeliveries(driverId).onSuccess { list ->

@@ -21,7 +21,7 @@ import okio.ByteString.Companion.toByteString
 /**
  * Repository for driver-related database operations.
  */
-class DriverRepository {
+class DriverRepository private constructor() {
     private val gson = Gson()
     private val _events = MutableSharedFlow<FamekoEvent>(extraBufferCapacity = 64)
     val events: SharedFlow<FamekoEvent> = _events
@@ -29,6 +29,17 @@ class DriverRepository {
     private var webSocket: WebSocket? = null
     private var currentUserId: String? = null
     private var isReconnectEnabled = false
+
+    companion object {
+        @Volatile
+        private var instance: DriverRepository? = null
+
+        fun getInstance(): DriverRepository {
+            return instance ?: synchronized(this) {
+                instance ?: DriverRepository().also { instance = it }
+            }
+        }
+    }
 
     fun startWebSocket(userId: String) {
         currentUserId = userId

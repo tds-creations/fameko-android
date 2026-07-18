@@ -229,6 +229,12 @@ fun MapScreen(
         }
     }
 
+    LaunchedEffect(viewModel.driverLatLng, viewModel.isOnline) {
+        if (viewModel.isOnline && viewModel.driverLatLng != null && viewModel.activeRequest == null && viewModel.currentDelivery == null) {
+            viewModel.refreshDeliveries()
+        }
+    }
+
     Scaffold(
         floatingActionButton = {
             Column(

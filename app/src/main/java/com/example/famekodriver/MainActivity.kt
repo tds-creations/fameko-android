@@ -42,7 +42,7 @@ sealed class Screen {
 }
 
 class MainActivity : ComponentActivity() {
-    private val repository = DriverRepository()
+    private val repository = DriverRepository.getInstance()
     private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {

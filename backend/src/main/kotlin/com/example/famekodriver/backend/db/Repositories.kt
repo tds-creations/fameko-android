@@ -688,12 +688,12 @@ object DatabaseRepository {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val vType = vehicleType.lowercase()
             val vehicleFilter = when {
-                vType == "car" -> "AND (service_type ILIKE 'car' OR service_type ILIKE 'Economy' OR service_type ILIKE 'Comfort')"
-                vType == "okada" -> "AND (service_type ILIKE 'okada' OR service_type ILIKE 'bike')"
-                vType == "pragya" -> "AND service_type ILIKE 'pragya'"
-                vType == "aboboyaa" -> "AND service_type ILIKE 'aboboyaa'"
-                vType == "truck" -> "AND service_type ILIKE 'truck'"
-                vType == "bicycle" -> "AND service_type ILIKE 'bicycle'"
+                vType.contains("car") || vType.contains("economy") || vType.contains("comfort") -> "AND (service_type ILIKE 'car' OR service_type ILIKE 'Economy' OR service_type ILIKE 'Comfort')"
+                vType.contains("okada") || vType.contains("bike") || vType.contains("motorcycle") || vType.contains("rider") || vType.contains("motorbike") || vType.contains("motor") -> "AND (service_type ILIKE 'okada' OR service_type ILIKE 'bike')"
+                vType.contains("pragya") -> "AND service_type ILIKE 'pragya'"
+                vType.contains("aboboyaa") -> "AND service_type ILIKE 'aboboyaa'"
+                vType.contains("truck") -> "AND service_type ILIKE 'truck'"
+                vType.contains("bicycle") -> "AND service_type ILIKE 'bicycle'"
                 else -> "AND (service_type ILIKE ? OR service_type ILIKE 'car')"
             }
 
