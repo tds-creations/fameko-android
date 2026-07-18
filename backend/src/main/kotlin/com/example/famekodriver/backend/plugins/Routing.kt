@@ -656,7 +656,7 @@ fun Application.configureRouting() {
                         if (driver != null) {
                             mapOf(
                                 "driverId" to driverId,
-                                "name" to (driver["fullName"] ?: "Driver $driverId"),
+                                "name" to (driver["name"] ?: "Driver $driverId"),
                                 "phone" to (driver["phone"] ?: ""),
                                 "profilePic" to (driver["profilePicture"] ?: ""),
                                 "conversationId" to convId
