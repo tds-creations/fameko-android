@@ -44,7 +44,22 @@ data class OsrmResponse(
 data class OsrmRoute(
     @SerializedName("geometry") val geometry: OsrmGeometry,
     @SerializedName("distance") val distance: Double, // meters
-    @SerializedName("duration") val duration: Double  // seconds
+    @SerializedName("duration") val duration: Double, // seconds
+    val legs: List<OsrmLeg>? = null
+)
+
+data class OsrmLeg(
+    val steps: List<OsrmStep>? = null
+)
+
+data class OsrmStep(
+    val maneuver: OsrmManeuver,
+    val distance: Double
+)
+
+data class OsrmManeuver(
+    val instruction: String,
+    val location: List<Double> // [lng, lat]
 )
 
 data class OsrmGeometry(

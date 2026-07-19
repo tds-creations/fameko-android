@@ -32,6 +32,7 @@ interface TomTomApiService {
         @Query("key") apiKey: String,
         @Query("travelMode") travelMode: String = "car",
         @Query("routeType") routeType: String = "fastest",
-        @Query("traffic") traffic: Boolean = true
+        @Query("traffic") traffic: Boolean = true,
+        @Query("instructionsType") instructionsType: String = "text"
     ): TomTomRoutingResponse
 }

@@ -57,6 +57,8 @@ class CustomerMapViewModel(
 
     // --- Ride & Pricing State ---
     var polylinePoints by mutableStateOf<List<LatLng>>(emptyList())
+    var instructions by mutableStateOf<List<RouteInstruction>>(emptyList())
+    var currentInstruction by mutableStateOf<RouteInstruction?>(null)
     var isLoading by mutableStateOf(false)
     var estimatedFare by mutableStateOf<Double?>(null)
     var rideEstimates by mutableStateOf<List<RideEstimateResponse>>(emptyList())
@@ -676,6 +678,9 @@ class CustomerMapViewModel(
             orderRepository.calculateRoute(RouteRequest(RouteLocation(pLat, pLng), RouteLocation(dLat, dLng), "car"))
                 .onSuccess { response ->
                     polylinePoints = response.routeCoords.map { LatLng(it[1], it[0]) }
+                    instructions = response.instructions ?: emptyList()
+                    currentInstruction = instructions.firstOrNull()
+
                     if (!isUpdate) {
                         distanceKm = response.distanceM / 1000.0
                         durationMin = response.etaMin
@@ -1022,20 +1027,22 @@ class CustomerMapViewModel(
             dropOffLng = targetLng
             dropOffLocation = targetLabel
             
-            // For rentals, we usually start from current location if possible, 
-            // but for route calculation we need a valid pickupLat.
-            // If current location isn't set, use the other one or wait for GPS.
-            if (pickupLat == null || pickupLat == 0.0) {
-                // If navigating to destination, maybe "pickup" is where the car is now?
-                // For simplicity, let's trigger calculateRoute if we have BOTH.
-            }
-            
             isFullscreenMap = true
             currentScreen = CustomerScreen.MainMap
             
+            // If pickupLat (current location) is already known, calculate route immediately
             if (pickupLat != null && pickupLat != 0.0) {
                 calculateRoute()
+            } else {
+                // MainMapContent is always active (isActive=true), so it will fill pickupLat shortly.
+                // We'll calculate route as soon as it arrives via LaunchedEffect in calculateRoute.
+                isLoading = true
             }
+        } else {
+            // No destination set yet. Switch to map and open search.
+            isFullscreenMap = false
+            currentScreen = CustomerScreen.MainMap
+            isSearchMode = true
         }
     }
 

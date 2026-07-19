@@ -235,12 +235,22 @@ class OrderRepository {
             val url = "https://router.project-osrm.org/route/v1/driving/" +
                     "${request.start.lng},${request.start.lat};" +
                     "${request.end.lng},${request.end.lat}" +
-                    "?overview=full&geometries=geojson"
+                    "?overview=full&geometries=geojson&steps=true"
             
             val osrmResponse = NetworkClient.osmService.getRoute(url)
             
             if (osrmResponse.code == "Ok" && osrmResponse.routes.isNotEmpty()) {
                 val route = osrmResponse.routes[0]
+                val instructions = route.legs?.flatMap { leg ->
+                    leg.steps?.map { step ->
+                        RouteInstruction(
+                            text = step.maneuver.instruction,
+                            distance = step.distance,
+                            point = step.maneuver.location
+                        )
+                    } ?: emptyList()
+                }
+
                 val response = RouteResponse(
                     fromCache = false,
                     routeCoords = route.geometry.coordinates,
@@ -251,7 +261,8 @@ class OrderRepository {
                     waypoints = route.geometry.coordinates.size,
                     computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
                         timeZone = TimeZone.getTimeZone("UTC")
-                    }.format(Date())
+                    }.format(Date()),
+                    instructions = instructions
                 )
                 return@withContext Result.success(response)
             }
@@ -277,6 +288,14 @@ class OrderRepository {
                         leg.points?.map { listOf(it.lon ?: 0.0, it.lat ?: 0.0) } ?: emptyList()
                     } ?: emptyList()
 
+                    val instructions = route.guidance?.instructions?.map {
+                        RouteInstruction(
+                            text = it.message ?: "",
+                            distance = it.routeOffsetInMeters?.toDouble() ?: 0.0,
+                            point = listOf(it.point?.lon ?: 0.0, it.point?.lat ?: 0.0)
+                        )
+                    }
+
                     val response = RouteResponse(
                         fromCache = false,
                         routeCoords = coords,
@@ -287,7 +306,8 @@ class OrderRepository {
                         waypoints = coords.size,
                         computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
                             timeZone = TimeZone.getTimeZone("UTC")
-                        }.format(Date())
+                        }.format(Date()),
+                        instructions = instructions
                     )
                     return@withContext Result.success(response)
                 }

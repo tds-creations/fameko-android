@@ -585,6 +585,11 @@ fun MainMapContent(
     val dropOffFocusRequester = remember { FocusRequester() }
 
     val voiceCallHandler = remember { VoiceCallHandler { data -> viewModel.sendAudioData(data) } }
+    val voiceNavManager = remember { com.example.famekodriver.core.utils.VoiceNavigationManager(context) }
+
+    DisposableEffect(voiceNavManager) {
+        onDispose { voiceNavManager.shutdown() }
+    }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     
@@ -622,7 +627,7 @@ fun MainMapContent(
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var hasCentredOnLocation by remember { mutableStateOf(false) }
 
-    LaunchedEffect(hasLocationPermission, viewModel.pickupLat, viewModel.pickupLng, isActive, mapLibreMap) {
+    LaunchedEffect(hasLocationPermission, viewModel.pickupLat, viewModel.pickupLng, isActive, mapLibreMap, viewModel.isFullscreenMap) {
         while (isActive) {
             if (hasLocationPermission) {
                 val targetLat = viewModel.pickupLat
@@ -647,6 +652,16 @@ fun MainMapContent(
                                 }
                             }
 
+                            if (viewModel.isFullscreenMap && viewModel.polylinePoints.isNotEmpty()) {
+                                voiceNavManager.updateProgress(
+                                    currentLat = it.latitude,
+                                    currentLng = it.longitude,
+                                    route = viewModel.polylinePoints.map { p -> p.latitude to p.longitude },
+                                    etaMin = viewModel.durationMin,
+                                    distanceKm = viewModel.distanceKm
+                                )
+                            }
+
                             if (!hasCentredOnLocation && mapLibreMap != null) {
                                 mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
                                 hasCentredOnLocation = true
@@ -655,7 +670,7 @@ fun MainMapContent(
                     }
                 }
             }
-            delay(5.seconds)
+            delay(if (viewModel.isFullscreenMap) 2.seconds else 5.seconds)
         }
     }
 
@@ -734,7 +749,7 @@ fun MainMapContent(
         }
     }
 
-    LaunchedEffect(mapLibreMap, hasLocationPermission) {
+    LaunchedEffect(mapLibreMap, hasLocationPermission, viewModel.isFullscreenMap) {
         val map = mapLibreMap ?: return@LaunchedEffect
         if (hasLocationPermission) {
             map.getStyle { style ->
@@ -745,10 +760,28 @@ fun MainMapContent(
                     )
                 }
                 locationComponent.isLocationComponentEnabled = true
-                locationComponent.renderMode = RenderMode.COMPASS
+                
+                if (viewModel.isFullscreenMap) {
+                    locationComponent.cameraMode = CameraMode.TRACKING_GPS
+                    locationComponent.renderMode = RenderMode.GPS
+                } else {
+                    locationComponent.cameraMode = CameraMode.NONE
+                    locationComponent.renderMode = RenderMode.COMPASS
+                }
             }
         } else {
             map.locationComponent.isLocationComponentEnabled = false
+        }
+    }
+
+    LaunchedEffect(viewModel.isFullscreenMap) {
+        if (viewModel.isFullscreenMap) {
+            if (viewModel.dropOffLocation.isNotEmpty()) {
+                voiceNavManager.announceTripStart(viewModel.dropOffLocation)
+            }
+            voiceNavManager.setEnabled(true)
+        } else {
+            voiceNavManager.setEnabled(false)
         }
     }
 
@@ -1236,9 +1269,13 @@ fun MainMapContent(
                             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Navigation, null, tint = BoltGreen, modifier = Modifier.size(32.dp))
                                 Spacer(Modifier.width(16.dp))
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text("Navigating to", fontSize = 12.sp, color = Color.Gray)
                                     Text(viewModel.dropOffLocation, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("${viewModel.durationMin.toInt()} min", fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltGreen)
+                                    Text("ETA", fontSize = 10.sp, color = Color.Gray)
                                 }
                             }
                         }

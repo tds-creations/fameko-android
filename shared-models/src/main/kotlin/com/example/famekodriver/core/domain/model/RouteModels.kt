@@ -22,5 +22,12 @@ data class RouteResponse(
     @SerializedName("vehicle_type") val vehicleType: String,
     @SerializedName("route_type") val routeType: String,
     val waypoints: Int,
-    @SerializedName("computed_at") val computedAt: String
+    @SerializedName("computed_at") val computedAt: String,
+    val instructions: List<RouteInstruction>? = null
+)
+
+data class RouteInstruction(
+    val text: String,
+    val distance: Double, // meters until this step
+    val point: List<Double> // [lng, lat]
 )

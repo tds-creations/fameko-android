@@ -40,7 +40,20 @@ data class TomTomRoutingResponse(
 
 data class TomTomRoute(
     val summary: TomTomSummary?,
-    val legs: List<TomTomLeg>? = emptyList()
+    val legs: List<TomTomLeg>? = emptyList(),
+    val guidance: TomTomGuidance? = null
+)
+
+data class TomTomGuidance(
+    val instructions: List<TomTomInstruction>? = emptyList()
+)
+
+data class TomTomInstruction(
+    val point: TomTomPosition?,
+    val instructionType: String?,
+    val message: String?,
+    val pointIndex: Int?,
+    val routeOffsetInMeters: Int?
 )
 
 data class TomTomSummary(

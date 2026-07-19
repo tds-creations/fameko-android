@@ -161,11 +161,11 @@ fun RentalDetailsScreen(
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = if (isSelfDrive) AppBlue else AppBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = AppBlue)
                         ) {
                             Icon(if (isSelfDrive) Icons.Default.Navigation else Icons.Default.Map, null)
                             Spacer(Modifier.width(12.dp))
-                            Text(if (isSelfDrive) "Start Navigation" else "View on Maps", fontWeight = FontWeight.Bold)
+                            Text("Navigate on Map", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
