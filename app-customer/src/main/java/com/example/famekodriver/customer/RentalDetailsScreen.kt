@@ -41,7 +41,8 @@ private val AppBlue = FamekoBlue
 fun RentalDetailsScreen(
     rental: Map<String, Any>,
     onBack: () -> Unit,
-    onNavigateToMainMap: () -> Unit
+    onNavigateToMainMap: () -> Unit,
+    onStartNavigation: (Map<String, Any>) -> Unit
 ) {
     val context = LocalContext.current
     val repository = remember { DriverRepository.getInstance() }
@@ -156,39 +157,7 @@ fun RentalDetailsScreen(
                                     }
                                 }
 
-                                val lat = currentRental["destination_lat"] as? Double
-                                val lng = currentRental["destination_lng"] as? Double
-                                val pLat = currentRental["pickup_lat"] as? Double
-                                val pLng = currentRental["pickup_lng"] as? Double
-                                
-                                // Target logic: 
-                                // If not unlocked -> go to pickup location
-                                // If unlocked -> go to destination
-                                val targetLat = if (isUnlocked) lat else pLat
-                                val targetLng = if (isUnlocked) lng else pLng
-                                val targetAddress = if (isUnlocked) currentRental["destination_location"] else currentRental["pickup_location"]
-
-                                if (targetLat != null && targetLng != null && targetLat != 0.0) {
-                                    val gmmIntentUri = Uri.parse("google.navigation:q=$targetLat,$targetLng")
-                                    val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                                    mapIntent.setPackage("com.google.android.apps.maps")
-                                    try {
-                                        context.startActivity(mapIntent)
-                                    } catch (e: Exception) {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
-                                    }
-                                } else if (!targetAddress?.toString().isNullOrBlank() && targetAddress != "Not set") {
-                                    val gmmIntentUri = Uri.parse("google.navigation:q=${Uri.encode(targetAddress.toString())}")
-                                    val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                                    mapIntent.setPackage("com.google.android.apps.maps")
-                                    try {
-                                        context.startActivity(mapIntent)
-                                    } catch (e: Exception) {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
-                                    }
-                                } else {
-                                    onNavigateToMainMap()
-                                }
+                                onStartNavigation(currentRental)
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),

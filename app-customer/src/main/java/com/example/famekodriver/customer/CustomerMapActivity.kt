@@ -423,7 +423,8 @@ fun CustomerMapScreen() {
                     RentalDetailsScreen(
                         rental = screen.rental,
                         onBack = { mapViewModel.navigateTo(CustomerScreen.Rentals) },
-                        onNavigateToMainMap = { mapViewModel.navigateTo(CustomerScreen.MainMap) }
+                        onNavigateToMainMap = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
+                        onStartNavigation = { rental -> mapViewModel.startNavigationForRental(rental) }
                     )
                 }
                 CustomerScreen.RideHistory -> {
@@ -651,6 +652,7 @@ fun MainMapContent(
 
     BackHandler(enabled = isBackHandlerEnabled) {
         when {
+            viewModel.isFullscreenMap -> { viewModel.isFullscreenMap = false; viewModel.polylinePoints = emptyList() }
             viewModel.isSearchMode -> { viewModel.isSearchMode = false; focusManager.clearFocus() }
             viewModel.currentOrderId != null -> {
                 viewModel.showCancelConfirmation = true
@@ -958,7 +960,8 @@ fun MainMapContent(
 
     BottomSheetScaffold(
         scaffoldState = sheetScaffoldState,
-            sheetPeekHeight = if (currentSheetState == CustomerSheetState.LANDING) 140.dp
+            sheetPeekHeight = if (viewModel.isFullscreenMap) 0.dp
+                             else if (currentSheetState == CustomerSheetState.LANDING) 140.dp
                              else if (currentSheetState == CustomerSheetState.IDLE) 120.dp
                              else if (viewModel.currentOrderId != null || viewModel.activeRental != null || currentSheetState == CustomerSheetState.SELECTING_SERVICE) 110.dp
                              else 0.dp,
@@ -1196,7 +1199,6 @@ fun MainMapContent(
                                     }
                                 }
 
-                                // Clear focus from input fields when the map is tapped
                                 map.addOnMapClickListener {
                                     focusManager.clearFocus()
                                     false
@@ -1206,8 +1208,42 @@ fun MainMapContent(
                     }
                 )
 
+                if (viewModel.isFullscreenMap) {
+                    Box(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(16.dp)) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 4.dp,
+                            modifier = Modifier.size(48.dp).clickable { 
+                                viewModel.isFullscreenMap = false
+                                viewModel.polylinePoints = emptyList()
+                            }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = BoltDark)
+                            }
+                        }
+                        
+                        Card(
+                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.cardElevation(8.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Navigation, null, tint = BoltGreen, modifier = Modifier.size(32.dp))
+                                Spacer(Modifier.width(16.dp))
+                                Column {
+                                    Text("Navigating to", fontSize = 12.sp, color = Color.Gray)
+                                    Text(viewModel.dropOffLocation, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Immersive Floating Search Bar & Controls
-                if (viewModel.currentOrderId == null && viewModel.activeRental == null && currentSheetState != CustomerSheetState.LANDING) {
+                if (viewModel.currentOrderId == null && viewModel.activeRental == null && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1263,7 +1299,7 @@ fun MainMapContent(
                 }
 
                 // Map Utility Buttons (Recenter, Zoom)
-                if (currentSheetState == CustomerSheetState.IDLE || currentSheetState == CustomerSheetState.LANDING || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS) {
+                if (!viewModel.isFullscreenMap && (currentSheetState == CustomerSheetState.IDLE || currentSheetState == CustomerSheetState.LANDING || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS)) {
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)

@@ -81,6 +81,7 @@ class CustomerMapViewModel(
     var isServiceModeSelected by mutableStateOf(true)
     var isSearchMode by mutableStateOf(false)
     var activeRental by mutableStateOf<Map<String, Any>?>(null)
+    var isFullscreenMap by mutableStateOf(false)
     var customerProfile by mutableStateOf<Map<String, Any>?>(null)
     
     val savedPlaces: StateFlow<List<SavedPlace>> = savedPlaceRepository.savedPlaces
@@ -1002,6 +1003,39 @@ class CustomerMapViewModel(
         rideEstimates.find { it.serviceId == type }?.let {
             estimatedFare = it.fare
             pickupEtaMin = it.pickupEtaMin.toDouble()
+        }
+    }
+
+    fun startNavigationForRental(rental: Map<String, Any>) {
+        val isUnlocked = rental["is_unlocked"] == true || rental["is_unlocked"] == "true"
+        val dLat = rental["destination_lat"] as? Double
+        val dLng = rental["destination_lng"] as? Double
+        val pLat = rental["pickup_lat"] as? Double
+        val pLng = rental["pickup_lng"] as? Double
+
+        val targetLat = if (isUnlocked) dLat else pLat
+        val targetLng = if (isUnlocked) dLng else pLng
+        val targetLabel = if (isUnlocked) (rental["destination_location"]?.toString() ?: "Destination") else (rental["pickup_location"]?.toString() ?: "Pickup")
+
+        if (targetLat != null && targetLng != null && targetLat != 0.0) {
+            dropOffLat = targetLat
+            dropOffLng = targetLng
+            dropOffLocation = targetLabel
+            
+            // For rentals, we usually start from current location if possible, 
+            // but for route calculation we need a valid pickupLat.
+            // If current location isn't set, use the other one or wait for GPS.
+            if (pickupLat == null || pickupLat == 0.0) {
+                // If navigating to destination, maybe "pickup" is where the car is now?
+                // For simplicity, let's trigger calculateRoute if we have BOTH.
+            }
+            
+            isFullscreenMap = true
+            currentScreen = CustomerScreen.MainMap
+            
+            if (pickupLat != null && pickupLat != 0.0) {
+                calculateRoute()
+            }
         }
     }
 
