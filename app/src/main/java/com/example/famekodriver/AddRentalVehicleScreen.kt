@@ -162,24 +162,27 @@ fun AddRentalVehicleScreen(
                         }
 
                         item {
-                            Box {
+                            ExposedDropdownMenuBox(
+                                expanded = brandExpanded,
+                                onExpandedChange = { brandExpanded = !brandExpanded },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 OutlinedTextField(
                                     value = selectedBrand,
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text("Vehicle Brand") },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.menuAnchor().fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     trailingIcon = {
-                                        IconButton(onClick = { brandExpanded = true }) {
-                                            Icon(Icons.Default.ArrowDropDown, null)
-                                        }
-                                    }
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = brandExpanded)
+                                    },
+                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                                 )
-                                DropdownMenu(
+                                ExposedDropdownMenu(
                                     expanded = brandExpanded,
                                     onDismissRequest = { brandExpanded = false },
-                                    modifier = Modifier.fillMaxWidth(0.9f)
+                                    modifier = Modifier.background(Color.White)
                                 ) {
                                     vehicleBrands.forEach { brand ->
                                         DropdownMenuItem(
@@ -187,7 +190,8 @@ fun AddRentalVehicleScreen(
                                             onClick = {
                                                 selectedBrand = brand
                                                 brandExpanded = false
-                                            }
+                                            },
+                                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                                         )
                                     }
                                 }
@@ -196,23 +200,27 @@ fun AddRentalVehicleScreen(
 
                         item {
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Box(modifier = Modifier.weight(1f)) {
+                                ExposedDropdownMenuBox(
+                                    expanded = yearExpanded,
+                                    onExpandedChange = { yearExpanded = !yearExpanded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
                                     OutlinedTextField(
                                         value = selectedModelYear,
                                         onValueChange = {},
                                         readOnly = true,
                                         label = { Text("Model Year") },
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
                                         shape = RoundedCornerShape(12.dp),
                                         trailingIcon = {
-                                            IconButton(onClick = { yearExpanded = true }) {
-                                                Icon(Icons.Default.ArrowDropDown, null)
-                                            }
-                                        }
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
+                                        },
+                                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                                     )
-                                    DropdownMenu(
+                                    ExposedDropdownMenu(
                                         expanded = yearExpanded,
-                                        onDismissRequest = { yearExpanded = false }
+                                        onDismissRequest = { yearExpanded = false },
+                                        modifier = Modifier.background(Color.White)
                                     ) {
                                         years.forEach { year ->
                                             DropdownMenuItem(
@@ -220,29 +228,34 @@ fun AddRentalVehicleScreen(
                                                 onClick = {
                                                     selectedModelYear = year
                                                     yearExpanded = false
-                                                }
+                                                },
+                                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                                             )
                                         }
                                     }
                                 }
-                                
-                                Box(modifier = Modifier.weight(1.2f)) {
+
+                                ExposedDropdownMenuBox(
+                                    expanded = typeExpanded,
+                                    onExpandedChange = { typeExpanded = !typeExpanded },
+                                    modifier = Modifier.weight(1.2f)
+                                ) {
                                     OutlinedTextField(
                                         value = selectedType,
                                         onValueChange = {},
                                         readOnly = true,
                                         label = { Text("Vehicle Type") },
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
                                         shape = RoundedCornerShape(12.dp),
                                         trailingIcon = {
-                                            IconButton(onClick = { typeExpanded = true }) {
-                                                Icon(Icons.Default.ArrowDropDown, null)
-                                            }
-                                        }
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded)
+                                        },
+                                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                                     )
-                                    DropdownMenu(
+                                    ExposedDropdownMenu(
                                         expanded = typeExpanded,
-                                        onDismissRequest = { typeExpanded = false }
+                                        onDismissRequest = { typeExpanded = false },
+                                        modifier = Modifier.background(Color.White)
                                     ) {
                                         vehicleTypes.forEach { type ->
                                             DropdownMenuItem(
@@ -250,7 +263,117 @@ fun AddRentalVehicleScreen(
                                                 onClick = {
                                                     selectedType = type
                                                     typeExpanded = false
-                                                }
+                                                },
+                                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                ExposedDropdownMenuBox(
+                                    expanded = transExpanded,
+                                    onExpandedChange = { transExpanded = !transExpanded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    OutlinedTextField(
+                                        value = selectedTransmission,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Transmission") },
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = transExpanded)
+                                        },
+                                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = transExpanded,
+                                        onDismissRequest = { transExpanded = false },
+                                        modifier = Modifier.background(Color.White)
+                                    ) {
+                                        transmissions.forEach { trans ->
+                                            DropdownMenuItem(
+                                                text = { Text(trans) },
+                                                onClick = {
+                                                    selectedTransmission = trans
+                                                    transExpanded = false
+                                                },
+                                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                            )
+                                        }
+                                    }
+                                }
+
+                                ExposedDropdownMenuBox(
+                                    expanded = fuelExpanded,
+                                    onExpandedChange = { fuelExpanded = !fuelExpanded },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    OutlinedTextField(
+                                        value = selectedFuelType,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Fuel Type") },
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = fuelExpanded)
+                                        },
+                                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = fuelExpanded,
+                                        onDismissRequest = { fuelExpanded = false },
+                                        modifier = Modifier.background(Color.White)
+                                    ) {
+                                        fuelTypes.forEach { fuel ->
+                                            DropdownMenuItem(
+                                                text = { Text(fuel) },
+                                                onClick = {
+                                                    selectedFuelType = fuel
+                                                    fuelExpanded = false
+                                                },
+                                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                            )
+                                        }
+                                    }
+                                }
+
+                                ExposedDropdownMenuBox(
+                                    expanded = seatsExpanded,
+                                    onExpandedChange = { seatsExpanded = !seatsExpanded },
+                                    modifier = Modifier.weight(0.8f)
+                                ) {
+                                    OutlinedTextField(
+                                        value = selectedSeats,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Seats") },
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        trailingIcon = {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = seatsExpanded)
+                                        },
+                                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = seatsExpanded,
+                                        onDismissRequest = { seatsExpanded = false },
+                                        modifier = Modifier.background(Color.White)
+                                    ) {
+                                        seatOptions.forEach { seats ->
+                                            DropdownMenuItem(
+                                                text = { Text(seats) },
+                                                onClick = {
+                                                    selectedSeats = seats
+                                                    seatsExpanded = false
+                                                },
+                                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                                             )
                                         }
                                     }
