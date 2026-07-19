@@ -82,6 +82,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
+                    android:id="@+id/tvVehicleTypeLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -90,6 +91,7 @@
                     android:textStyle="bold" />
 
                 <HorizontalScrollView
+                    android:id="@+id/hsvVehicleTypes"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"

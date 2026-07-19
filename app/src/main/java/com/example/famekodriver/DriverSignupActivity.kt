@@ -170,6 +170,8 @@ class DriverSignupActivity : AppCompatActivity() {
         val tilCompanyName = findViewById<View>(R.id.tilCompanyName)
         val tilRegNum = findViewById<TextInputLayout>(R.id.tilRegistrationNumber)
         val tilLicenseNum = findViewById<TextInputLayout>(R.id.tilDriversLicense)
+        val tvVehicleTypeLabel = findViewById<View>(R.id.tvVehicleTypeLabel)
+        val hsvVehicleTypes = findViewById<View>(R.id.hsvVehicleTypes)
         
         toggleRole.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
@@ -180,6 +182,8 @@ class DriverSignupActivity : AppCompatActivity() {
                         tilLicenseNum.visibility = View.VISIBLE
                         tilLicenseNum.hint = "Driver's License Number"
                         tilLicenseNum.helperText = "Enter your valid DVLA license number"
+                        tvVehicleTypeLabel.visibility = View.VISIBLE
+                        hsvVehicleTypes.visibility = View.VISIBLE
                     }
                     R.id.btnRoleOwner -> {
                         tilCompanyName.visibility = View.VISIBLE
@@ -187,6 +191,8 @@ class DriverSignupActivity : AppCompatActivity() {
                         tilRegNum.hint = "Business Registration Number"
                         tilRegNum.helperText = "Enter your RGD business number"
                         tilLicenseNum.visibility = View.GONE
+                        tvVehicleTypeLabel.visibility = View.GONE
+                        hsvVehicleTypes.visibility = View.GONE
                     }
                     R.id.btnRoleBoth -> {
                         tilCompanyName.visibility = View.VISIBLE
@@ -196,6 +202,8 @@ class DriverSignupActivity : AppCompatActivity() {
                         tilLicenseNum.visibility = View.VISIBLE
                         tilLicenseNum.hint = "Driver's License Number"
                         tilLicenseNum.helperText = "Enter your valid DVLA license number"
+                        tvVehicleTypeLabel.visibility = View.VISIBLE
+                        hsvVehicleTypes.visibility = View.VISIBLE
                     }
                 }
             }
@@ -280,7 +288,7 @@ class DriverSignupActivity : AppCompatActivity() {
                 password = password,
                 licenseNumber = licenseNum, // Assign driver's license number
                 region = region,
-                vehicleType = selectedVehicleType,
+                vehicleType = if (userRole == "OWNER") "Fleet" else selectedVehicleType,
                 serviceType = "BOTH",    
                 vehicleNumber = licenseNum, // Assign it here too
                 emergencyContact1 = emergency1,
