@@ -51,6 +51,21 @@ fun RentalDetailsScreen(
     var isEditing by remember { mutableStateOf(false) }
     var isUpdating by remember { mutableStateOf(false) }
 
+    val rentalId = (currentRental["id"] as? Number)?.toInt() ?: 0
+
+    LaunchedEffect(rentalId) {
+        repository.events.collect { event ->
+            if (event is com.example.famekodriver.core.domain.model.FamekoEvent.Unknown && event.type == "RENTAL_STATUS_UPDATED") {
+                val updatedId = (event.data["rentalId"] as? Number)?.toInt()
+                if (updatedId == rentalId) {
+                    repository.getRentalById(rentalId).onSuccess { updated ->
+                        if (updated != null) currentRental = updated
+                    }
+                }
+            }
+        }
+    }
+
     // Editable fields
     var destinationLocation by remember { mutableStateOf(currentRental["destination_location"]?.toString() ?: "") }
     var stops by remember { mutableStateOf(currentRental["stops"]?.toString()?.split("|")?.filter { it.isNotBlank() } ?: emptyList()) }

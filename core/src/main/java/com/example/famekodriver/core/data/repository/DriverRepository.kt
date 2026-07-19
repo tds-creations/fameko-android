@@ -1087,6 +1087,19 @@ class DriverRepository private constructor() {
         }
     }
 
+    suspend fun getRentalById(id: Int): Result<Map<String, Any>?> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getRentalById(id)
+            if (response["success"] == true) {
+                Result.success(response["rental"] as? Map<String, Any>)
+            } else {
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updateRentalLocation(vehicleId: Int, lat: Double, lng: Double): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.updateRentalLocation(vehicleId, lat, lng)

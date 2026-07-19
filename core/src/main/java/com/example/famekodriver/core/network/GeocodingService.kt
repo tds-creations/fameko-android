@@ -312,6 +312,11 @@ interface FamekoApiService {
     @POST("rentals/book")
     suspend fun bookRental(@Body request: RentalBookRequest): Map<String, Any>
 
+    @GET("rentals/{id}")
+    suspend fun getRentalById(
+        @Path("id") id: Int
+    ): Map<String, Any>
+
     @GET("rentals/active/{customerId}")
     suspend fun getActiveRental(@Path("customerId") customerId: Int): Map<String, Any>
 

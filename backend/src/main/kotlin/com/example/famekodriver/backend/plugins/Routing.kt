@@ -1337,6 +1337,15 @@ fun Application.configureRouting() {
                 val vehicles = DatabaseRepository.getAllFleetVehicles()
                 call.respond(vehicles)
             }
+            get("/{id}") {
+                val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val rental = DatabaseRepository.getRentalById(id)
+                if (rental != null) {
+                    call.respond(mapOf("success" to true, "rental" to rental))
+                } else {
+                    call.respond(mapOf("success" to false))
+                }
+            }
             get("/rates") {
                 call.respond(DatabaseRepository.getRentalRates())
             }

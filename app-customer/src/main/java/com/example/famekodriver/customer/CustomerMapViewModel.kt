@@ -366,14 +366,28 @@ class CustomerMapViewModel(
             // Using a generic handle for extra data from backend
             else -> {
                 if (event is FamekoEvent.Unknown) {
-                    val type = event.data["type"]?.toString()
+                    val type = event.type
                     if (type == "ORDER_RETRY") {
                         retryAttempt = (event.data["attempt"] as? Double)?.toInt() ?: 0
                         maxRetryAttempts = (event.data["maxAttempts"] as? Double)?.toInt() ?: 3
                         searchRadiusKm = (event.data["radius"] as? Double) ?: searchRadiusKm
                         searchMessage = event.data["message"]?.toString() ?: searchMessage
+                    } else if (type == "RENTAL_STATUS_UPDATED") {
+                        val status = event.data["status"]?.toString()
+                        if (status == "ACTIVE" || status == "COMPLETED" || status == "REJECTED") {
+                            refreshActiveRental()
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    fun refreshActiveRental() {
+        viewModelScope.launch {
+            val customerId = sessionManager.getCustomerId() ?: return@launch
+            rentalRepository.getActiveRental(customerId.toInt()).onSuccess { 
+                updateActiveRentalState(it)
             }
         }
     }
