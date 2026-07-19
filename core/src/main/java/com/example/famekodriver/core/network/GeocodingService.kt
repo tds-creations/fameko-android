@@ -406,7 +406,8 @@ interface FamekoApiService {
 
     @GET("fleet/vehicles")
     suspend fun getFleetVehicles(
-        @Query("owner_id") ownerId: Int
+        @Query("owner_id") ownerId: Int,
+        @Query("role") role: String? = null
     ): List<Map<String, Any>>
 
     @FormUrlEncoded
@@ -426,7 +427,8 @@ interface FamekoApiService {
         @Field("lng") lng: Double? = null,
         @Field("seats") seats: Int? = null,
         @Field("transmission") transmission: String? = null,
-        @Field("fuel_type") fuelType: String? = null
+        @Field("fuel_type") fuelType: String? = null,
+        @Field("owner_role") ownerRole: String? = null
     ): Map<String, Any>
 
     @FormUrlEncoded

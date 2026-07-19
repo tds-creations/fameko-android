@@ -2299,20 +2299,41 @@ object DatabaseRepository {
         }
     }
 
-    fun getFleetVehicles(ownerId: Int): List<Map<String, Any>> {
+    fun getFleetVehicles(ownerId: Int, role: String? = null): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = """
-                SELECT * FROM rental_vehicles 
-                WHERE owner_id = ? 
-                   OR fleet_owner_id = ? 
-                   OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
-                ORDER BY id DESC
-            """.trimIndent()
+            val sql = if (role?.uppercase() == "OWNER") {
+                "SELECT * FROM rental_vehicles WHERE fleet_owner_id = ? ORDER BY id DESC"
+            } else if (role?.uppercase() == "DRIVER") {
+                """
+                    SELECT * FROM rental_vehicles 
+                    WHERE owner_id = ? 
+                       OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
+                    ORDER BY id DESC
+                """.trimIndent()
+            } else {
+                // Backward compatibility / ambiguous role
+                """
+                    SELECT * FROM rental_vehicles 
+                    WHERE owner_id = ? 
+                       OR fleet_owner_id = ? 
+                       OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
+                    ORDER BY id DESC
+                """.trimIndent()
+            }
+
             val stmt = conn.prepareStatement(sql)
-            stmt.setInt(1, ownerId)
-            stmt.setInt(2, ownerId)
-            stmt.setInt(3, ownerId)
+            if (role?.uppercase() == "OWNER") {
+                stmt.setInt(1, ownerId)
+            } else if (role?.uppercase() == "DRIVER") {
+                stmt.setInt(1, ownerId)
+                stmt.setInt(2, ownerId)
+            } else {
+                stmt.setInt(1, ownerId)
+                stmt.setInt(2, ownerId)
+                stmt.setInt(3, ownerId)
+            }
+
             val rs = stmt.executeQuery()
             while (rs.next()) {
                 list.add(mapOf(
@@ -2369,24 +2390,35 @@ object DatabaseRepository {
         ownerId: Int, name: String, model: String, type: String, number: String, rate: Double,
         description: String? = null, features: String? = null, imageUrls: String? = null,
         location: String? = null, lat: Double? = null, lng: Double? = null,
-        seats: Int? = 5, transmission: String? = "Automatic", fuelType: String? = "Petrol"
+        seats: Int? = 5, transmission: String? = "Automatic", fuelType: String? = "Petrol",
+        ownerRole: String? = null
     ) {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             var actualDriverId: Int? = null
             var actualFleetOwnerId: Int? = null
             
-            // 1. Check if ownerId is a driver
-            val driverRs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
-            if (driverRs.next()) {
-                actualDriverId = ownerId
-                actualFleetOwnerId = driverRs.getObject("fleet_owner_id") as? Int
-            }
+            val role = ownerRole?.uppercase()
             
-            // 2. If not found in drivers, or if we need to verify fleet_owners directly
-            if (actualFleetOwnerId == null) {
-                val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
-                if (ownerRs.next()) {
-                    actualFleetOwnerId = ownerId
+            if (role == "OWNER") {
+                actualFleetOwnerId = ownerId
+            } else if (role == "DRIVER") {
+                actualDriverId = ownerId
+                val rs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
+                if (rs.next()) {
+                    actualFleetOwnerId = rs.getObject("fleet_owner_id") as? Int
+                }
+            } else {
+                // Legacy / Ambiguous logic
+                val driverRs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
+                if (driverRs.next()) {
+                    actualDriverId = ownerId
+                    actualFleetOwnerId = driverRs.getObject("fleet_owner_id") as? Int
+                }
+                if (actualFleetOwnerId == null) {
+                    val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
+                    if (ownerRs.next()) {
+                        actualFleetOwnerId = ownerId
+                    }
                 }
             }
 

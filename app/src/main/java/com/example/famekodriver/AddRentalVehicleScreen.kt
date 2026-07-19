@@ -578,7 +578,8 @@ fun AddRentalVehicleScreen(
                                             imageUrls = finalImageUrls,
                                             seats = selectedSeats.replace("+", "").toIntOrNull() ?: 5,
                                             transmission = selectedTransmission,
-                                            fuelType = selectedFuelType
+                                            fuelType = selectedFuelType,
+                                            ownerRole = sessionManager.getUserRole()
                                         ).onSuccess {
                                             isUploading = false
                                             Toast.makeText(context, "Vehicle added successfully!", Toast.LENGTH_SHORT).show()

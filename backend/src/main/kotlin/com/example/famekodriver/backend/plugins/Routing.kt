@@ -1274,7 +1274,8 @@ fun Application.configureRouting() {
         route("/fleet") {
             get("/vehicles") {
                 val ownerId = call.parameters["owner_id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-                val vehicles = DatabaseRepository.getFleetVehicles(ownerId)
+                val role = call.parameters["role"]
+                val vehicles = DatabaseRepository.getFleetVehicles(ownerId, role)
                 call.respond(vehicles)
             }
             post("/add-vehicle") {
@@ -1296,7 +1297,8 @@ fun Application.configureRouting() {
                         lng = p["lng"]?.toDoubleOrNull(),
                         seats = p["seats"]?.toIntOrNull(),
                         transmission = p["transmission"],
-                        fuelType = p["fuel_type"]
+                        fuelType = p["fuel_type"],
+                        ownerRole = p["owner_role"]
                     )
                     call.respond(mapOf("success" to true))
                 } catch (e: Exception) {

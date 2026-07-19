@@ -33,6 +33,10 @@ fun FleetManagementScreen(
     onEditVehicle: (Map<String, Any>) -> Unit = {},
     viewModel: FleetManagementViewModel = viewModel()
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.loadVehicles()
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
