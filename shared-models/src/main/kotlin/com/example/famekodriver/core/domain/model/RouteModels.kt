@@ -5,6 +5,7 @@ import com.google.gson.annotations.SerializedName
 data class RouteRequest(
     val start: RouteLocation,
     val end: RouteLocation,
+    val stops: List<RouteLocation> = emptyList(),
     @SerializedName("vehicle_type") val vehicleType: String = "car",
     @SerializedName("route_type") val routeType: String = "fastest"
 )

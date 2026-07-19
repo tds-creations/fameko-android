@@ -658,8 +658,8 @@ fun MainMapContent(
                                     viewModel.pickupLat = it.latitude
                                     viewModel.pickupLng = it.longitude
                                     
-                                    // Auto-calculate route if waiting for navigation to start
-                                    if (viewModel.isFullscreenMap && viewModel.dropOffLat != null) {
+                                    // Auto-calculate route if we have a destination set (e.g. active rental or returning from search)
+                                    if (viewModel.dropOffLat != null && viewModel.polylinePoints.isEmpty()) {
                                         viewModel.calculateRoute()
                                     }
                                 }
@@ -1153,12 +1153,8 @@ fun MainMapContent(
                                         onStopChange = { idx, value -> 
                                             viewModel.updateStopLocation(idx, value)
                                         },
-                                        onAddStop = { if (viewModel.stops.size < 5) viewModel.stops = viewModel.stops + "" },
-                                        onRemoveStop = { idx -> 
-                                            val newStops = viewModel.stops.toMutableList()
-                                            newStops.removeAt(idx)
-                                            viewModel.stops = newStops
-                                        },
+                                        onAddStop = { viewModel.addStop() },
+                                        onRemoveStop = { idx -> viewModel.removeStop(idx) },
                                         onPickupFocus = { if (it) { isPickupFocused = true; isDropOffFocused = false; viewModel.focusedStopIndex = -1 } }, 
                                         onDropOffFocus = { if (it) { isPickupFocused = false; isDropOffFocused = true; viewModel.focusedStopIndex = -1 } },
                                         onStopFocus = { idx, focused -> if (focused) { isPickupFocused = false; isDropOffFocused = false; viewModel.focusedStopIndex = idx } },
@@ -2842,9 +2838,7 @@ fun RouteSelectionScreen(
                                 singleLine = true
                             )
                             IconButton(onClick = {
-                                val newStops = viewModel.stops.toMutableList()
-                                newStops.removeAt(index)
-                                viewModel.stops = newStops
+                                viewModel.removeStop(index)
                             }, modifier = Modifier.size(24.dp)) {
                                 Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
                             }
@@ -2921,7 +2915,7 @@ fun RouteSelectionScreen(
 
                 // Right Action Icons
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { if (viewModel.stops.size < 5) viewModel.stops += "" }, modifier = Modifier.size(24.dp)) {
+                    IconButton(onClick = { viewModel.addStop() }, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Default.Add, null, tint = BoltDark)
                     }
                     Spacer(modifier = Modifier.height(16.dp))

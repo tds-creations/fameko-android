@@ -50,6 +50,7 @@ class CustomerMapViewModel(
     var dropOffLat by mutableStateOf<Double?>(null)
     var dropOffLng by mutableStateOf<Double?>(null)
     var stops by mutableStateOf<List<String>>(emptyList())
+    var stopPoints by mutableStateOf<Map<Int, LatLng>>(emptyMap())
 
     var rentalPickupLocation by mutableStateOf("")
     var rentalPickupLat by mutableStateOf<Double?>(null)
@@ -488,8 +489,40 @@ class CustomerMapViewModel(
         if (newStops[index] == query) return
         newStops[index] = query
         stops = newStops
+        
+        // Clear point if text is edited manually
+        if (stopPoints.containsKey(index)) {
+            stopPoints = stopPoints.toMutableMap().apply { remove(index) }
+        }
+        
         focusedStopIndex = index
         fetchStopSuggestions(query)
+    }
+
+    fun addStop() {
+        if (stops.size < 5) {
+            stops = stops + ""
+        }
+    }
+
+    fun removeStop(index: Int) {
+        val newStops = stops.toMutableList()
+        newStops.removeAt(index)
+        stops = newStops
+        
+        // Shift stop points
+        val newPoints = mutableMapOf<Int, LatLng>()
+        stopPoints.forEach { (idx, latLng) ->
+            when {
+                idx < index -> newPoints[idx] = latLng
+                idx > index -> newPoints[idx - 1] = latLng
+            }
+        }
+        stopPoints = newPoints
+        
+        if (pickupLat != null && dropOffLat != null) {
+            calculateRoute()
+        }
     }
 
     private fun fetchStopSuggestions(query: String) {
@@ -666,6 +699,13 @@ class CustomerMapViewModel(
 
     fun selectStopSuggestion(index: Int, suggestion: LocationSuggestion) {
         isSelectingSuggestion = true
+        val lat = suggestion.latitude.toDoubleOrNull() ?: 0.0
+        val lng = suggestion.longitude.toDoubleOrNull() ?: 0.0
+        
+        if (lat != 0.0) {
+            stopPoints = stopPoints.toMutableMap().apply { put(index, LatLng(lat, lng)) }
+        }
+
         val selectedText = suggestion.name ?: suggestion.displayName.split(",").firstOrNull() ?: suggestion.displayName
         val newStops = stops.toMutableList()
         newStops[index] = selectedText
@@ -678,7 +718,8 @@ class CustomerMapViewModel(
             isSelectingSuggestion = false
         }
 
-        if (pickupLat != null && dropOffLat != null) {
+        val pLat = if (activeServiceMode == ServiceType.RENTAL) rentalPickupLat ?: pickupLat else pickupLat
+        if (pLat != null && dropOffLat != null) {
             calculateRoute()
         }
     }
@@ -698,15 +739,32 @@ class CustomerMapViewModel(
     }
 
     fun calculateRoute() {
-        val pLat = if (activeServiceMode == ServiceType.RENTAL) rentalPickupLat ?: pickupLat else pickupLat
-        val pLng = if (activeServiceMode == ServiceType.RENTAL) rentalPickupLng ?: pickupLng else pickupLng
+        val isUnlocked = activeRental?.let { it["is_unlocked"] == true || it["is_unlocked"] == "true" } ?: false
+        
+        val pLat = if (activeServiceMode == ServiceType.RENTAL) {
+            if (isUnlocked) pickupLat ?: rentalPickupLat else rentalPickupLat ?: pickupLat
+        } else {
+            pickupLat
+        }
+        
+        val pLng = if (activeServiceMode == ServiceType.RENTAL) {
+            if (isUnlocked) pickupLng ?: rentalPickupLng else rentalPickupLng ?: pickupLng
+        } else {
+            pickupLng
+        }
 
-        if (pLat == null || pLng == null || dropOffLat == null || dropOffLng == null || pLat == 0.0 || dropOffLat == 0.0) {
-            // Requirement: Use suggested locations only. 
-            // Do not attempt to resolve coordinates from raw text.
+        // Destination points are mandatory
+        if (dropOffLat == null || dropOffLng == null || dropOffLat == 0.0) {
             isLoading = false
             return
         }
+
+        // Pickup points are mandatory
+        if (pLat == null || pLng == null || pLat == 0.0) {
+            isLoading = false
+            return
+        }
+
         performRouteCalculation(pLat, pLng, dropOffLat!!, dropOffLng!!)
     }
 
@@ -728,9 +786,20 @@ class CustomerMapViewModel(
     private fun performRouteCalculation(pLat: Double, pLng: Double, dLat: Double, dLng: Double, isUpdate: Boolean = false) {
         if (!isUpdate) isLoading = true
         
+        val waypoints = stops.indices.mapNotNull { idx -> 
+            stopPoints[idx]?.let { RouteLocation(it.latitude, it.longitude) }
+        }
+
         routeJob?.cancel()
         routeJob = viewModelScope.launch {
-            orderRepository.calculateRoute(RouteRequest(RouteLocation(pLat, pLng), RouteLocation(dLat, dLng), "car"))
+            orderRepository.calculateRoute(
+                RouteRequest(
+                    start = RouteLocation(pLat, pLng), 
+                    end = RouteLocation(dLat, dLng), 
+                    stops = waypoints,
+                    vehicleType = "car"
+                )
+            )
                 .onSuccess { response ->
                     polylinePoints = response.routeCoords.map { LatLng(it[1], it[0]) }
                     instructions = response.instructions ?: emptyList()
@@ -1017,12 +1086,19 @@ class CustomerMapViewModel(
             isSearchMode = false
             activeServiceMode = ServiceType.RENTAL
             rentalPickupLocation = rental["pickup_location"]?.toString() ?: ""
-            rentalPickupLat = rental["pickup_lat"] as? Double
-            rentalPickupLng = rental["pickup_lng"] as? Double
+            rentalPickupLat = (rental["pickup_lat"] as? Number)?.toDouble()
+            rentalPickupLng = (rental["pickup_lng"] as? Number)?.toDouble()
             
             dropOffLocation = rental["destination_location"]?.toString() ?: ""
+            dropOffLat = (rental["destination_lat"] as? Number)?.toDouble()
+            dropOffLng = (rental["destination_lng"] as? Number)?.toDouble()
+            
             val stopsStr = rental["stops"]?.toString() ?: ""
             stops = if (stopsStr.isNotEmpty()) stopsStr.split("|") else emptyList()
+
+            if (dropOffLat != null && dropOffLat != 0.0) {
+                calculateRoute()
+            }
         }
     }
 

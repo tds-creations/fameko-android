@@ -232,9 +232,13 @@ class OrderRepository {
     suspend fun calculateRoute(request: RouteRequest): Result<RouteResponse> = withContext(Dispatchers.IO) {
         // Priority 1: OSRM
         try {
+            val points = mutableListOf<String>()
+            points.add("${request.start.lng},${request.start.lat}")
+            request.stops.forEach { points.add("${it.lng},${it.lat}") }
+            points.add("${request.end.lng},${request.end.lat}")
+
             val url = "https://router.project-osrm.org/route/v1/driving/" +
-                    "${request.start.lng},${request.start.lat};" +
-                    "${request.end.lng},${request.end.lat}" +
+                    points.joinToString(";") +
                     "?overview=full&geometries=geojson&steps=true"
             
             val osrmResponse = NetworkClient.osmService.getRoute(url)
@@ -273,7 +277,12 @@ class OrderRepository {
 
         // Priority 2: TomTom
         try {
-            val locations = "${request.start.lat},${request.start.lng}:${request.end.lat},${request.end.lng}"
+            val points = mutableListOf<String>()
+            points.add("${request.start.lat},${request.start.lng}")
+            request.stops.forEach { points.add("${it.lat},${it.lng}") }
+            points.add("${request.end.lat},${request.end.lng}")
+
+            val locations = points.joinToString(":")
             val tomTomResponse = NetworkClient.tomTomService.calculateRoute(
                 locations = locations,
                 apiKey = NetworkClient.TOMTOM_API_KEY
