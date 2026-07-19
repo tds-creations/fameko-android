@@ -40,7 +40,8 @@ private val AppBlue = FamekoBlue
 @Composable
 fun RentalsScreen(
     onBack: () -> Unit,
-    onNavigateToDetails: (Map<String, Any>) -> Unit
+    onNavigateToDetails: (Map<String, Any>) -> Unit,
+    onRebook: (Map<String, Any>) -> Unit
 ) {
     val context = LocalContext.current
     val repository = remember { DriverRepository.getInstance() }
@@ -146,7 +147,8 @@ fun RentalsScreen(
                         items(monthRentals) { rental ->
                             RentalHistoryCard(
                                 rental = rental,
-                                onClick = { onNavigateToDetails(rental) }
+                                onClick = { onNavigateToDetails(rental) },
+                                onRebook = { onRebook(rental) }
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = BoltLightGray, thickness = 0.5.dp)
                         }
@@ -155,7 +157,8 @@ fun RentalsScreen(
                     items(ongoingRentals) { rental ->
                         RentalHistoryCard(
                             rental = rental,
-                            onClick = { onNavigateToDetails(rental) }
+                            onClick = { onNavigateToDetails(rental) },
+                            onRebook = { onRebook(rental) }
                         )
                         Spacer(Modifier.height(8.dp))
                     }
@@ -229,7 +232,8 @@ fun EmptyRentalState(padding: PaddingValues, isOngoing: Boolean) {
 @Composable
 fun RentalHistoryCard(
     rental: Map<String, Any>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onRebook: () -> Unit
 ) {
     val context = LocalContext.current
     val status = rental["status"]?.toString() ?: "PENDING"
@@ -320,7 +324,7 @@ fun RentalHistoryCard(
                 }
             }
 
-            if ((paymentStatus == "PENDING" && checkoutUrl != null && status != "CANCELLED" && status != "REJECTED") || status == "COMPLETED") {
+            if ((paymentStatus == "PENDING" && checkoutUrl != null && status != "CANCELLED" && status != "REJECTED") || status == "COMPLETED" || status == "CANCELLED" || status == "REJECTED") {
                 Spacer(Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -340,9 +344,9 @@ fun RentalHistoryCard(
                         ) {
                             Text("Pay Now", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
-                    } else if (status == "COMPLETED") {
+                    } else if (status == "COMPLETED" || status == "CANCELLED" || status == "REJECTED") {
                         OutlinedButton(
-                            onClick = { /* Rebook logic */ },
+                            onClick = onRebook,
                             border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),

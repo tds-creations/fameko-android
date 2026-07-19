@@ -453,10 +453,10 @@ class CustomerMapViewModel(
     }
 
     fun updatePickupLocation(query: String) {
-        if (isSelectingSuggestion && query.isNotEmpty()) return
         if (activeServiceMode == ServiceType.RENTAL) {
             if (query == rentalPickupLocation) return
             rentalPickupLocation = query
+            pickupLocation = query // Keep search UI in sync
             rentalPickupLat = null
             rentalPickupLng = null
         } else {
@@ -471,7 +471,6 @@ class CustomerMapViewModel(
     }
 
     fun updateDropOffLocation(query: String) {
-        if (isSelectingSuggestion && query.isNotEmpty()) return
         if (query == dropOffLocation) return
         dropOffLocation = query
         dropOffLat = null

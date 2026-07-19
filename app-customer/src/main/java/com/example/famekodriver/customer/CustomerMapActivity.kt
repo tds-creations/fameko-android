@@ -416,7 +416,18 @@ fun CustomerMapScreen() {
                 CustomerScreen.Rentals -> {
                     RentalsScreen(
                         onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
-                        onNavigateToDetails = { rental -> mapViewModel.navigateTo(CustomerScreen.RentalDetails(rental)) }
+                        onNavigateToDetails = { rental -> mapViewModel.navigateTo(CustomerScreen.RentalDetails(rental)) },
+                        onRebook = { rental ->
+                            val vehicle = mapOf(
+                                "id" to (rental["vehicle_id"] ?: 1),
+                                "name" to (rental["vehicle_name"] ?: ""),
+                                "model" to (rental["vehicle_model"] ?: ""),
+                                "vehicle_type" to (rental["vehicle_type"] ?: ""),
+                                "image_urls" to (rental["vehicle_image"] ?: ""),
+                                "daily_rate" to (rental["daily_rate"] ?: 400.0) 
+                            )
+                            mapViewModel.navigateTo(CustomerScreen.RentalBooking(vehicle))
+                        }
                     )
                 }
                 is CustomerScreen.RentalDetails -> {
