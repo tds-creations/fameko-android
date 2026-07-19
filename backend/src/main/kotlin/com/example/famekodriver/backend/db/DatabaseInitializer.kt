@@ -473,13 +473,17 @@ object DatabaseInitializer {
             "CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id);",
             "CREATE TABLE IF NOT EXISTS fleet_owners (id SERIAL PRIMARY KEY, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT UNIQUE NOT NULL, password TEXT NOT NULL, company_name TEXT NOT NULL, registration_number TEXT, region TEXT, status TEXT DEFAULT 'PENDING', is_active BOOLEAN DEFAULT TRUE, date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS fcm_token TEXT;",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS profile_picture TEXT;",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS id_front_image TEXT;",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS id_back_image TEXT;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;",
             "ALTER TABLE rental_vehicles ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "CREATE INDEX IF NOT EXISTS idx_drivers_fleet_owner ON drivers(fleet_owner_id);",
             "CREATE INDEX IF NOT EXISTS idx_rental_vehicles_fleet_owner ON rental_vehicles(fleet_owner_id);",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
-            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;"
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;"
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 
