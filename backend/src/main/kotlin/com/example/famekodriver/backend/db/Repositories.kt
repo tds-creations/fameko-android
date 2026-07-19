@@ -2539,6 +2539,19 @@ object DatabaseRepository {
         }
     }
 
+    fun terminateFleetOwnerAccount(id: Int) {
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val rs = conn.prepareStatement("SELECT firebase_uid FROM fleet_owners WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+            if (rs.next()) {
+                val uid = rs.getString("firebase_uid")
+                if (!uid.isNullOrBlank()) {
+                    try { FirebaseAuth.getInstance().deleteUser(uid) } catch (e: Exception) { println("Firebase Delete Error: ${e.message}") }
+                }
+            }
+            conn.prepareStatement("DELETE FROM fleet_owners WHERE id = ?").apply { setInt(1, id); executeUpdate() }
+        }
+    }
+
     fun terminateCustomerAccount(id: Int) {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val rs = conn.prepareStatement("SELECT firebase_uid FROM customers WHERE id = ?").apply { setInt(1, id) }.executeQuery()

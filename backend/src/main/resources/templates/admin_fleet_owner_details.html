@@ -334,12 +334,23 @@
                             <form th:if="${status == 'PENDING'}" th:action="${'/admin/fleet-owner/reject/' + owner['id']}" method="post">
                                 <button type="submit" class="btn btn-reject"><i class="fas fa-xmark"></i> Reject</button>
                             </form>
+                            <form th:if="${status == 'SUSPENDED'}" th:action="${'/admin/fleet-owner/release/' + owner['id']}" method="post">
+                                <button type="submit" class="btn btn-approve"><i class="fas fa-unlock"></i> Release</button>
+                            </form>
                         </div>
 
                         <div th:if="${status == 'APPROVED'}" style="display:flex; gap:12px; align-items:center">
                             <form th:action="${'/admin/fleet-owner/suspend/' + owner['id']}" method="post">
                                 <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Fleet Owner</button>
                             </form>
+                        </div>
+
+                        <!-- TERMINATION -->
+                        <div style="margin-left: auto;">
+                            <button type="button" class="btn btn-reject" th:onclick="'confirmTerminate(' + ${owner['id']} + ')'">
+                                <i class="fas fa-trash-can"></i> Terminate Account
+                            </button>
+                            <form th:id="'terminate-form-' + ${owner['id']}" th:action="${'/admin/fleet-owner/terminate/' + owner['id']}" method="post" style="display:none;"></form>
                         </div>
                     </div>
                 </div>
@@ -348,5 +359,13 @@
     </main>
 
     <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
+
+    <script th:inline="javascript">
+        function confirmTerminate(id) {
+            if (confirm("CRITICAL ACTION: This will PERMANENTLY delete the fleet owner profile. \n\nAre you absolutely sure?")) {
+                document.getElementById('terminate-form-' + id).submit();
+            }
+        }
+    </script>
 </body>
 </html>

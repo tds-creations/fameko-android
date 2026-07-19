@@ -270,6 +270,12 @@ fun Application.configureRouting() {
                     call.respondRedirect("/admin/fleet-owner/$id")
                 }
 
+                post("/fleet-owner/terminate/{id}") {
+                    val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    DatabaseRepository.terminateFleetOwnerAccount(id)
+                    call.respondRedirect("/admin/fleet-owners")
+                }
+
 
                 get("/map") {
                     val principal = call.principal<AdminPrincipal>()!!
