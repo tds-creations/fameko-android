@@ -755,6 +755,7 @@ fun MainMapContent(
             viewModel.orderStatusData?.status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
             viewModel.orderStatusData?.status != null && viewModel.orderStatusData?.status != "CANCELLED" && viewModel.orderStatusData?.status != "DELIVERED" -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null && !viewModel.isSearchMode -> CustomerSheetState.ACTIVE_RENTAL
+            viewModel.activeRental != null && viewModel.polylinePoints.isNotEmpty() && !viewModel.isSearchMode -> CustomerSheetState.ACTIVE_RENTAL
             (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && viewModel.polylinePoints.isNotEmpty() && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
             viewModel.isSearchMode || ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) || (viewModel.activeServiceMode == ServiceType.RENTAL && (viewModel.rentalPickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) -> CustomerSheetState.PICKING_ADDRESS
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
