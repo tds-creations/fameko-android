@@ -635,6 +635,13 @@ fun MainMapContent(
                     fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
                         location?.let {
                             viewModel.updateNearbyDrivers(it.latitude, it.longitude)
+                            
+                            // Ensure ViewModel has current location for navigation and other tasks
+                            if (!viewModel.isSearchMode && viewModel.pickupLat == null) {
+                                viewModel.pickupLat = it.latitude
+                                viewModel.pickupLng = it.longitude
+                            }
+
                             if (!hasCentredOnLocation && mapLibreMap != null) {
                                 mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
                                 hasCentredOnLocation = true

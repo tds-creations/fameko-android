@@ -224,6 +224,11 @@ object DatabaseInitializer {
                 booking_code TEXT UNIQUE,
                 trip_notes TEXT,
                 start_time TIMESTAMP,
+                is_self_drive BOOLEAN DEFAULT FALSE,
+                is_unlocked BOOLEAN DEFAULT FALSE,
+                payment_method TEXT DEFAULT 'ELECTRONIC',
+                payment_status TEXT DEFAULT 'PENDING',
+                duration_hours INTEGER DEFAULT 24,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """.trimIndent(),
@@ -486,7 +491,10 @@ object DatabaseInitializer {
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
-            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'ELECTRONIC';"
+            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'ELECTRONIC';",
+            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS is_self_drive BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS is_unlocked BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'PENDING';"
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 
