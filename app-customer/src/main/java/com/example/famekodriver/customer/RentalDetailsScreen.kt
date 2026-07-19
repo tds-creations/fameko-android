@@ -181,7 +181,7 @@ fun RentalDetailsScreen(
                         ) {
                             Icon(if (isSelfDrive) Icons.Default.Navigation else Icons.Default.Map, null)
                             Spacer(Modifier.width(12.dp))
-                            Text(if (isSelfDrive) "Start Navigation" else "View on Google Maps", fontWeight = FontWeight.Bold)
+                            Text(if (isSelfDrive) "Start Navigation" else "View on Maps", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -216,10 +216,17 @@ fun RentalDetailsScreen(
                             Text("Starts: $startTime", fontSize = 13.sp, color = Color.Gray)
                         }
                         
+                        val bookingDate = currentRental["created_at"]?.toString() ?: ""
+                        val formattedDate = if (bookingDate.length >= 16) {
+                            bookingDate.substring(0, 16).replace("T", " ")
+                        } else {
+                            bookingDate
+                        }
+                        
                         Spacer(Modifier.height(8.dp))
                         Text("Booking Code", fontSize = 12.sp, color = Color.Gray)
                         Text(bookingCode, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = BoltDark)
-                        Text("Booked on: $dateStr", fontSize = 12.sp, color = Color.Gray)
+                        Text("Booked on: $formattedDate", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
             }
