@@ -70,3 +70,35 @@ suspend fun notifyRentalEnded(rentalId: Int, isManual: Boolean) {
     val adminMsg = if (isManual) "Rental #$rentalId has been ended manually." else "Rental #$rentalId has ended automatically (expired)."
     PushNotificationHelper.broadcastToTopic("admins", "$title: ${participants.vehicleName}", adminMsg)
 }
+
+suspend fun notifyRentalStatusUpdate(rentalId: Int, status: String) {
+    val participants = DatabaseRepository.getRentalParticipants(rentalId) ?: return
+    
+    val title = "Rental Update"
+    val body = when(status) {
+        "ACTIVE", "BOOKED" -> "Your rental booking for ${participants.vehicleName} has been approved!"
+        "REJECTED" -> "Your rental booking for ${participants.vehicleName} was not approved."
+        else -> "Your rental status has been updated to $status"
+    }
+    
+    // Notify Customer
+    sendToUser("CUSTOMER_${participants.customerId}", "RENTAL_STATUS_UPDATED", mapOf(
+        "rentalId" to rentalId,
+        "status" to status,
+        "message" to body
+    ))
+    
+    // Notify Driver (Owner)
+    sendToUser("DRIVER_${participants.ownerId}", "RENTAL_STATUS_UPDATED", mapOf(
+        "rentalId" to rentalId,
+        "status" to status,
+        "message" to body
+    ))
+
+    if (status == "ACTIVE" || status == "BOOKED") {
+        val customerToken = DatabaseRepository.getUserFcmToken(participants.customerId, "customer")
+        if (customerToken != null) {
+            PushNotificationHelper.sendNotification(customerToken, "Rental Approved", body)
+        }
+    }
+}

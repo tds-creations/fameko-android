@@ -234,31 +234,63 @@
         <!-- Stats Grid -->
         <div class="row mb-4 g-3">
             <div class="col-md-3">
-                <div class="card stat-card shadow-none">
+                <div class="card stat-card shadow-none" style="border-left: 4px solid var(--primary-color)">
                     <div class="stat-label">Total Revenue</div>
-                    <div class="stat-value" th:text="'₵' + ${stats['totalRevenue']}">₵0</div>
+                    <div class="stat-value" th:text="'₵' + ${#numbers.formatDecimal(stats['totalRevenue'], 1, 2)}">₵0.00</div>
                     <div style="font-size: 0.65rem; color: #718096; font-weight: 600;">
-                        Fees: ₵<span th:text="${stats['dailyFees']}"></span> |
-                        Rentals: ₵<span th:text="${stats['rentalIncome']}"></span>
+                        All income streams combined
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card shadow-none" style="border-left: 4px solid var(--secondary-color)">
+                    <div class="stat-label">Rides Revenue</div>
+                    <div class="stat-value" th:text="'₵' + ${#numbers.formatDecimal(stats['ridesRevenue'], 1, 2)}">₵0.00</div>
+                    <div style="font-size: 0.65rem; color: #718096; font-weight: 600;">
+                        Earnings from passenger rides
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card shadow-none" style="border-left: 4px solid #fd7e14">
+                    <div class="stat-label">Delivery Revenue</div>
+                    <div class="stat-value" th:text="'₵' + ${#numbers.formatDecimal(stats['deliveryRevenue'], 1, 2)}">₵0.00</div>
+                    <div style="font-size: 0.65rem; color: #718096; font-weight: 600;">
+                        Earnings from dispatch/deliveries
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card shadow-none" style="border-left: 4px solid #6f42c1">
+                    <div class="stat-label">Rental Income</div>
+                    <div class="stat-value" th:text="'₵' + ${#numbers.formatDecimal(stats['rentalIncome'], 1, 2)}">₵0.00</div>
+                    <div style="font-size: 0.65rem; color: #718096; font-weight: 600;">
+                        Platform commission from rentals
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4 g-3">
+            <div class="col-md-3">
+                <div class="card stat-card shadow-none" style="border-left: 4px solid #17a2b8">
+                    <div class="stat-label">Daily Fees</div>
+                    <div class="stat-value" th:text="'₵' + ${#numbers.formatDecimal(stats['dailyFees'], 1, 2)}">₵0.00</div>
+                    <div style="font-size: 0.65rem; color: #718096; font-weight: 600;">
+                        Recurring driver platform fees
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stat-card shadow-none">
                     <div class="stat-label">Outstanding Debt</div>
-                    <div class="stat-value text-danger" th:text="'₵' + ${stats['totalDebt']}">₵0</div>
+                    <div class="stat-value text-danger" th:text="'₵' + ${#numbers.formatDecimal(stats['totalDebt'], 1, 2)}">₵0.00</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stat-card shadow-none">
                     <div class="stat-label">Pending Approvals</div>
-                    <div class="stat-value text-warning" th:text="'₵' + ${stats['pendingPaymentsValue']}">₵0</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card stat-card shadow-none">
-                    <div class="stat-label">Rental Income</div>
-                    <div class="stat-value text-success" th:text="'₵' + ${stats['rentalIncome']}">₵0</div>
+                    <div class="stat-value text-warning" th:text="'₵' + ${#numbers.formatDecimal(stats['pendingPaymentsValue'], 1, 2)}">₵0.00</div>
                 </div>
             </div>
         </div>
@@ -287,9 +319,9 @@
                                     <td>
                                         <span th:class="${tx['type'] == 'CREDIT' ? 'badge bg-success' : 'badge bg-danger'}" style="font-size: 0.65rem;" th:text="${tx['type']}">CREDIT</span>
                                     </td>
-                                    <td class="fw-bold" th:text="'₵' + ${#numbers.formatInteger(tx['amount'], 0)}">₵50</td>
+                                    <td class="fw-bold" th:text="'₵' + ${#numbers.formatDecimal(tx['amount'], 1, 2)}">₵50.00</td>
                                     <td class="text-muted" style="font-size: 0.75rem;" th:text="${tx['desc']}">Daily Fee</td>
-                                    <td class="text-muted" style="font-size: 0.75rem;" th:text="${#strings.substring(tx['date'], 0, 16)}">2023-01-01</td>
+                                    <td class="text-muted" style="font-size: 0.75rem;" th:text="${tx['date'] != null and #strings.length(tx['date']) >= 16 ? #strings.substring(tx['date'], 0, 16) : tx['date']}">2023-01-01</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -310,7 +342,7 @@
                                     <div class="fw-bold" style="font-size: 0.85rem;" th:text="${d['name']}">Driver Name</div>
                                     <small class="text-muted" style="font-size: 0.7rem;" th:text="${d['phone']}">024...</small>
                                 </div>
-                                <span class="badge bg-danger rounded-pill" th:text="'₵' + ${#numbers.formatInteger(d['balance'], 0)}">-₵100</span>
+                                <span class="badge bg-danger rounded-pill" th:text="'₵' + ${#numbers.formatDecimal(T(java.lang.Math).abs(d['balance']), 1, 2)}">-₵100.00</span>
                             </li>
                             <li class="list-group-item text-center py-4" th:if="${#lists.isEmpty(stats['topDebtors'])}">
                                 <span class="text-muted small">No drivers currently in debt.</span>

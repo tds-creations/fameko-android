@@ -176,8 +176,8 @@
         <li th:class="${activePage == 'pricing' ? 'active' : ''}" onclick="window.location='/admin/pricing'" data-title="Pricing">
             <i class="fas fa-tags"></i> <span>Pricing</span>
         </li>
-        <li th:class="${activePage == 'financials' ? 'active' : ''}" onclick="window.location='/admin/financials'" data-title="Analytics">
-            <i class="fas fa-chart-pie"></i> <span>Analytics</span>
+        <li th:class="${activePage == 'financials' ? 'active' : ''}" onclick="window.location='/admin/financials'" data-title="Financials">
+            <i class="fas fa-chart-line"></i> <span>Financials</span>
         </li>
         <li th:if="${admin.role == 'SUPERADMIN'}" th:class="${activePage == 'database' ? 'active' : ''}" onclick="window.location='/admin/database'" data-title="Database">
             <i class="fas fa-database"></i> <span>Database</span>

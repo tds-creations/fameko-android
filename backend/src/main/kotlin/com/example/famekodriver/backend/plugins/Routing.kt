@@ -362,12 +362,14 @@ fun Application.configureRouting() {
                 post("/rentals/approve/{id}") {
                     val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
                     DatabaseRepository.updateRentalStatus(id, "ACTIVE")
+                    notifyRentalStatusUpdate(id, "ACTIVE")
                     call.respondRedirect("/admin/rentals")
                 }
 
                 post("/rentals/reject/{id}") {
                     val id = call.parameters["id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
                     DatabaseRepository.updateRentalStatus(id, "REJECTED")
+                    notifyRentalStatusUpdate(id, "REJECTED")
                     call.respondRedirect("/admin/rentals")
                 }
 

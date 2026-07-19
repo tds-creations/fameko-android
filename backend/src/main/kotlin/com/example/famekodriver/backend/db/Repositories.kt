@@ -782,6 +782,8 @@ object DatabaseRepository {
     fun getFinancialStats(month: String?, date: String?): Map<String, Any> {
         val stats = mutableMapOf<String, Any>(
             "totalRevenue" to 0.0,
+            "ridesRevenue" to 0.0,
+            "deliveryRevenue" to 0.0,
             "dailyFees" to 0.0,
             "rentalIncome" to 0.0,
             "totalDebt" to 0.0,
@@ -793,24 +795,42 @@ object DatabaseRepository {
         try {
             DatabaseInitializer.getDataSource().connection.use { conn ->
                 var filter = ""
+                var rentalsFilter = ""
                 if (!date.isNullOrBlank()) {
-                    filter = " AND DATE(created_at) = '$date'"
+                    filter = " AND DATE(o.created_at) = '$date'"
+                    rentalsFilter = " AND DATE(created_at) = '$date'"
                 } else if (!month.isNullOrBlank()) {
-                    filter = " AND TO_CHAR(created_at, 'YYYY-MM') = '$month'"
+                    filter = " AND TO_CHAR(o.created_at, 'YYYY-MM') = '$month'"
+                    rentalsFilter = " AND TO_CHAR(created_at, 'YYYY-MM') = '$month'"
                 }
 
-                val rsFees = conn.createStatement().executeQuery("SELECT SUM(amount) FROM payments WHERE payment_type = 'DAILY_FEE' $filter")
+                val rsFees = conn.createStatement().executeQuery("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payment_type = 'DAILY_FEE' ${rentalsFilter}")
                 if (rsFees.next()) stats["dailyFees"] = rsFees.getDouble(1)
 
-                val rsRentals = conn.createStatement().executeQuery("SELECT SUM(customer_service_fee) FROM rentals WHERE payment_status = 'PAID' $filter")
+                val rsRentals = conn.createStatement().executeQuery("SELECT COALESCE(SUM(customer_service_fee), 0) FROM rentals WHERE status = 'COMPLETED' $rentalsFilter")
                 if (rsRentals.next()) stats["rentalIncome"] = rsRentals.getDouble(1)
 
-                val rsRides = conn.createStatement().executeQuery("SELECT SUM(total_amount) FROM orders WHERE status = 'DELIVERED' $filter")
-                if (rsRides.next()) stats["totalRevenue"] = rsRides.getDouble(1)
+                val rsDetailedRides = conn.createStatement().executeQuery("""
+                    SELECT 
+                        COALESCE(SUM(CASE WHEN d.service_type = 'RIDE_HAILING' THEN o.total_amount ELSE 0 END), 0) as rides,
+                        COALESCE(SUM(CASE WHEN d.service_type = 'PACKAGE_DELIVERY' THEN o.total_amount ELSE 0 END), 0) as delivery,
+                        COALESCE(SUM(o.total_amount), 0) as total
+                    FROM orders o
+                    JOIN deliveries d ON o.id = d.order_id
+                    WHERE o.status = 'DELIVERED' $filter
+                """.trimIndent())
+                
+                if (rsDetailedRides.next()) {
+                    stats["ridesRevenue"] = rsDetailedRides.getDouble("rides")
+                    stats["deliveryRevenue"] = rsDetailedRides.getDouble("delivery")
+                    stats["totalRevenue"] = (rsDetailedRides.getDouble("total")) + (stats["rentalIncome"] as Double) + (stats["dailyFees"] as Double)
+                }
 
-                val rsDebt = conn.createStatement().executeQuery("SELECT SUM(amount) FROM wallet_topups WHERE status = 'PENDING'")
+                val rsDebt = conn.createStatement().executeQuery("SELECT COALESCE(SUM(amount), 0) FROM wallet_topups WHERE status = 'PENDING'")
                 if (rsDebt.next()) stats["pendingPaymentsValue"] = rsDebt.getDouble(1)
-                stats["totalDebt"] = stats["pendingPaymentsValue"] as Double
+                
+                val rsActualDebt = conn.createStatement().executeQuery("SELECT COALESCE(ABS(SUM(balance)), 0) FROM driver_wallets WHERE balance < 0")
+                if (rsActualDebt.next()) stats["totalDebt"] = rsActualDebt.getDouble(1)
 
                 val transactions = mutableListOf<Map<String, Any>>()
                 val rsTrans = conn.createStatement().executeQuery("SELECT p.*, d.full_name as driver_name, c.name as customer_name FROM payments p LEFT JOIN drivers d ON (p.user_id = d.id AND p.user_type = 'DRIVER') LEFT JOIN customers c ON (p.user_id = c.id AND p.user_type = 'CUSTOMER') ORDER BY p.created_at DESC LIMIT 15")
@@ -824,7 +844,17 @@ object DatabaseRepository {
                     ))
                 }
                 stats["recentTransactions"] = transactions
-                stats["topDebtors"] = emptyList<Map<String, Any>>()
+                
+                val debtors = mutableListOf<Map<String, Any>>()
+                val rsTopDebtors = conn.createStatement().executeQuery("SELECT d.full_name, d.phone, w.balance FROM driver_wallets w JOIN drivers d ON w.driver_id = d.id WHERE w.balance < 0 ORDER BY w.balance ASC LIMIT 5")
+                while (rsTopDebtors.next()) {
+                    debtors.add(mapOf(
+                        "name" to rsTopDebtors.getString("full_name"),
+                        "phone" to rsTopDebtors.getString("phone"),
+                        "balance" to rsTopDebtors.getDouble("balance")
+                    ))
+                }
+                stats["topDebtors"] = debtors
             }
         } catch (e: Exception) {
             e.printStackTrace()
