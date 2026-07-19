@@ -105,7 +105,10 @@ class CustomerMapViewModel(
     // --- Suggestions ---
     var pickupSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var dropOffSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
+    var stopSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var managePlacesSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
+    
+    var focusedStopIndex by mutableIntStateOf(-1)
     
     var currentRegion by mutableStateOf<String?>(null)
     var showRegionalError by mutableStateOf<String?>(null)
@@ -480,6 +483,30 @@ class CustomerMapViewModel(
         fetchDropOffSuggestions(query)
     }
 
+    fun updateStopLocation(index: Int, query: String) {
+        val newStops = stops.toMutableList()
+        if (newStops[index] == query) return
+        newStops[index] = query
+        stops = newStops
+        focusedStopIndex = index
+        fetchStopSuggestions(query)
+    }
+
+    private fun fetchStopSuggestions(query: String) {
+        if (query.length > 2) {
+            viewModelScope.launch {
+                delay(500.milliseconds)
+                repository.getGeocodeSuggestions(query).onSuccess { 
+                    stopSuggestions = it 
+                }.onFailure {
+                    stopSuggestions = emptyList()
+                }
+            }
+        } else {
+            stopSuggestions = emptyList()
+        }
+    }
+
     private fun fetchPickupSuggestions(query: String) {
         pickupSearchJob?.cancel()
         if (query.isBlank()) {
@@ -625,7 +652,33 @@ class CustomerMapViewModel(
             isSelectingSuggestion = false
         }
         
-        if (pickupLat != null && (dropOffLat != null || (activeServiceMode == ServiceType.RENTAL)) && (activeServiceMode == ServiceType.RIDE_HAILING || activeServiceMode == ServiceType.PACKAGE_DELIVERY)) {
+        val canCalcRoute = if (activeServiceMode == ServiceType.RENTAL) {
+            (rentalPickupLat != null || pickupLat != null) && dropOffLat != null
+        } else {
+            pickupLat != null && dropOffLat != null
+        }
+
+        if (canCalcRoute) {
+            isSearchMode = false
+            calculateRoute()
+        }
+    }
+
+    fun selectStopSuggestion(index: Int, suggestion: LocationSuggestion) {
+        isSelectingSuggestion = true
+        val selectedText = suggestion.name ?: suggestion.displayName.split(",").firstOrNull() ?: suggestion.displayName
+        val newStops = stops.toMutableList()
+        newStops[index] = selectedText
+        stops = newStops
+        stopSuggestions = emptyList()
+        focusedStopIndex = -1
+        
+        viewModelScope.launch {
+            delay(500.milliseconds)
+            isSelectingSuggestion = false
+        }
+
+        if (pickupLat != null && dropOffLat != null) {
             calculateRoute()
         }
     }
@@ -645,13 +698,16 @@ class CustomerMapViewModel(
     }
 
     fun calculateRoute() {
-        if (pickupLat == null || dropOffLat == null || pickupLat == 0.0 || dropOffLat == 0.0) {
+        val pLat = if (activeServiceMode == ServiceType.RENTAL) rentalPickupLat ?: pickupLat else pickupLat
+        val pLng = if (activeServiceMode == ServiceType.RENTAL) rentalPickupLng ?: pickupLng else pickupLng
+
+        if (pLat == null || pLng == null || dropOffLat == null || dropOffLng == null || pLat == 0.0 || dropOffLat == 0.0) {
             // Requirement: Use suggested locations only. 
             // Do not attempt to resolve coordinates from raw text.
             isLoading = false
             return
         }
-        performRouteCalculation(pickupLat!!, pickupLng!!, dropOffLat!!, dropOffLng!!)
+        performRouteCalculation(pLat, pLng, dropOffLat!!, dropOffLng!!)
     }
 
     private fun calculateRouteForActiveTrip(driverLat: Double, driverLng: Double, status: String) {
@@ -683,7 +739,10 @@ class CustomerMapViewModel(
                     if (!isUpdate) {
                         distanceKm = response.distanceM / 1000.0
                         durationMin = response.etaMin
-                        updateEstimatedFare()
+                        
+                        if (activeServiceMode != ServiceType.RENTAL) {
+                            updateEstimatedFare()
+                        }
                     }
                     lastRouteCalcLatLng = LatLng(pLat, pLng)
                     isLoading = false
@@ -912,7 +971,13 @@ class CustomerMapViewModel(
             delay(500.milliseconds)
             isSelectingSuggestion = false
             
-            if (pickupLat != null && dropOffLat != null) {
+            val canCalcRoute = if (activeServiceMode == ServiceType.RENTAL) {
+                (rentalPickupLat != null || pickupLat != null) && dropOffLat != null
+            } else {
+                pickupLat != null && dropOffLat != null
+            }
+
+            if (canCalcRoute) {
                 calculateRoute()
             }
         }

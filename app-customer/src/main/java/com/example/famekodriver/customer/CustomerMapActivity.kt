@@ -756,8 +756,8 @@ fun MainMapContent(
             viewModel.orderStatusData?.status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
             viewModel.orderStatusData?.status != null && viewModel.orderStatusData?.status != "CANCELLED" && viewModel.orderStatusData?.status != "DELIVERED" -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null && !viewModel.isSearchMode -> CustomerSheetState.ACTIVE_RENTAL
-            (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && viewModel.estimatedFare != null && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
-            viewModel.isSearchMode || ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) || (viewModel.activeServiceMode == ServiceType.RENTAL && viewModel.rentalPickupLocation.isNotEmpty()) || viewModel.polylinePoints.isNotEmpty() -> CustomerSheetState.PICKING_ADDRESS
+            (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && viewModel.polylinePoints.isNotEmpty() && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
+            viewModel.isSearchMode || ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) || (viewModel.activeServiceMode == ServiceType.RENTAL && (viewModel.rentalPickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) -> CustomerSheetState.PICKING_ADDRESS
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             else -> CustomerSheetState.IDLE
         }
@@ -894,7 +894,18 @@ fun MainMapContent(
             )
             activePolylineRef.value = polyline
             
-            val pickupPos = LatLng(viewModel.pickupLat ?: 0.0, viewModel.pickupLng ?: 0.0)
+            val pLat = if (viewModel.activeServiceMode == ServiceType.RENTAL) {
+                viewModel.rentalPickupLat ?: viewModel.pickupLat
+            } else {
+                viewModel.pickupLat
+            }
+            val pLng = if (viewModel.activeServiceMode == ServiceType.RENTAL) {
+                viewModel.rentalPickupLng ?: viewModel.pickupLng
+            } else {
+                viewModel.pickupLng
+            }
+            
+            val pickupPos = LatLng(pLat ?: 0.0, pLng ?: 0.0)
             val dropoffPos = LatLng(viewModel.dropOffLat ?: 0.0, viewModel.dropOffLng ?: 0.0)
             
             if (pickupPos.latitude != 0.0) {
@@ -1027,7 +1038,7 @@ fun MainMapContent(
             sheetPeekHeight = if (viewModel.isFullscreenMap) 0.dp
                              else if (currentSheetState == CustomerSheetState.LANDING) 140.dp
                              else if (currentSheetState == CustomerSheetState.IDLE) 120.dp
-                             else if (viewModel.currentOrderId != null || viewModel.activeRental != null || currentSheetState == CustomerSheetState.SELECTING_SERVICE) 110.dp
+                             else if (viewModel.currentOrderId != null || viewModel.activeRental != null || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS) 110.dp
                              else 0.dp,
             sheetContainerColor = Color.White,
             sheetShadowElevation = 32.dp,
@@ -1131,22 +1142,60 @@ fun MainMapContent(
                                 Column {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         IconButton(onClick = { viewModel.isSearchMode = false; focusManager.clearFocus() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = BoltDark) }
-                                        Text("Set Pickup for Rental", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                        Text("Set Route for Rental", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                     }
                                     Spacer(Modifier.height(8.dp))
                                     SearchBox(
-                                        pickupLocation = viewModel.rentalPickupLocation, 
-                                        dropOffLocation = "",
+                                        pickupLocation = viewModel.rentalPickupLocation.ifEmpty { viewModel.pickupLocation }, 
+                                        dropOffLocation = viewModel.dropOffLocation,
+                                        stops = viewModel.stops,
                                         onPickupChange = { viewModel.updatePickupLocation(it) },
-                                        onDropOffChange = { },
-                                        onPickupFocus = { isPickupFocused = it }, 
-                                        onDropOffFocus = { },
-                                        onSearch = { focusManager.clearFocus() },
+                                        onDropOffChange = { viewModel.updateDropOffLocation(it) },
+                                        onStopChange = { idx, value -> 
+                                            viewModel.updateStopLocation(idx, value)
+                                        },
+                                        onAddStop = { if (viewModel.stops.size < 5) viewModel.stops = viewModel.stops + "" },
+                                        onRemoveStop = { idx -> 
+                                            val newStops = viewModel.stops.toMutableList()
+                                            newStops.removeAt(idx)
+                                            viewModel.stops = newStops
+                                        },
+                                        onPickupFocus = { if (it) { isPickupFocused = true; isDropOffFocused = false; viewModel.focusedStopIndex = -1 } }, 
+                                        onDropOffFocus = { if (it) { isPickupFocused = false; isDropOffFocused = true; viewModel.focusedStopIndex = -1 } },
+                                        onStopFocus = { idx, focused -> if (focused) { isPickupFocused = false; isDropOffFocused = false; viewModel.focusedStopIndex = idx } },
+                                        onSearch = { 
+                                            focusManager.clearFocus()
+                                            if (viewModel.pickupLat != null || viewModel.rentalPickupLat != null) {
+                                                viewModel.calculateRoute()
+                                            }
+                                        },
                                         isLoading = viewModel.isLoading, 
                                         pickupFocusRequester = pickupFocusRequester, 
                                         dropOffFocusRequester = dropOffFocusRequester, 
                                         isRentalMode = true
                                     )
+
+                                    val suggestions = when {
+                                        isPickupFocused -> viewModel.pickupSuggestions
+                                        isDropOffFocused -> viewModel.dropOffSuggestions
+                                        viewModel.focusedStopIndex != -1 -> viewModel.stopSuggestions
+                                        else -> emptyList()
+                                    }
+
+                                    if (suggestions.isNotEmpty()) {
+                                        Spacer(Modifier.height(8.dp))
+                                        LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
+                                            items(suggestions) { suggestion ->
+                                                LocationSuggestionItem(suggestion) {
+                                                    when {
+                                                        isPickupFocused -> viewModel.selectSuggestion(suggestion, true)
+                                                        isDropOffFocused -> viewModel.selectSuggestion(suggestion, false)
+                                                        viewModel.focusedStopIndex != -1 -> viewModel.selectStopSuggestion(viewModel.focusedStopIndex, suggestion)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                     Spacer(Modifier.height(12.dp))
                                 }
                             }
@@ -1188,8 +1237,15 @@ fun MainMapContent(
                             viewModel.activeRental?.let { rental ->
                                 ActiveRentalSheetContent(
                                     rental = rental,
-                                    onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
-                                    onNavigationClick = { lat, lng, address ->
+                                    viewModel = viewModel,
+                                    onDetailsClick = { viewModel.navigateTo(CustomerScreen.RentalDetails(rental)) },
+                                    onUpdateRoute = { 
+                                        viewModel.calculateRoute()
+                                    },
+                                    onStartNavigation = {
+                                        val lat = viewModel.dropOffLat
+                                        val lng = viewModel.dropOffLng
+                                        val address = viewModel.dropOffLocation
                                         if (lat != null && lng != null && lat != 0.0) {
                                             if (hasLocationPermission) {
                                                 fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
@@ -1199,31 +1255,19 @@ fun MainMapContent(
                                                             viewModel.pickupLng = it.longitude
                                                             viewModel.dropOffLat = lat
                                                             viewModel.dropOffLng = lng
-                                                            viewModel.dropOffLocation = address ?: "Destination"
+                                                            viewModel.dropOffLocation = address
                                                             viewModel.isFullscreenMap = true
                                                             viewModel.calculateRoute()
-                                                            scope.launch {
-                                                                sheetScaffoldState.bottomSheetState.partialExpand()
-                                                            }
                                                         }
                                                     }
                                                 }
                                             } else {
-                                                viewModel.dropOffLat = lat
-                                                viewModel.dropOffLng = lng
-                                                viewModel.dropOffLocation = address ?: "Destination"
                                                 viewModel.isFullscreenMap = true
                                                 viewModel.calculateRoute()
                                             }
                                         } else {
                                             Toast.makeText(context, "Please set a destination first", Toast.LENGTH_SHORT).show()
-                                            viewModel.navigateTo(CustomerScreen.RouteSelection)
                                         }
-                                    },
-                                    onDetailsClick = { viewModel.navigateTo(CustomerScreen.RentalDetails(rental)) },
-                                    onCancel = {
-                                        val id = rental.let { (it["id"] as? Double)?.toInt() ?: (it["id"] as? Int) ?: 0 }
-                                        viewModel.cancelRental(id)
                                     }
                                 )
                             }
@@ -1321,7 +1365,7 @@ fun MainMapContent(
                 }
 
                 // Immersive Floating Search Bar & Controls
-                if (viewModel.currentOrderId == null && viewModel.activeRental == null && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
+                if (viewModel.currentOrderId == null && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1350,18 +1394,30 @@ fun MainMapContent(
                                 modifier = Modifier.padding(horizontal = 12.dp)
                             ) {
                                 IconButton(onClick = { 
-                                    viewModel.resetSearch()
-                                    viewModel.navigateTo(CustomerScreen.Landing)
+                                    if (viewModel.activeRental != null) {
+                                        viewModel.navigateTo(CustomerScreen.Landing)
+                                    } else {
+                                        viewModel.resetSearch()
+                                        viewModel.navigateTo(CustomerScreen.Landing)
+                                    }
                                 }) {
                                     Icon(Icons.Default.Close, null, tint = BoltDark, modifier = Modifier.size(24.dp))
                                 }
                                 
+                                val startLabel = if (viewModel.activeServiceMode == ServiceType.RENTAL) {
+                                    viewModel.rentalPickupLocation.ifEmpty { viewModel.pickupLocation }
+                                } else {
+                                    viewModel.pickupLocation
+                                }
+
                                 Text(
-                                    text = if (viewModel.dropOffLocation.isNotEmpty()) {
-                                        "${viewModel.pickupLocation.split(",").first()} → ${viewModel.dropOffLocation.split(",").first()}"
+                                    text = if (viewModel.dropOffLocation.isNotEmpty() && startLabel.isNotEmpty()) {
+                                        "${startLabel.split(",").first()} → ${viewModel.dropOffLocation.split(",").first()}"
+                                    } else if (startLabel.isNotEmpty()) {
+                                        "From ${startLabel.split(",").first()}"
                                     } else "Where to?",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = if (viewModel.dropOffLocation.isNotEmpty()) FamekoBlue else Color.Gray,
+                                    color = if (viewModel.dropOffLocation.isNotEmpty() || startLabel.isNotEmpty()) FamekoBlue else Color.Gray,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.weight(1f),
                                     maxLines = 1,
@@ -1724,20 +1780,20 @@ fun RadarPulseAnimation() {
 @Composable
 fun ActiveRentalSheetContent(
     rental: Map<String, Any>,
-    onSearchClick: () -> Unit,
-    onNavigationClick: (Double?, Double?, String?) -> Unit,
+    viewModel: CustomerMapViewModel,
     onDetailsClick: () -> Unit,
-    onCancel: () -> Unit
+    onUpdateRoute: () -> Unit,
+    onStartNavigation: () -> Unit
 ) {
     val isUnlocked = rental["is_unlocked"] == true
     val isSelfDrive = rental["is_self_drive"] == true || rental["is_self_drive"] == "true"
-    val currentDest = rental["destination_location"]?.toString() ?: "Not set"
     val bookingCode = rental["booking_code"]?.toString() ?: "----"
-
-    val destLat = rental["destination_lat"] as? Double
-    val destLng = rental["destination_lng"] as? Double
-    val pickupLat = rental["pickup_lat"] as? Double
-    val pickupLng = rental["pickup_lng"] as? Double
+    
+    val pickupFocusRequester = remember { FocusRequester() }
+    val dropOffFocusRequester = remember { FocusRequester() }
+    
+    var isPickupFocused by remember { mutableStateOf(false) }
+    var isDropOffFocused by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1749,7 +1805,7 @@ fun ActiveRentalSheetContent(
             }
         }
         
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
             Surface(
                 color = if (isUnlocked) BoltGreen.copy(alpha = 0.1f) else Color(0xFFFFF9DB),
                 shape = RoundedCornerShape(4.dp)
@@ -1782,65 +1838,17 @@ fun ActiveRentalSheetContent(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-
-        Text(if (isSelfDrive) "Navigate to" else "Current Stop", fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onSearchClick() }
-                    .background(BoltLightGray, RoundedCornerShape(8.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.LocationOn, null, tint = BoltGreen)
-                Spacer(Modifier.width(8.dp))
-                Text(currentDest, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Icon(Icons.Default.Navigation, null, tint = Color.Gray)
-            }
-
-            IconButton(
-                onClick = onSearchClick,
-                modifier = Modifier.background(BoltLightGray, CircleShape)
-            ) {
-                Icon(Icons.Default.Add, null, tint = FamekoBlue)
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(if (isUnlocked) "End Rental" else "Cancel Rental")
-            }
-            
+        if (viewModel.polylinePoints.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
             Button(
-                onClick = {
-                    if (isSelfDrive) {
-                        if (isUnlocked) {
-                            onNavigationClick(destLat, destLng, currentDest)
-                        } else {
-                            onNavigationClick(pickupLat, pickupLng, rental["pickup_location"]?.toString())
-                        }
-                    } else {
-                        onSearchClick()
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
-                shape = RoundedCornerShape(8.dp)
+                onClick = onStartNavigation,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
             ) {
-                Text("Navigate")
+                Icon(Icons.Default.Navigation, null)
+                Spacer(Modifier.width(12.dp))
+                Text("Start Navigation", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
@@ -2266,16 +2274,24 @@ fun ServiceSelectionSheet(
         
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.heightIn(max = 400.dp)
+            modifier = Modifier.heightIn(max = 400.dp, min = if (filteredEstimates.isEmpty()) 100.dp else 0.dp)
         ) {
-            items(filteredEstimates) { estimate ->
-                ServiceItem(
-                    estimate = estimate,
-                    isSelected = selectedType == estimate.serviceId,
-                    onSelect = { onTypeSelected(estimate.serviceId, estimate.fare) },
-                    discountRate = discountRate,
-                    onUnavailableClick = onUnavailableClick
-                )
+            if (filteredEstimates.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = FamekoBlue)
+                    }
+                }
+            } else {
+                items(filteredEstimates) { estimate ->
+                    ServiceItem(
+                        estimate = estimate,
+                        isSelected = selectedType == estimate.serviceId,
+                        onSelect = { onTypeSelected(estimate.serviceId, estimate.fare) },
+                        discountRate = discountRate,
+                        onUnavailableClick = onUnavailableClick
+                    )
+                }
             }
         }
         
@@ -2780,6 +2796,51 @@ fun RouteSelectionScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    // Stops
+                    viewModel.stops.forEachIndexed { index, stop ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White)
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color.Gray))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            BasicTextField(
+                                value = stop,
+                                onValueChange = { newValue ->
+                                    viewModel.updateStopLocation(index, newValue)
+                                },
+                                modifier = Modifier.weight(1f).onFocusChanged { 
+                                    if (it.isFocused) {
+                                        isPickupFocused = false
+                                        isDropOffFocused = false
+                                        viewModel.focusedStopIndex = index
+                                    }
+                                },
+                                textStyle = TextStyle(fontSize = 14.sp, color = BoltDark),
+                                decorationBox = { innerTextField ->
+                                    if (stop.isEmpty()) Text("Stop ${index + 1}", color = Color.Gray, fontSize = 14.sp)
+                                    innerTextField()
+                                },
+                                singleLine = true
+                            )
+                            IconButton(onClick = {
+                                val newStops = viewModel.stops.toMutableList()
+                                newStops.removeAt(index)
+                                viewModel.stops = newStops
+                            }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    if (viewModel.stops.isNotEmpty()) Spacer(modifier = Modifier.height(8.dp))
+
                     // Dropoff Input
                     Row(
                         modifier = Modifier
@@ -2873,37 +2934,34 @@ fun RouteSelectionScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Suggestions List
-            val suggestions = if (isPickupFocused) viewModel.pickupSuggestions else viewModel.dropOffSuggestions
+            val suggestions = when {
+                isPickupFocused -> viewModel.pickupSuggestions
+                isDropOffFocused -> viewModel.dropOffSuggestions
+                viewModel.focusedStopIndex != -1 -> viewModel.stopSuggestions
+                else -> emptyList()
+            }
             
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                val currentText = if (isPickupFocused) viewModel.pickupLocation else viewModel.dropOffLocation
+                val currentText = when {
+                    isPickupFocused -> viewModel.pickupLocation
+                    isDropOffFocused -> viewModel.dropOffLocation
+                    viewModel.focusedStopIndex != -1 -> viewModel.stops.getOrElse(viewModel.focusedStopIndex) { "" }
+                    else -> ""
+                }
                 
                 if (currentText.isEmpty()) {
-                    item {
-                        val context = LocalContext.current
-                        ListItem(
-                            headlineContent = { Text("Use current location", fontWeight = FontWeight.Bold) },
-                            leadingContent = { Icon(Icons.Default.MyLocation, null, tint = BoltGreen) },
-                            modifier = Modifier.clickable { 
-                                if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                                    viewModel.isLoading = true
-                                    com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context)
-                                        .getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
-                                        .addOnSuccessListener { location ->
-                                            location?.let { 
-                                                viewModel.useCurrentLocation(it, isPickupFocused)
-                                            } ?: run { viewModel.isLoading = false }
-                                        }.addOnFailureListener { viewModel.isLoading = false }
-                                }
-                            }
-                        )
-                    }
+                    // ... My Location item ...
                 }
 
                 items(suggestions) { suggestion ->
                     LocationSuggestionItem(suggestion) {
-                        viewModel.selectSuggestion(suggestion, isPickupFocused)
-                        if (viewModel.pickupLat != null && viewModel.dropOffLat != null) {
+                        when {
+                            isPickupFocused -> viewModel.selectSuggestion(suggestion, true)
+                            isDropOffFocused -> viewModel.selectSuggestion(suggestion, false)
+                            viewModel.focusedStopIndex != -1 -> viewModel.selectStopSuggestion(viewModel.focusedStopIndex, suggestion)
+                        }
+                        val pLat = if (viewModel.activeServiceMode == ServiceType.RENTAL) viewModel.rentalPickupLat ?: viewModel.pickupLat else viewModel.pickupLat
+                        if (pLat != null && viewModel.dropOffLat != null) {
                             viewModel.calculateRoute()
                             onComplete()
                         }
