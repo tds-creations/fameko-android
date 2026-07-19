@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
+import com.example.famekodriver.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -193,7 +194,7 @@ fun RentalsScreen(onBack: () -> Unit) {
                                 }
                                 Spacer(modifier = Modifier.weight(1f))
                                 Surface(
-                                    color = if (isUnlocked) Color(0xFFE8F5E9) else Color(0xFFFFF9DB),
+                                    color = if (isUnlocked) FamekoLightBlue else Color(0xFFFFF9DB),
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
                                     Text(
@@ -201,7 +202,7 @@ fun RentalsScreen(onBack: () -> Unit) {
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isUnlocked) Color(0xFF2E7D32) else Color(0xFFF08C00)
+                                        color = if (isUnlocked) FamekoBlue else Color(0xFFF08C00)
                                     )
                                 }
                             }
@@ -293,7 +294,7 @@ fun RentalsScreen(onBack: () -> Unit) {
                                         },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (hasDest) Color(0xFF28A745) else Color.LightGray
+                                            containerColor = if (hasDest) FamekoPrimary else Color.LightGray
                                         ),
                                         enabled = hasDest,
                                         shape = RoundedCornerShape(8.dp)

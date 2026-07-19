@@ -27,8 +27,8 @@ import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.PricingConfig
 import com.example.famekodriver.customer.ui.theme.BoltDark
-import com.example.famekodriver.customer.ui.theme.BoltGreen
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
+import com.example.famekodriver.customer.ui.theme.FamekoBlue
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -82,7 +82,7 @@ fun VehicleDetailsScreen(
                             )
                             Text(" / day", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                         }
-                        Text("Total shown at checkout", style = MaterialTheme.typography.bodySmall, color = BoltGreen, fontWeight = FontWeight.Bold)
+                        Text("Total shown at checkout", style = MaterialTheme.typography.bodySmall, color = FamekoBlue, fontWeight = FontWeight.Bold)
                     }
                     val isAvailable = vehicle["status"]?.toString()?.uppercase() == "AVAILABLE"
                     
@@ -93,7 +93,7 @@ fun VehicleDetailsScreen(
                             .width(180.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isAvailable) BoltGreen else Color.Gray
+                            containerColor = if (isAvailable) FamekoBlue else Color.Gray
                         ),
                         enabled = isAvailable
                     ) {
@@ -238,7 +238,7 @@ fun VehicleDetailsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(shape = CircleShape, modifier = Modifier.size(48.dp), color = Color.White) {
-                                Icon(Icons.Default.Person, null, modifier = Modifier.padding(10.dp), tint = BoltGreen)
+                                Icon(Icons.Default.Person, null, modifier = Modifier.padding(10.dp), tint = FamekoBlue)
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
@@ -279,7 +279,7 @@ fun VehicleDetailsScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             features.forEach { feature ->
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Check, null, Modifier.size(20.dp), BoltGreen)
+                                    Icon(Icons.Default.Check, null, Modifier.size(20.dp), FamekoBlue)
                                     Spacer(Modifier.width(12.dp))
                                     Text(feature.trim(), fontSize = 15.sp, color = Color.DarkGray)
                                 }
@@ -305,19 +305,19 @@ fun VehicleDetailsScreen(
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Verified, null, Modifier.size(20.dp), BoltGreen)
+                                Icon(Icons.Default.Verified, null, Modifier.size(20.dp), FamekoBlue)
                                 Spacer(Modifier.width(12.dp))
                                 Text("Insurance included in every booking", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.height(12.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.SupportAgent, null, Modifier.size(20.dp), BoltGreen)
+                                Icon(Icons.Default.SupportAgent, null, Modifier.size(20.dp), FamekoBlue)
                                 Spacer(Modifier.width(12.dp))
                                 Text("24/7 Roadside assistance", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.height(12.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Payments, null, Modifier.size(20.dp), BoltGreen)
+                                Icon(Icons.Default.Payments, null, Modifier.size(20.dp), FamekoBlue)
                                 Spacer(Modifier.width(12.dp))
                                 Text("Flat booking commission (no daily fees)", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }

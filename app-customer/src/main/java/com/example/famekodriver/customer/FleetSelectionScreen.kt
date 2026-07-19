@@ -61,7 +61,7 @@ private fun vehicleStatusLabel(vehicle: Map<String, Any>): String =
 
 private fun vehicleStatusColor(vehicle: Map<String, Any>): Color =
     when (vehicleStatus(vehicle)) {
-        "AVAILABLE"              -> BoltGreen
+        "AVAILABLE"              -> FamekoBlue
         "BOOKED"                 -> Color(0xFFF08C00)
         "OCCUPIED", "IN_USE"     -> FamekoBlue
         else                     -> Color.Red
@@ -177,7 +177,7 @@ fun FleetSelectionScreen(
                             modifier = Modifier.align(Alignment.Center),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            CircularProgressIndicator(color = BoltGreen)
+                            CircularProgressIndicator(color = FamekoBlue)
                             Spacer(Modifier.height(16.dp))
                             Text("Fetching available vehicles...", color = Color.Gray, fontSize = 14.sp)
                         }
@@ -196,7 +196,7 @@ fun FleetSelectionScreen(
                             Spacer(Modifier.height(24.dp))
                             Button(
                                 onClick = { loadVehicles() },
-                                colors = ButtonDefaults.buttonColors(containerColor = BoltGreen)
+                                colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
                             ) { Text("Retry") }
                         }
                     }
@@ -223,7 +223,7 @@ fun FleetSelectionScreen(
                                 maxPrice = 5000f
                                 selectedTransmission = "All"
                             }) {
-                                Text("Reset all filters", color = BoltGreen)
+                                Text("Reset all filters", color = FamekoBlue)
                             }
                         }
                     }
@@ -295,13 +295,13 @@ fun FilterSheetContent(
 
         Text("Max Price per Day (₵)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(8.dp))
-        Text("Up to ₵${currentMaxPrice.toInt()}", color = BoltGreen, fontWeight = FontWeight.Bold)
+        Text("Up to ₵${currentMaxPrice.toInt()}", color = FamekoBlue, fontWeight = FontWeight.Bold)
         Slider(
             value = currentMaxPrice,
             onValueChange = onPriceChange,
             valueRange = 100f..5000f,
             steps = 49,
-            colors = SliderDefaults.colors(thumbColor = BoltGreen, activeTrackColor = BoltGreen)
+            colors = SliderDefaults.colors(thumbColor = FamekoBlue, activeTrackColor = FamekoBlue)
         )
 
         Spacer(Modifier.height(24.dp))
@@ -315,8 +315,8 @@ fun FilterSheetContent(
                     onClick = { onTransChange(type) },
                     label = { Text(type) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = BoltGreen.copy(alpha = 0.1f),
-                        selectedLabelColor = BoltGreen
+                        selectedContainerColor = FamekoBlue.copy(alpha = 0.1f),
+                        selectedLabelColor = FamekoBlue
                     )
                 )
             }
@@ -328,7 +328,7 @@ fun FilterSheetContent(
             onClick = onApply,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BoltGreen)
+            colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
         ) {
             Text("Apply Filters", fontWeight = FontWeight.Bold)
         }
@@ -358,7 +358,7 @@ fun SearchBar(
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,
-            focusedIndicatorColor = BoltGreen,
+            focusedIndicatorColor = FamekoBlue,
             unfocusedIndicatorColor = Color.LightGray.copy(alpha = 0.5f)
         ),
         singleLine = true
@@ -385,8 +385,8 @@ fun CategorySelector(
                 onClick = { onCategorySelected(category) },
                 label = { Text(category) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = BoltGreen.copy(alpha = 0.15f),
-                    selectedLabelColor = BoltGreen
+                    selectedContainerColor = FamekoBlue.copy(alpha = 0.15f),
+                    selectedLabelColor = FamekoBlue
                 ),
                 shape = RoundedCornerShape(8.dp)
             )
@@ -452,7 +452,7 @@ fun CustomerVehicleCard(
 
                 // Price badge (top-left)
                 Surface(
-                    color = BoltGreen,
+                    color = FamekoBlue,
                     shape = RoundedCornerShape(bottomEnd = 16.dp),
                     modifier = Modifier.align(Alignment.TopStart)
                 ) {
@@ -544,7 +544,7 @@ fun CustomerVehicleCard(
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (available) BoltGreen else Color(0xFFF08C00)
+                        containerColor = if (available) FamekoBlue else Color(0xFFF08C00)
                     )
                 ) {
                     Text(

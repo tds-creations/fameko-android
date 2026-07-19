@@ -75,7 +75,7 @@ fun RentalDetailsScreen(
                 actions = {
                     if (isOngoing && !isEditing) {
                         TextButton(onClick = { isEditing = true }) {
-                            Text("Edit", color = BoltGreen, fontWeight = FontWeight.Bold)
+                            Text("Edit", color = AppBlue, fontWeight = FontWeight.Bold)
                         }
                     }
                 },
@@ -121,7 +121,7 @@ fun RentalDetailsScreen(
                             },
                             modifier = Modifier.weight(1f).height(56.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
                             enabled = !isUpdating
                         ) {
                             if (isUpdating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -177,7 +177,7 @@ fun RentalDetailsScreen(
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = if (isSelfDrive) BoltGreen else AppBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = if (isSelfDrive) AppBlue else AppBlue)
                         ) {
                             Icon(if (isSelfDrive) Icons.Default.Navigation else Icons.Default.Map, null)
                             Spacer(Modifier.width(12.dp))
@@ -230,7 +230,7 @@ fun RentalDetailsScreen(
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text(currentRental["vehicle_name"].toString(), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("₵${String.format(Locale.US, "%.2f", totalPrice)} Total", color = BoltGreen, fontWeight = FontWeight.Bold)
+                            Text("₵${String.format(Locale.US, "%.2f", totalPrice)} Total", color = AppBlue, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -248,7 +248,7 @@ fun RentalDetailsScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         RoutePoint(
                             icon = Icons.Default.RadioButtonChecked,
-                            color = BoltGreen,
+                            color = AppBlue,
                             title = if (isSelfDrive) "Pick up vehicle from" else "Pickup Location",
                             address = currentRental["pickup_location"].toString()
                         )
@@ -276,9 +276,9 @@ fun RentalDetailsScreen(
                                 }
                                 if (stops.size < 5) {
                                     TextButton(onClick = { stops = stops + "" }) {
-                                        Icon(Icons.Default.Add, null, Modifier.size(16.dp), BoltGreen)
+                                        Icon(Icons.Default.Add, null, Modifier.size(16.dp), AppBlue)
                                         Spacer(Modifier.width(8.dp))
-                                        Text("Add Stop", color = BoltGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("Add Stop", color = AppBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     }
                                     VerticalLineLong()
                                 }
@@ -421,8 +421,8 @@ fun SelfDriveInstructionRow(text: String) {
 fun StatusBadgeLarge(status: String) {
     val color = when (status.uppercase()) {
         "PENDING" -> Color(0xFFF08C00)
-        "BOOKED" -> BoltGreen
-        "ASSIGNED", "ACTIVE", "IN_PROGRESS", "COMPLETED" -> BoltGreen
+        "BOOKED" -> AppBlue
+        "ASSIGNED", "ACTIVE", "IN_PROGRESS", "COMPLETED" -> AppBlue
         else -> Color(0xFFC92A2A)
     }
     

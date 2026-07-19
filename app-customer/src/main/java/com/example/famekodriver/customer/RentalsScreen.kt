@@ -296,7 +296,7 @@ fun RentalHistoryCard(
             // Locations
             LocationInfo(
                 icon = Icons.Default.RadioButtonChecked,
-                iconColor = BoltGreen,
+                iconColor = AppBlue,
                 text = rental["pickup_location"]?.toString() ?: "Pickup"
             )
             
@@ -361,7 +361,7 @@ fun RentalHistoryCard(
 fun StatusBadge(status: String) {
     val color = when (status.uppercase()) {
         "PENDING" -> Color(0xFFF08C00)
-        "ASSIGNED", "ACTIVE", "IN_PROGRESS", "COMPLETED" -> BoltGreen
+        "ASSIGNED", "ACTIVE", "IN_PROGRESS", "COMPLETED" -> AppBlue
         else -> Color(0xFFC92A2A)
     }
 
