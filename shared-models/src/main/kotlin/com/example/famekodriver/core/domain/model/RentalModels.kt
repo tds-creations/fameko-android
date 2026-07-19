@@ -11,7 +11,8 @@ data class RentalBookRequest(
     val startTime: String? = null,
     val tripNotes: String? = null,
     val stops: String? = null,
-    val isSelfDrive: Boolean = false
+    val isSelfDrive: Boolean = false,
+    val paymentMethod: String = "ELECTRONIC" // CASH, ELECTRONIC
 )
 
 data class Rental(
@@ -29,7 +30,8 @@ data class Rental(
     val destinationLng: Double? = null,
     val status: RentalStatus,
     val isUnlocked: Boolean,
-    val bookingCode: String? = null
+    val bookingCode: String? = null,
+    val paymentMethod: String = "ELECTRONIC"
 )
 
 data class RentalVehicle(

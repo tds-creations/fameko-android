@@ -240,6 +240,7 @@
                             <th>Vehicle</th>
                             <th>Code</th>
                             <th>Details</th>
+                            <th>Payment</th>
                             <th>Status</th>
                             <th>Price</th>
                             <th>Requested On</th>
@@ -258,6 +259,10 @@
                                 <div th:if="${r.start_time != ''}" style="font-size: 0.7rem; color: var(--primary-color); margin-top: 4px">
                                     <i class="fas fa-calendar-day"></i> <span th:text="${#strings.substring(r.start_time, 0, 10)}">2023-01-01</span>
                                 </div>
+                            </td>
+                            <td>
+                                <span th:class="'status-badge status-' + ${r.payment_method == 'CASH' ? 'PENDING' : 'ACTIVE'}"
+                                      th:text="${r.payment_method ?: 'ELECTRONIC'}">ELECTRONIC</span>
                             </td>
                             <td>
                                 <span th:class="'status-badge status-' + ${r.status}" th:text="${r.status}">PENDING</span>

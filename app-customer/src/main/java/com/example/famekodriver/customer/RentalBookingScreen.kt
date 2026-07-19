@@ -36,7 +36,7 @@ import java.util.*
 fun RentalBookingScreen(
     vehicle: Map<String, Any>,
     onBack: () -> Unit,
-    onConfirm: (Int, Int, String, Double, String?, String?, String?, Boolean) -> Unit
+    onConfirm: (Int, Int, String, Double, String?, String?, String?, Boolean, String) -> Unit
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -51,6 +51,8 @@ fun RentalBookingScreen(
     var tripNotes by remember { mutableStateOf("") }
     var isScheduled by remember { mutableStateOf(false) }
     var isSelfDrive by remember { mutableStateOf(false) }
+    var paymentMethod by remember { mutableStateOf("ELECTRONIC") }
+    var showPaymentMethodDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var stops by remember { mutableStateOf<List<String>>(emptyList()) }
 
@@ -85,6 +87,54 @@ fun RentalBookingScreen(
         }
     }
 
+    if (showPaymentMethodDialog) {
+        AlertDialog(
+            onDismissRequest = { showPaymentMethodDialog = false },
+            title = { Text("Select Payment Method", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("How would you like to pay for this rental?")
+                    
+                    TimingOption(
+                        icon = Icons.Default.Payments,
+                        label = "Pay by Cash",
+                        isSelected = paymentMethod == "CASH",
+                        onClick = { paymentMethod = "CASH" },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TimingOption(
+                        icon = Icons.Default.AccountBalanceWallet,
+                        label = "Electronic Transfer",
+                        isSelected = paymentMethod == "ELECTRONIC",
+                        onClick = { paymentMethod = "ELECTRONIC" },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPaymentMethodDialog = false
+                        val stopsStr = if (stops.isNotEmpty()) stops.filter { s -> s.isNotBlank() }.joinToString("|") else null
+                        val vId = (vehicle["id"] as? Double)?.toInt() ?: (vehicle["id"] as? Int) ?: 1
+                        onConfirm(selectedDays, vId, vehicle["vehicle_type"].toString(), grandTotal, if (isScheduled) selectedDateText else null, tripNotes, stopsStr, isSelfDrive, paymentMethod)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
+                ) {
+                    Text("Confirm Payment & Book")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPaymentMethodDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color.White
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -109,16 +159,14 @@ fun RentalBookingScreen(
                             if (isScheduled && datePickerState.selectedDateMillis == null) {
                                 Toast.makeText(context, "Please select a date", Toast.LENGTH_SHORT).show()
                             } else {
-                                val stopsStr = if (stops.isNotEmpty()) stops.filter { s -> s.isNotBlank() }.joinToString("|") else null
-                                val vId = (vehicle["id"] as? Double)?.toInt() ?: (vehicle["id"] as? Int) ?: 1
-                                onConfirm(selectedDays, vId, vehicle["vehicle_type"].toString(), grandTotal, if (isScheduled) selectedDateText else null, tripNotes, stopsStr, isSelfDrive)
+                                showPaymentMethodDialog = true
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
                     ) {
-                        Text(if (isScheduled) "Schedule Rental" else "Confirm & Pay ₵${String.format(Locale.US, "%.2f", grandTotal)}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        Text(if (isScheduled) "Schedule Rental" else "Confirm Booking", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                     }
                 }
             }

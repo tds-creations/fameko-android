@@ -451,7 +451,8 @@ object DatabaseRepository {
                     "booking_code" to (rs.getString("booking_code") ?: ""),
                     "trip_notes" to (rs.getString("trip_notes") ?: ""),
                     "start_time" to (rs.getString("start_time") ?: ""),
-                    "created_at" to (rs.getString("created_at") ?: "")
+                    "created_at" to (rs.getString("created_at") ?: ""),
+                    "payment_method" to (rs.getString("payment_method") ?: "ELECTRONIC")
                 ))
             }
         }
@@ -962,7 +963,8 @@ object DatabaseRepository {
                     "status" to rs.getString("status"),
                     "is_unlocked" to rs.getBoolean("is_unlocked"),
                     "is_self_drive" to rs.getBoolean("is_self_drive"),
-                    "vehicle_id" to rs.getInt("vehicle_id")
+                    "vehicle_id" to rs.getInt("vehicle_id"),
+                    "payment_method" to (rs.getString("payment_method") ?: "ELECTRONIC")
                 )
             }
         }
@@ -1228,7 +1230,8 @@ object DatabaseRepository {
                     "total_price" to rs.getDouble("total_price"),
                     "booking_code" to (rs.getString("booking_code") ?: ""),
                     "pickup_location" to rs.getString("pickup_location"),
-                    "start_time" to (rs.getString("start_time") ?: "")
+                    "start_time" to (rs.getString("start_time") ?: ""),
+                    "payment_method" to (rs.getString("payment_method") ?: "ELECTRONIC")
                 ))
             }
         }
@@ -1631,8 +1634,8 @@ object DatabaseRepository {
                     customer_id, vehicle_id, pickup_location, pickup_lat, pickup_lng, 
                     duration_hours, total_price, base_price, customer_service_fee, 
                     owner_commission_amount, owner_earnings, start_time, trip_notes, 
-                    stops, booking_code, is_self_drive, status, payment_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING') RETURNING id
+                    stops, booking_code, is_self_drive, status, payment_status, payment_method
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING', ?) RETURNING id
             """.trimIndent()
             
             val stmt = conn.prepareStatement(sql)
@@ -1664,6 +1667,7 @@ object DatabaseRepository {
             stmt.setString(14, req.stops ?: "")
             stmt.setString(15, bookingCode)
             stmt.setBoolean(16, req.isSelfDrive)
+            stmt.setString(17, req.paymentMethod)
             
             val rs = stmt.executeQuery()
             if (rs.next()) return rs.getInt(1)

@@ -186,10 +186,12 @@ fun RentalsScreen(onBack: () -> Unit) {
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp
                                     )
+                                    val pMethod = rental["payment_method"]?.toString() ?: "ELECTRONIC"
                                     Text(
-                                        text = rental["customer_phone"].toString(),
-                                        fontSize = 13.sp,
-                                        color = Color.Gray
+                                        text = if (pMethod == "CASH") "Pay by Cash" else "Electronic Transfer",
+                                        fontSize = 12.sp,
+                                        color = if (pMethod == "CASH") Color(0xFFF08C00) else FamekoBlue,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
                                 Spacer(modifier = Modifier.weight(1f))

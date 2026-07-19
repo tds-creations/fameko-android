@@ -1037,7 +1037,8 @@ class DriverRepository private constructor() {
         startTime: String? = null,
         tripNotes: String? = null,
         stops: String? = null,
-        isSelfDrive: Boolean = false
+        isSelfDrive: Boolean = false,
+        paymentMethod: String = "ELECTRONIC"
     ): Result<RentalBookingResponse> = withContext(Dispatchers.IO) {
         try {
             val request = RentalBookRequest(
@@ -1051,7 +1052,8 @@ class DriverRepository private constructor() {
                 startTime = startTime,
                 tripNotes = tripNotes,
                 stops = stops,
-                isSelfDrive = isSelfDrive
+                isSelfDrive = isSelfDrive,
+                paymentMethod = paymentMethod
             )
             
             val response = NetworkClient.famekoApi.bookRental(request)

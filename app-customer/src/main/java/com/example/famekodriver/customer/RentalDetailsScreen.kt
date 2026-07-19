@@ -204,6 +204,8 @@ fun RentalDetailsScreen(
                         StatusBadgeLarge(status)
                         Spacer(Modifier.height(8.dp))
                         Text("Rental Mode: ${if (isSelfDrive) "Self-Drive" else "With Driver"}", fontWeight = FontWeight.Bold, color = AppBlue, fontSize = 14.sp)
+                        val pMethod = currentRental["payment_method"]?.toString() ?: "ELECTRONIC"
+                        Text("Payment: ${if (pMethod == "CASH") "Pay by Cash" else "Electronic Transfer"}", fontSize = 13.sp, color = Color.Gray)
                         Spacer(Modifier.height(8.dp))
                         Text("Booking Code", fontSize = 12.sp, color = Color.Gray)
                         Text(bookingCode, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = BoltDark)

@@ -1360,12 +1360,14 @@ fun Application.configureRouting() {
                         val customerEmail = DatabaseRepository.getCustomerEmail(req.customerId) ?: "customer_${req.customerId}@example.com"
                         val reference = "RENTAL_${rentalId}_${System.currentTimeMillis()}"
                         
-                        val paystackData = try { 
-                            DatabaseRepository.initializePaystackPayment(customerEmail, req.totalPrice, reference)
-                        } catch (e: Exception) {
-                            application.log.error("Paystack initialization failed", e)
-                            null
-                        }
+                        val paystackData = if (req.paymentMethod == "ELECTRONIC") {
+                            try { 
+                                DatabaseRepository.initializePaystackPayment(customerEmail, req.totalPrice, reference)
+                            } catch (e: Exception) {
+                                application.log.error("Paystack initialization failed", e)
+                                null
+                            }
+                        } else null
                         
                         call.respond(mapOf(
                             "success" to true, 

@@ -470,7 +470,7 @@ fun CustomerMapScreen() {
                     RentalBookingScreen(
                         vehicle = screen.vehicle,
                         onBack = { mapViewModel.navigateTo(CustomerScreen.VehicleDetails(screen.vehicle)) },
-                        onConfirm = { days, vId, _, totalPrice, scheduledDate, tripNotes, stopsStr, isSelfDrive ->
+                        onConfirm = { days, vId, _, totalPrice, scheduledDate, tripNotes, stopsStr, isSelfDrive, pMethod ->
                             scope.launch {
                                 repository.bookRental(
                                     customerId = sessionManager.getCustomerId()?.toIntOrNull() ?: 1,
@@ -483,7 +483,8 @@ fun CustomerMapScreen() {
                                     startTime = scheduledDate, 
                                     tripNotes = tripNotes, 
                                     stops = stopsStr,
-                                    isSelfDrive = isSelfDrive
+                                    isSelfDrive = isSelfDrive,
+                                    paymentMethod = pMethod
                                 )
                                     .onSuccess { response ->
                                         if (response.checkoutUrl != null) {
