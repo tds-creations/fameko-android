@@ -206,10 +206,20 @@ fun RentalDetailsScreen(
                         Text("Rental Mode: ${if (isSelfDrive) "Self-Drive" else "With Driver"}", fontWeight = FontWeight.Bold, color = AppBlue, fontSize = 14.sp)
                         val pMethod = currentRental["payment_method"]?.toString() ?: "ELECTRONIC"
                         Text("Payment: ${if (pMethod == "CASH") "Pay by Cash" else "Electronic Transfer"}", fontSize = 13.sp, color = Color.Gray)
+                        
+                        val durationHours = (currentRental["duration_hours"] as? Number)?.toInt() ?: 24
+                        val durationText = if (durationHours >= 24) "${durationHours / 24} Days" else "$durationHours Hours"
+                        Text("Duration: $durationText", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppBlue)
+                        
+                        val startTime = currentRental["start_time"]?.toString()
+                        if (!startTime.isNullOrBlank() && startTime != "null") {
+                            Text("Starts: $startTime", fontSize = 13.sp, color = Color.Gray)
+                        }
+                        
                         Spacer(Modifier.height(8.dp))
                         Text("Booking Code", fontSize = 12.sp, color = Color.Gray)
                         Text(bookingCode, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, color = BoltDark)
-                        Text(dateStr, fontSize = 12.sp, color = Color.Gray)
+                        Text("Booked on: $dateStr", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
             }
@@ -224,15 +234,65 @@ fun RentalDetailsScreen(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = RoundedCornerShape(12.dp), color = BoltLightGray, modifier = Modifier.size(64.dp)) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.DirectionsCar, null, tint = AppBlue, modifier = Modifier.size(32.dp))
+                        Surface(shape = RoundedCornerShape(12.dp), color = BoltLightGray, modifier = Modifier.size(80.dp)) {
+                            val imageUrl = currentRental["vehicle_image"]?.toString() ?: ""
+                            if (imageUrl.length > 5) {
+                                AsyncImage(
+                                    model = imageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.DirectionsCar, null, tint = AppBlue, modifier = Modifier.size(32.dp))
+                                }
                             }
                         }
                         Spacer(Modifier.width(16.dp))
                         Column {
                             Text(currentRental["vehicle_name"].toString(), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(currentRental["vehicle_model"]?.toString() ?: "", color = Color.Gray, fontSize = 14.sp)
                             Text("₵${String.format(Locale.US, "%.2f", totalPrice)} Total", color = AppBlue, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Driver Details (If assigned and not self-drive)
+            if (!isSelfDrive) {
+                val driverName = currentRental["driver_name"]?.toString() ?: ""
+                if (driverName.isNotBlank()) {
+                    item {
+                        Text("Driver Details", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Gray)
+                        Spacer(Modifier.height(8.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Surface(shape = CircleShape, color = BoltLightGray, modifier = Modifier.size(56.dp)) {
+                                    val pic = currentRental["driver_profile_pic"]?.toString() ?: ""
+                                    if (pic.length > 5) {
+                                        AsyncImage(
+                                            model = pic,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Person, null, tint = Color.Gray)
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Column {
+                                    Text(driverName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text("Verified Fameko Driver", color = BoltGreen, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
                         }
                     }
                 }

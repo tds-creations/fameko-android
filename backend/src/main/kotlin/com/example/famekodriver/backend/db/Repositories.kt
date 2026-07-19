@@ -975,7 +975,7 @@ object DatabaseRepository {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = """
-                SELECT r.*, v.name as vehicle_name,
+                SELECT r.*, v.name as vehicle_name, v.image_urls as vehicle_image, v.model as vehicle_model,
                        dr.full_name as driver_name, dr.profile_picture as driver_profile_pic,
                        dr.vehicle_number as driver_plate, dr.vehicle_model as driver_model
                 FROM rentals r 
@@ -990,6 +990,8 @@ object DatabaseRepository {
                 list.add(mapOf(
                     "id" to rs.getInt("id"),
                     "vehicle_name" to rs.getString("vehicle_name"),
+                    "vehicle_image" to (rs.getString("vehicle_image")?.split(",")?.firstOrNull() ?: ""),
+                    "vehicle_model" to (rs.getString("vehicle_model") ?: ""),
                     "status" to rs.getString("status"),
                     "total_price" to rs.getDouble("total_price"),
                     "booking_code" to (rs.getString("booking_code") ?: ""),
@@ -1005,6 +1007,8 @@ object DatabaseRepository {
                     "created_at" to (rs.getString("created_at") ?: ""),
                     "is_self_drive" to rs.getBoolean("is_self_drive"),
                     "vehicle_id" to rs.getInt("vehicle_id"),
+                    "payment_method" to (rs.getString("payment_method") ?: "ELECTRONIC"),
+                    "duration_hours" to rs.getInt("duration_hours"),
                     "driver_name" to (rs.getString("driver_name") ?: ""),
                     "driver_profile_pic" to (rs.getString("driver_profile_pic") ?: ""),
                     "driver_plate" to (rs.getString("driver_plate") ?: ""),
