@@ -361,14 +361,14 @@ fun CustomerMapScreen() {
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-            val showMap = mapViewModel.currentScreen == CustomerScreen.Landing || mapViewModel.currentScreen is CustomerScreen.MainMap || mapViewModel.currentScreen == CustomerScreen.RouteSelection
+            val showMap = mapViewModel.currentScreen == CustomerScreen.Landing || mapViewModel.currentScreen is CustomerScreen.MainMap || mapViewModel.currentScreen == CustomerScreen.RouteSelection || mapViewModel.isFullscreenMap
             
             // Map layer (Always present to avoid recreation and state loss)
             MainMapContent(
                 viewModel = mapViewModel,
                 mapView = mapView,
                 isBackHandlerEnabled = showMap,
-                isActive = showMap,
+                isActive = true, // Always track location for seamless transitions
                 onNavigateToChat = { orderId, name -> mapViewModel.navigateTo(CustomerScreen.Chat(orderId, name)) }
             )
 
@@ -640,6 +640,11 @@ fun MainMapContent(
                             if (!viewModel.isSearchMode && viewModel.pickupLat == null) {
                                 viewModel.pickupLat = it.latitude
                                 viewModel.pickupLng = it.longitude
+                                
+                                // Auto-calculate route if waiting for navigation to start
+                                if (viewModel.isFullscreenMap && viewModel.dropOffLat != null) {
+                                    viewModel.calculateRoute()
+                                }
                             }
 
                             if (!hasCentredOnLocation && mapLibreMap != null) {
@@ -1134,23 +1139,14 @@ fun MainMapContent(
                                     onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
                                     onNavigationClick = { lat, lng, address ->
                                         if (lat != null && lng != null && lat != 0.0) {
-                                            val gmmIntentUri = Uri.parse("google.navigation:q=$lat,$lng")
-                                            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                                            mapIntent.setPackage("com.google.android.apps.maps")
-                                            try {
-                                                context.startActivity(mapIntent)
-                                            } catch (_: Exception) {
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
-                                            }
-                                        } else if (!address.isNullOrBlank() && address != "Not set") {
-                                            val gmmIntentUri = Uri.parse("google.navigation:q=${Uri.encode(address)}")
-                                            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                                            mapIntent.setPackage("com.google.android.apps.maps")
-                                            context.startActivity(mapIntent)
+                                            viewModel.dropOffLat = lat
+                                            viewModel.dropOffLng = lng
+                                            viewModel.dropOffLocation = address ?: "Destination"
+                                            viewModel.isFullscreenMap = true
+                                            viewModel.calculateRoute()
                                         } else {
                                             Toast.makeText(context, "Please set a destination first", Toast.LENGTH_SHORT).show()
-                                            viewModel.isSearchMode = true
-                                            isDropOffFocused = true
+                                            viewModel.navigateTo(CustomerScreen.RouteSelection)
                                         }
                                     },
                                     onDetailsClick = { viewModel.navigateTo(CustomerScreen.RentalDetails(rental)) },
@@ -1715,17 +1711,30 @@ fun ActiveRentalSheetContent(
 
         Text(if (isSelfDrive) "Navigate to" else "Current Stop", fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSearchClick() }
-                .background(BoltLightGray, RoundedCornerShape(8.dp))
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Default.LocationOn, null, tint = BoltGreen)
-            Spacer(Modifier.width(8.dp))
-            Text(currentDest, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Default.Navigation, null, tint = Color.Gray)
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onSearchClick() }
+                    .background(BoltLightGray, RoundedCornerShape(8.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.LocationOn, null, tint = BoltGreen)
+                Spacer(Modifier.width(8.dp))
+                Text(currentDest, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Icon(Icons.Default.Navigation, null, tint = Color.Gray)
+            }
+
+            IconButton(
+                onClick = onSearchClick,
+                modifier = Modifier.background(BoltLightGray, CircleShape)
+            ) {
+                Icon(Icons.Default.Add, null, tint = FamekoBlue)
+            }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -1756,7 +1765,7 @@ fun ActiveRentalSheetContent(
                 colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(if (isSelfDrive) "Navigation" else "Change Stop")
+                Text("Navigate")
             }
         }
     }
