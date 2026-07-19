@@ -1098,7 +1098,7 @@ fun MainMapContent(
                                                 if (hasLocationPermission) {
                                                     @SuppressLint("MissingPermission")
                                                     fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                                                        location?.let { viewModel.useCurrentLocation(it, forPickup = true) }
+                                                        location?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) }
                                                     }
                                                 }
                                             }
@@ -1113,7 +1113,7 @@ fun MainMapContent(
                                                 if (hasLocationPermission) {
                                                     @SuppressLint("MissingPermission")
                                                     fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                                                        location?.let { viewModel.useCurrentLocation(it, forPickup = true) }
+                                                        location?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) }
                                                     }
                                                 }
                                             }
@@ -1194,10 +1194,10 @@ fun MainMapContent(
                                                     modifier = Modifier.clickable { 
                                                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                                                             viewModel.isLoading = true
-                                                            fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
+                                                            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                                                                 .addOnSuccessListener { location: android.location.Location? ->
                                                                     location?.let { 
-                                                                        viewModel.useCurrentLocation(it, isPickupFocused)
+                                                                        viewModel.useCurrentLocation(it, isPickupFocused, viewModel.focusedStopIndex)
                                                                     } ?: run { viewModel.isLoading = false }
                                                                 }.addOnFailureListener { viewModel.isLoading = false }
                                                         }
@@ -2685,7 +2685,7 @@ fun RouteSelectionScreen(
     onComplete: () -> Unit = onBack
 ) {
     val context = LocalContext.current
-    val fusedLocationClient = remember { com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context) }
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val focusManager = LocalFocusManager.current
     val pickupFocusRequester = remember { FocusRequester() }
     val dropOffFocusRequester = remember { FocusRequester() }
@@ -2767,7 +2767,13 @@ fun RouteSelectionScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(pickupFocusRequester)
-                                .onFocusChanged { isPickupFocused = it.isFocused },
+                                .onFocusChanged { 
+                                    if (it.isFocused) {
+                                        isPickupFocused = true
+                                        isDropOffFocused = false
+                                        viewModel.focusedStopIndex = -1
+                                    }
+                                },
                             textStyle = TextStyle(fontSize = 16.sp, color = BoltDark, fontWeight = FontWeight.Medium),
                             decorationBox = { innerTextField ->
                                 if (viewModel.pickupLocation.isEmpty()) {
@@ -2875,7 +2881,13 @@ fun RouteSelectionScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(dropOffFocusRequester)
-                                .onFocusChanged { isDropOffFocused = it.isFocused },
+                                .onFocusChanged { 
+                                    if (it.isFocused) {
+                                        isPickupFocused = false
+                                        isDropOffFocused = true
+                                        viewModel.focusedStopIndex = -1
+                                    }
+                                },
                             textStyle = TextStyle(fontSize = 16.sp, color = BoltDark, fontWeight = FontWeight.Medium),
                             decorationBox = { innerTextField ->
                                 if (viewModel.dropOffLocation.isEmpty()) {
@@ -2963,10 +2975,10 @@ fun RouteSelectionScreen(
                             modifier = Modifier.clickable { 
                                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                                     viewModel.isLoading = true
-                                    fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
+                                    fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                                         .addOnSuccessListener { location: android.location.Location? ->
                                             location?.let { 
-                                                viewModel.useCurrentLocation(it, isPickupFocused)
+                                                viewModel.useCurrentLocation(it, isPickupFocused, viewModel.focusedStopIndex)
                                             } ?: run { viewModel.isLoading = false }
                                         }.addOnFailureListener { viewModel.isLoading = false }
                                 }

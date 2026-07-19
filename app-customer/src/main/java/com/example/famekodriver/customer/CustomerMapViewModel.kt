@@ -997,7 +997,7 @@ class CustomerMapViewModel(
         }
     }
 
-    fun useCurrentLocation(location: Location, forPickup: Boolean) {
+    fun useCurrentLocation(location: Location, forPickup: Boolean, stopIndex: Int = -1) {
         isLoading = true
         isSelectingSuggestion = true
         viewModelScope.launch {
@@ -1005,7 +1005,15 @@ class CustomerMapViewModel(
                 if (forPickup || activeServiceMode == ServiceType.RENTAL) {
                     currentRegion = RegionUtils.extractRegion(suggestion.displayName)
                 }
-                if (activeServiceMode == ServiceType.RENTAL) {
+                
+                if (stopIndex != -1) {
+                    val newStops = stops.toMutableList()
+                    if (stopIndex < newStops.size) {
+                        newStops[stopIndex] = suggestion.name ?: suggestion.displayName
+                        stops = newStops
+                        stopPoints = stopPoints.toMutableMap().apply { put(stopIndex, LatLng(location.latitude, location.longitude)) }
+                    }
+                } else if (activeServiceMode == ServiceType.RENTAL && forPickup) {
                     rentalPickupLocation = suggestion.displayName
                     rentalPickupLat = location.latitude
                     rentalPickupLng = location.longitude
@@ -1022,7 +1030,14 @@ class CustomerMapViewModel(
                 }
             }.onFailure {
                 val name = "My Location"
-                if (activeServiceMode == ServiceType.RENTAL) {
+                if (stopIndex != -1) {
+                    val newStops = stops.toMutableList()
+                    if (stopIndex < newStops.size) {
+                        newStops[stopIndex] = name
+                        stops = newStops
+                        stopPoints = stopPoints.toMutableMap().apply { put(stopIndex, LatLng(location.latitude, location.longitude)) }
+                    }
+                } else if (activeServiceMode == ServiceType.RENTAL && forPickup) {
                     rentalPickupLocation = name
                     rentalPickupLat = location.latitude
                     rentalPickupLng = location.longitude
