@@ -433,7 +433,9 @@ class CustomerMapViewModel(
         rentalPollingJob = viewModelScope.launch {
             val customerId = sessionManager.getCustomerId() ?: "1"
             while (true) {
-                rentalRepository.getActiveRental(customerId.toInt()).onSuccess { activeRental = it }
+                rentalRepository.getActiveRental(customerId.toInt()).onSuccess { 
+                    updateActiveRentalState(it)
+                }
                 delay(10.seconds)
             }
         }
@@ -1083,22 +1085,27 @@ class CustomerMapViewModel(
     fun updateActiveRentalState(rental: Map<String, Any>?) {
         if (rental != null) {
             activeRental = rental
-            isSearchMode = false
             activeServiceMode = ServiceType.RENTAL
-            rentalPickupLocation = rental["pickup_location"]?.toString() ?: ""
-            rentalPickupLat = (rental["pickup_lat"] as? Number)?.toDouble()
-            rentalPickupLng = (rental["pickup_lng"] as? Number)?.toDouble()
             
-            dropOffLocation = rental["destination_location"]?.toString() ?: ""
-            dropOffLat = (rental["destination_lat"] as? Number)?.toDouble()
-            dropOffLng = (rental["destination_lng"] as? Number)?.toDouble()
-            
-            val stopsStr = rental["stops"]?.toString() ?: ""
-            stops = if (stopsStr.isNotEmpty()) stopsStr.split("|") else emptyList()
+            // Only update locations if we're not currently in an active search to avoid disrupting the user
+            if (!isSearchMode) {
+                rentalPickupLocation = rental["pickup_location"]?.toString() ?: ""
+                rentalPickupLat = (rental["pickup_lat"] as? Number)?.toDouble()
+                rentalPickupLng = (rental["pickup_lng"] as? Number)?.toDouble()
+                
+                dropOffLocation = rental["destination_location"]?.toString() ?: ""
+                dropOffLat = (rental["destination_lat"] as? Number)?.toDouble()
+                dropOffLng = (rental["destination_lng"] as? Number)?.toDouble()
+                
+                val stopsStr = rental["stops"]?.toString() ?: ""
+                stops = if (stopsStr.isNotEmpty()) stopsStr.split("|") else emptyList()
 
-            if (dropOffLat != null && dropOffLat != 0.0) {
-                calculateRoute()
+                if (dropOffLat != null && dropOffLat != 0.0) {
+                    calculateRoute()
+                }
             }
+        } else {
+            activeRental = null
         }
     }
 

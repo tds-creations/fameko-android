@@ -654,7 +654,7 @@ fun MainMapContent(
                                 viewModel.updateNearbyDrivers(it.latitude, it.longitude)
                                 
                                 // Ensure ViewModel has current location for navigation and other tasks
-                                if (!viewModel.isSearchMode && viewModel.pickupLat == null) {
+                                if (viewModel.pickupLat == null) {
                                     viewModel.pickupLat = it.latitude
                                     viewModel.pickupLng = it.longitude
                                     
