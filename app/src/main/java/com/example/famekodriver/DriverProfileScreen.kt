@@ -46,6 +46,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     val sessionManager = remember { SessionManager(context) }
     val repository = remember { DriverRepository.getInstance() }
     val driverId = sessionManager.getDriverId() ?: ""
+    val userRole = remember { sessionManager.getUserRole() }
 
     var status by remember { mutableStateOf(sessionManager.getDriverStatus()) }
     var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Driver") }
@@ -196,21 +197,37 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                     )
                 }
 
-                item {
-                    DocumentItem(
-                        title = "Driver's License",
-                        isUploaded = "drivers_license" !in missingDocs,
-                        icon = Icons.Default.Badge,
-                        onUpload = {
-                            pendingDocType = "drivers_license"
-                            pickImageLauncher.launch("image/*")
-                        }
-                    )
+                if (userRole == "OWNER" || userRole == "BOTH") {
+                    item {
+                        DocumentItem(
+                            title = "Business Certificate",
+                            isUploaded = "business_cert" !in missingDocs,
+                            icon = Icons.Default.Business,
+                            onUpload = {
+                                pendingDocType = "business_cert"
+                                pickImageLauncher.launch("image/*")
+                            }
+                        )
+                    }
+                }
+
+                if (userRole == "DRIVER" || userRole == "BOTH") {
+                    item {
+                        DocumentItem(
+                            title = "Driver's License",
+                            isUploaded = "drivers_license" !in missingDocs,
+                            icon = Icons.Default.Badge,
+                            onUpload = {
+                                pendingDocType = "drivers_license"
+                                pickImageLauncher.launch("image/*")
+                            }
+                        )
+                    }
                 }
 
                 item {
                     DocumentItem(
-                        title = "Ghana Card (ID)",
+                        title = "Ghana Card (Front)",
                         isUploaded = "ghana_card" !in missingDocs,
                         icon = Icons.Default.CreditCard,
                         onUpload = {
@@ -220,28 +237,44 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                     )
                 }
 
-                item {
-                    DocumentItem(
-                        title = "Insurance Certificate",
-                        isUploaded = "insurance_cert" !in missingDocs,
-                        icon = Icons.Default.VerifiedUser,
-                        onUpload = {
-                            pendingDocType = "insurance_cert"
-                            pickImageLauncher.launch("image/*")
-                        }
-                    )
+                if (userRole == "OWNER" || userRole == "BOTH") {
+                    item {
+                        DocumentItem(
+                            title = "Ghana Card (Back)",
+                            isUploaded = "ghana_card_back" !in missingDocs,
+                            icon = Icons.Default.CreditCard,
+                            onUpload = {
+                                pendingDocType = "ghana_card_back"
+                                pickImageLauncher.launch("image/*")
+                            }
+                        )
+                    }
                 }
 
-                item {
-                    DocumentItem(
-                        title = "Roadworthy Certificate",
-                        isUploaded = "roadworthy_cert" !in missingDocs,
-                        icon = Icons.Default.DirectionsCar,
-                        onUpload = {
-                            pendingDocType = "roadworthy_cert"
-                            pickImageLauncher.launch("image/*")
-                        }
-                    )
+                if (userRole == "DRIVER" || userRole == "BOTH") {
+                    item {
+                        DocumentItem(
+                            title = "Insurance Certificate",
+                            isUploaded = "insurance_cert" !in missingDocs,
+                            icon = Icons.Default.VerifiedUser,
+                            onUpload = {
+                                pendingDocType = "insurance_cert"
+                                pickImageLauncher.launch("image/*")
+                            }
+                        )
+                    }
+
+                    item {
+                        DocumentItem(
+                            title = "Roadworthy Certificate",
+                            isUploaded = "roadworthy_cert" !in missingDocs,
+                            icon = Icons.Default.DirectionsCar,
+                            onUpload = {
+                                pendingDocType = "roadworthy_cert"
+                                pickImageLauncher.launch("image/*")
+                            }
+                        )
+                    }
                 }
 
                 item {

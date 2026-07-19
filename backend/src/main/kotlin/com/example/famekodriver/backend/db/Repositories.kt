@@ -291,6 +291,35 @@ object DatabaseRepository {
                     vehicleModel = rs.getString("vehicle_model")
                 )
             }
+
+            // Try fleet_owners
+            val rsOwner = conn.prepareStatement("SELECT status, profile_picture, id_front_image, id_back_image, business_certificate, emergency_contact_1, emergency_contact_2 FROM fleet_owners WHERE id = ?").apply { setInt(1, id) }.executeQuery()
+            if (rsOwner.next()) {
+                val missing = mutableListOf<String>()
+                
+                fun isMissing(col: String): Boolean {
+                    val value = rsOwner.getString(col) ?: return true
+                    val clean = value.trim()
+                    if (clean.isEmpty() || clean.lowercase() == "null" || clean.lowercase() == "undefined") return true
+                    if (clean.contains("placeholder", ignoreCase = true) || clean.contains("default", ignoreCase = true)) return true
+                    if (clean.length < 5) return true 
+                    return false
+                }
+                
+                if (isMissing("profile_picture")) missing.add("profile_pic")
+                if (isMissing("id_front_image")) missing.add("ghana_card")
+                if (isMissing("id_back_image")) missing.add("ghana_card_back")
+                if (isMissing("business_certificate")) missing.add("business_cert")
+                
+                return DriverStatusResponse(
+                    success = true,
+                    status = rsOwner.getString("status") ?: "PENDING",
+                    missingDocs = missing,
+                    emergencyContact1 = rsOwner.getString("emergency_contact_1"),
+                    emergencyContact2 = rsOwner.getString("emergency_contact_2"),
+                    profilePicture = rsOwner.getString("profile_picture")
+                )
+            }
         }
         return null
     }
@@ -1059,6 +1088,7 @@ object DatabaseRepository {
 
     fun getDriverProfile(id: Int): Map<String, Any>? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
+            // Try drivers first
             val sql = "SELECT id, full_name, email, phone, region, profile_picture, vehicle_type, vehicle_number, vehicle_model, status FROM drivers WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, id)
@@ -1076,6 +1106,25 @@ object DatabaseRepository {
                     "vehicle_number" to rs.getString("vehicle_number"),
                     "vehicle_model" to rs.getString("vehicle_model"),
                     "status" to rs.getString("status")
+                )
+            }
+
+            // Try fleet_owners
+            val sqlOwner = "SELECT id, full_name, email, phone, region, profile_picture, status FROM fleet_owners WHERE id = ?"
+            val stmtOwner = conn.prepareStatement(sqlOwner)
+            stmtOwner.setInt(1, id)
+            val rsOwner = stmtOwner.executeQuery()
+            if (rsOwner.next()) {
+                return mapOf(
+                    "success" to true,
+                    "id" to rsOwner.getInt("id"),
+                    "name" to rsOwner.getString("full_name"),
+                    "email" to rsOwner.getString("email"),
+                    "phone" to rsOwner.getString("phone"),
+                    "region" to rsOwner.getString("region"),
+                    "profile_picture" to rsOwner.getString("profile_picture"),
+                    "vehicle_type" to "Fleet",
+                    "status" to rsOwner.getString("status")
                 )
             }
         }
@@ -1914,7 +1963,7 @@ object DatabaseRepository {
                 var fleetOwnerId: Int? = null
 
                 if (role == "OWNER" || role == "BOTH") {
-                    val sql = "INSERT INTO fleet_owners (full_name, email, phone, password, company_name, registration_number, region, status, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                    val sql = "INSERT INTO fleet_owners (full_name, email, phone, password, company_name, registration_number, region, status, firebase_uid, emergency_contact_1, emergency_contact_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                     val stmt = conn.prepareStatement(sql)
                     stmt.setString(1, data["full_name"]?.trim() ?: "")
                     stmt.setString(2, email)
@@ -1927,6 +1976,8 @@ object DatabaseRepository {
                     stmt.setString(7, data["region"]?.trim() ?: "")
                     stmt.setString(8, "PENDING")
                     stmt.setString(9, data["firebase_uid"])
+                    stmt.setString(10, data["emergency_contact_1"]?.trim())
+                    stmt.setString(11, data["emergency_contact_2"]?.trim())
                     val rs = stmt.executeQuery()
                     if (rs.next()) {
                         fleetOwnerId = rs.getInt(1)
@@ -2103,16 +2154,32 @@ object DatabaseRepository {
             "ghana_card" -> "id_front_image"
             "insurance_cert" -> "insurance_cert"
             "roadworthy_cert" -> "roadworthy_cert"
+            "ghana_card_back" -> "id_back_image"
+            "business_cert" -> "business_certificate"
             else -> null
         }
 
         if (column != null) {
             DatabaseInitializer.getDataSource().connection.use { conn ->
+                val id = driverId.toInt()
+                // Try drivers
                 val sql = "UPDATE drivers SET $column = ?, status = CASE WHEN status = 'PENDING' THEN 'PENDING_DOCS' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
                 val stmt = conn.prepareStatement(sql)
                 stmt.setString(1, fileUrl)
-                stmt.setInt(2, driverId.toInt())
-                stmt.executeUpdate()
+                stmt.setInt(2, id)
+                val updated = stmt.executeUpdate()
+                
+                if (updated == 0) {
+                    // Try fleet_owners
+                    val fleetOwnerColumns = listOf("profile_picture", "id_front_image", "id_back_image", "business_certificate")
+                    if (column in fleetOwnerColumns) {
+                        val sqlOwner = "UPDATE fleet_owners SET $column = ?, status = CASE WHEN status = 'PENDING' THEN 'PENDING_DOCS' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+                        val stmtOwner = conn.prepareStatement(sqlOwner)
+                        stmtOwner.setString(1, fileUrl)
+                        stmtOwner.setInt(2, id)
+                        stmtOwner.executeUpdate()
+                    }
+                }
             }
         }
     }
@@ -2179,12 +2246,24 @@ object DatabaseRepository {
 
     fun updateEmergencyContacts(driverId: String, c1: String, c2: String) {
         DatabaseInitializer.getDataSource().connection.use { conn ->
+            val id = driverId.toInt()
+            // Try updating drivers
             val sql = "UPDATE drivers SET emergency_contact_1 = ?, emergency_contact_2 = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, c1)
             stmt.setString(2, c2)
-            stmt.setInt(3, driverId.toInt())
-            stmt.executeUpdate()
+            stmt.setInt(3, id)
+            val updated = stmt.executeUpdate()
+            
+            if (updated == 0) {
+                // Try updating fleet_owners
+                val sqlOwner = "UPDATE fleet_owners SET emergency_contact_1 = ?, emergency_contact_2 = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+                val stmtOwner = conn.prepareStatement(sqlOwner)
+                stmtOwner.setString(1, c1)
+                stmtOwner.setString(2, c2)
+                stmtOwner.setInt(3, id)
+                stmtOwner.executeUpdate()
+            }
         }
     }
 

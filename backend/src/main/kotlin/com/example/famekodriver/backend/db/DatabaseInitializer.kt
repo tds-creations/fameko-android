@@ -476,6 +476,8 @@ object DatabaseInitializer {
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS profile_picture TEXT;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS id_front_image TEXT;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS id_back_image TEXT;",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS emergency_contact_1 TEXT;",
+            "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS emergency_contact_2 TEXT;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;",
             "ALTER TABLE rental_vehicles ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
