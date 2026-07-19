@@ -1278,26 +1278,32 @@ fun Application.configureRouting() {
                 call.respond(vehicles)
             }
             post("/add-vehicle") {
-                val p = call.receiveParameters()
-                val ownerId = p["owner_id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
-                DatabaseRepository.addVehicleToFleet(
-                    ownerId = ownerId,
-                    name = p["name"] ?: "",
-                    model = p["model"] ?: "",
-                    type = p["type"] ?: "",
-                    number = p["number"] ?: "",
-                    rate = p["rate"]?.toDoubleOrNull() ?: 0.0,
-                    description = p["description"],
-                    features = p["features"],
-                    imageUrls = p["image_urls"],
-                    location = p["location"],
-                    lat = p["lat"]?.toDoubleOrNull(),
-                    lng = p["lng"]?.toDoubleOrNull(),
-                    seats = p["seats"]?.toIntOrNull(),
-                    transmission = p["transmission"],
-                    fuelType = p["fuel_type"]
-                )
-                call.respond(mapOf("success" to true))
+                try {
+                    val p = call.receiveParameters()
+                    val ownerId = p["owner_id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    DatabaseRepository.addVehicleToFleet(
+                        ownerId = ownerId,
+                        name = p["name"] ?: "",
+                        model = p["model"] ?: "",
+                        type = p["type"] ?: "",
+                        number = p["number"] ?: "",
+                        rate = p["rate"]?.toDoubleOrNull() ?: 0.0,
+                        description = p["description"],
+                        features = p["features"],
+                        imageUrls = p["image_urls"],
+                        location = p["location"],
+                        lat = p["lat"]?.toDoubleOrNull(),
+                        lng = p["lng"]?.toDoubleOrNull(),
+                        seats = p["seats"]?.toIntOrNull(),
+                        transmission = p["transmission"],
+                        fuelType = p["fuel_type"]
+                    )
+                    call.respond(mapOf("success" to true))
+                } catch (e: Exception) {
+                    println("Error adding vehicle: ${e.message}")
+                    e.printStackTrace()
+                    call.respond(HttpStatusCode.InternalServerError, mapOf("success" to false, "message" to (e.message ?: "Server Error")))
+                }
             }
             post("/update-vehicle") {
                 val p = call.receiveParameters()

@@ -2372,11 +2372,17 @@ object DatabaseRepository {
         seats: Int? = 5, transmission: String? = "Automatic", fuelType: String? = "Petrol"
     ) {
         DatabaseInitializer.getDataSource().connection.use { conn ->
+            var actualDriverId: Int? = null
             var actualFleetOwnerId: Int? = null
+            
+            // 1. Check if ownerId is a driver
             val driverRs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
             if (driverRs.next()) {
+                actualDriverId = ownerId
                 actualFleetOwnerId = driverRs.getObject("fleet_owner_id") as? Int
             }
+            
+            // 2. If not found in drivers, or if we need to verify fleet_owners directly
             if (actualFleetOwnerId == null) {
                 val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, ownerId) }.executeQuery()
                 if (ownerRs.next()) {
@@ -2392,7 +2398,7 @@ object DatabaseRepository {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """.trimIndent()
             conn.prepareStatement(sql).apply {
-                setInt(1, ownerId)
+                if (actualDriverId != null) setInt(1, actualDriverId) else setNull(1, java.sql.Types.INTEGER)
                 if (actualFleetOwnerId != null) setInt(2, actualFleetOwnerId) else setNull(2, java.sql.Types.INTEGER)
                 setString(3, name)
                 setString(4, model)
