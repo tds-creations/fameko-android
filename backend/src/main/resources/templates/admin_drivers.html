@@ -240,8 +240,8 @@
                     <input type="hidden" id="statusFilter" th:value="${selectedStatus}"/>
 
                     <a href="/admin/drivers" class="btn" th:style="${selectedStatus == '' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">All</a>
-                    <a th:href="@{/admin/drivers(status='APPROVED', region=${selectedRegion})}" class="btn" th:style="${selectedStatus == 'APPROVED' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Approved</a>
-                    <a th:href="@{/admin/drivers(status='PENDING', region=${selectedRegion})}" class="btn" th:style="${selectedStatus == 'PENDING' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Pending</a>
+                    <a th:href="${'/admin/drivers?status=APPROVED' + (selectedRegion != '' ? '&amp;region=' + selectedRegion : '')}" class="btn" th:style="${selectedStatus == 'APPROVED' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Approved</a>
+                    <a th:href="${'/admin/drivers?status=PENDING' + (selectedRegion != '' ? '&amp;region=' + selectedRegion : '')}" class="btn" th:style="${selectedStatus == 'PENDING' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Pending</a>
                 </div>
             </div>
             <div class="table-container">
@@ -294,12 +294,12 @@
                                     <div th:with="s=${driver['status'] != null ? driver['status'].toString().toUpperCase() : 'UNKNOWN'}"
                                          style="display:flex; gap:8px">
                                         <th:block th:if="${s == 'PENDING' or s == 'PENDING_DOCS'}">
-                                            <form th:action="@{/admin/driver/approve/{id}(id=${driver['id']})}" method="post">
+                                            <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post">
                                                 <button type="submit" class="btn btn-approve">
                                                     <i class="fas fa-check"></i> Approve
                                                 </button>
                                             </form>
-                                            <form th:action="@{/admin/driver/reject/{id}(id=${driver['id']})}" method="post">
+                                            <form th:action="${'/admin/driver/reject/' + driver['id']}" method="post">
                                                 <button type="submit" class="btn btn-reject">
                                                     <i class="fas fa-xmark"></i> Reject
                                                 </button>
@@ -307,14 +307,14 @@
                                         </th:block>
 
                                         <th:block th:if="${s == 'APPROVED'}">
-                                            <form th:action="@{/admin/driver/suspend/{id}(id=${driver['id']})}" method="post">
+                                            <form th:action="${'/admin/driver/suspend/' + driver['id']}" method="post">
                                                 <button type="submit" class="btn btn-reject" style="background: rgba(220, 53, 69, 0.1);">
                                                     <i class="fas fa-ban"></i> Suspend
                                                 </button>
                                             </form>
                                         </th:block>
 
-                                        <a th:href="@{/admin/driver/{id}(id=${driver['id']})}" class="btn" style="background: var(--light-bg); color: var(--primary-color)">
+                                        <a th:href="${'/admin/driver/' + driver['id']}" class="btn" style="background: var(--light-bg); color: var(--primary-color)">
                                             <i class="fas fa-eye"></i> View Profile
                                         </a>
                                     </div>

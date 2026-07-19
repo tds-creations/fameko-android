@@ -325,19 +325,19 @@
 
                     <div class="action-buttons">
                         <div th:if="${status == 'PENDING' or status == 'REJECTED' or status == 'SUSPENDED'}" style="display:flex; gap:12px;">
-                            <form th:action="@{/admin/fleet-owner/approve/{id}(id=${owner['id']})}" method="post">
+                            <form th:action="${'/admin/fleet-owner/approve/' + owner['id']}" method="post">
                                 <button type="submit" class="btn btn-approve">
                                     <i class="fas fa-check"></i>
                                     <span th:text="${status == 'SUSPENDED' ? 'Re-activate Account' : 'Approve Fleet Owner'}">Approve Fleet Owner</span>
                                 </button>
                             </form>
-                            <form th:if="${status == 'PENDING'}" th:action="@{/admin/fleet-owner/reject/{id}(id=${owner['id']})}" method="post">
+                            <form th:if="${status == 'PENDING'}" th:action="${'/admin/fleet-owner/reject/' + owner['id']}" method="post">
                                 <button type="submit" class="btn btn-reject"><i class="fas fa-xmark"></i> Reject</button>
                             </form>
                         </div>
 
                         <div th:if="${status == 'APPROVED'}" style="display:flex; gap:12px; align-items:center">
-                            <form th:action="@{/admin/fleet-owner/suspend/{id}(id=${owner['id']})}" method="post">
+                            <form th:action="${'/admin/fleet-owner/suspend/' + owner['id']}" method="post">
                                 <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Fleet Owner</button>
                             </form>
                         </div>

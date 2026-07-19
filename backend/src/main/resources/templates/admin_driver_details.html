@@ -316,7 +316,7 @@
             <div class="card" th:if="${isCar}">
                 <div class="card-header">Vehicle Classification</div>
                 <div class="card-body">
-                    <form th:action="@{/admin/driver/approve/{id}(id=${driver['id']})}" method="post">
+                    <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post">
                         <div style="display:flex; flex-direction:column; gap:12px;">
                             <p style="margin:0; font-size: 0.8rem; color: var(--muted-text); font-weight: 500;">
                                 Examine the vehicle details and photos below. Assign the appropriate ride class based on the vehicle quality.
@@ -415,7 +415,7 @@
                     <div class="action-buttons">
                         <!-- PENDING / REJECTED / SUSPENDED -->
                         <div th:if="${status == 'PENDING' or status == 'PENDING_DOCS' or status == 'REJECTED' or status == 'SUSPENDED'}" style="display:flex; flex-direction:column; gap:16px; width: 100%; max-width: 400px;">
-                            <form th:action="@{/admin/driver/approve/{id}(id=${driver['id']})}" method="post" style="display:flex; flex-direction:column; gap:12px;">
+                            <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post" style="display:flex; flex-direction:column; gap:12px;">
                                 <input type="hidden" name="category" th:value="${driver['vehicle_category'] != null ? driver['vehicle_category'] : driver['vehicle_type']}"/>
 
                                 <div style="display:flex; gap:12px;">
@@ -427,12 +427,12 @@
                                 </div>
                             </form>
 
-                            <form id="reject-form" th:action="@{/admin/driver/reject/{id}(id=${driver['id']})}" method="post" style="display:none;"></form>
+                            <form id="reject-form" th:action="${'/admin/driver/reject/' + driver['id']}" method="post" style="display:none;"></form>
                         </div>
 
                         <!-- APPROVED -->
                         <div th:if="${status == 'APPROVED'}" style="display:flex; gap:12px; align-items:center">
-                            <form th:action="@{/admin/driver/suspend/{id}(id=${driver['id']})}" method="post">
+                            <form th:action="${'/admin/driver/suspend/' + driver['id']}" method="post">
                                 <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Driver</button>
                             </form>
                         </div>
@@ -442,7 +442,7 @@
                             <button type="button" class="btn btn-reject" th:onclick="'confirmTerminate(' + ${driver['id']} + ')'">
                                 <i class="fas fa-trash-can"></i> Terminate Account
                             </button>
-                            <form th:id="'terminate-form-' + ${driver['id']}" th:action="@{/admin/driver/terminate/{id}(id=${driver['id']})}" method="post" style="display:none;"></form>
+                            <form th:id="'terminate-form-' + ${driver['id']}" th:action="${'/admin/driver/terminate/' + driver['id']}" method="post" style="display:none;"></form>
                         </div>
                     </div>
                 </div>

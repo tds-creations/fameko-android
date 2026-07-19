@@ -298,12 +298,12 @@
                                     <div th:with="s=${owner['status'] != null ? owner['status'].toString().toUpperCase() : 'UNKNOWN'}"
                                          style="display:flex; gap:8px">
                                         <th:block th:if="${s == 'PENDING'}">
-                                            <form th:action="@{/admin/fleet-owner/approve/{id}(id=${owner['id']})}" method="post">
+                                            <form th:action="${'/admin/fleet-owner/approve/' + owner['id']}" method="post">
                                                 <button type="submit" class="btn btn-approve">
                                                     <i class="fas fa-check"></i> Approve
                                                 </button>
                                             </form>
-                                            <form th:action="@{/admin/fleet-owner/reject/{id}(id=${owner['id']})}" method="post">
+                                            <form th:action="${'/admin/fleet-owner/reject/' + owner['id']}" method="post">
                                                 <button type="submit" class="btn btn-reject">
                                                     <i class="fas fa-xmark"></i> Reject
                                                 </button>
@@ -311,14 +311,14 @@
                                         </th:block>
 
                                         <th:block th:if="${s == 'APPROVED'}">
-                                            <form th:action="@{/admin/fleet-owner/suspend/{id}(id=${owner['id']})}" method="post">
+                                            <form th:action="${'/admin/fleet-owner/suspend/' + owner['id']}" method="post">
                                                 <button type="submit" class="btn btn-reject" style="background: rgba(220, 53, 69, 0.1);">
                                                     <i class="fas fa-ban"></i> Suspend
                                                 </button>
                                             </form>
                                         </th:block>
 
-                                        <a th:href="@{/admin/fleet-owner/{id}(id=${owner['id']})}" class="btn" style="background: var(--light-bg); color: var(--primary-color)">
+                                        <a th:href="${'/admin/fleet-owner/' + owner['id']}" class="btn" style="background: var(--light-bg); color: var(--primary-color)">
                                             <i class="fas fa-eye"></i> View Details
                                         </a>
                                     </div>
