@@ -608,6 +608,7 @@ fun MainMapContent(
     }
     val audioPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasAudioPermission = it }
 
+    val scope = rememberCoroutineScope()
     var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
         val loader = context.imageLoader
@@ -639,32 +640,34 @@ fun MainMapContent(
                     @SuppressLint("MissingPermission")
                     fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
                         location?.let {
-                            viewModel.updateNearbyDrivers(it.latitude, it.longitude)
-                            
-                            // Ensure ViewModel has current location for navigation and other tasks
-                            if (!viewModel.isSearchMode && viewModel.pickupLat == null) {
-                                viewModel.pickupLat = it.latitude
-                                viewModel.pickupLng = it.longitude
+                            if (it.latitude != 0.0 && it.longitude != 0.0) {
+                                viewModel.updateNearbyDrivers(it.latitude, it.longitude)
                                 
-                                // Auto-calculate route if waiting for navigation to start
-                                if (viewModel.isFullscreenMap && viewModel.dropOffLat != null) {
-                                    viewModel.calculateRoute()
+                                // Ensure ViewModel has current location for navigation and other tasks
+                                if (!viewModel.isSearchMode && viewModel.pickupLat == null) {
+                                    viewModel.pickupLat = it.latitude
+                                    viewModel.pickupLng = it.longitude
+                                    
+                                    // Auto-calculate route if waiting for navigation to start
+                                    if (viewModel.isFullscreenMap && viewModel.dropOffLat != null) {
+                                        viewModel.calculateRoute()
+                                    }
                                 }
-                            }
 
-                            if (viewModel.isFullscreenMap && viewModel.polylinePoints.isNotEmpty()) {
-                                voiceNavManager.updateProgress(
-                                    currentLat = it.latitude,
-                                    currentLng = it.longitude,
-                                    route = viewModel.polylinePoints.map { p -> p.latitude to p.longitude },
-                                    etaMin = viewModel.durationMin,
-                                    distanceKm = viewModel.distanceKm
-                                )
-                            }
+                                if (viewModel.isFullscreenMap && viewModel.polylinePoints.isNotEmpty()) {
+                                    voiceNavManager.updateProgress(
+                                        currentLat = it.latitude,
+                                        currentLng = it.longitude,
+                                        route = viewModel.polylinePoints.map { p -> p.latitude to p.longitude },
+                                        etaMin = viewModel.durationMin,
+                                        distanceKm = viewModel.distanceKm
+                                    )
+                                }
 
-                            if (!hasCentredOnLocation && mapLibreMap != null) {
-                                mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
-                                hasCentredOnLocation = true
+                                if (!hasCentredOnLocation && mapLibreMap != null) {
+                                    mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
+                                    hasCentredOnLocation = true
+                                }
                             }
                         }
                     }
@@ -916,19 +919,18 @@ fun MainMapContent(
         }
 
         if (viewModel.polylinePoints.isNotEmpty() && mapLibreMap != null) {
+            val validPoints = viewModel.polylinePoints.filter { it.latitude != 0.0 && it.longitude != 0.0 }
+            if (validPoints.isEmpty()) return@LaunchedEffect
+
             try {
                 val boundsBuilder = org.maplibre.android.geometry.LatLngBounds.Builder()
-                viewModel.polylinePoints.forEach { point ->
-                    if (point.latitude != 0.0 || point.longitude != 0.0) {
-                        boundsBuilder.include(LatLng(point.latitude, point.longitude))
-                    }
-                }
+                validPoints.forEach { boundsBuilder.include(it) }
                 val bounds = boundsBuilder.build()
                 mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
             } catch (e: Exception) {
                 // Fallback to simple average if bounds building fails (e.g. single point)
-                val centerLat = viewModel.polylinePoints.map { it.latitude }.average()
-                val centerLng = viewModel.polylinePoints.map { it.longitude }.average()
+                val centerLat = validPoints.map { it.latitude }.average()
+                val centerLng = validPoints.map { it.longitude }.average()
                 mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(centerLat, centerLng), 13.5))
             }
         }
@@ -967,7 +969,13 @@ fun MainMapContent(
         }
     }
 
-    LaunchedEffect(currentSheetState) {
+    LaunchedEffect(currentSheetState, viewModel.isFullscreenMap) {
+        if (viewModel.isFullscreenMap) {
+            if (sheetScaffoldState.bottomSheetState.currentValue != SheetValue.PartiallyExpanded) {
+                sheetScaffoldState.bottomSheetState.partialExpand()
+            }
+            return@LaunchedEffect
+        }
         when (currentSheetState) {
             CustomerSheetState.LANDING -> {
                 if (sheetScaffoldState.bottomSheetState.currentValue != SheetValue.Expanded) {
@@ -1172,11 +1180,30 @@ fun MainMapContent(
                                     onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
                                     onNavigationClick = { lat, lng, address ->
                                         if (lat != null && lng != null && lat != 0.0) {
-                                            viewModel.dropOffLat = lat
-                                            viewModel.dropOffLng = lng
-                                            viewModel.dropOffLocation = address ?: "Destination"
-                                            viewModel.isFullscreenMap = true
-                                            viewModel.calculateRoute()
+                                            if (hasLocationPermission) {
+                                                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
+                                                    location?.let {
+                                                        if (it.latitude != 0.0 && it.longitude != 0.0) {
+                                                            viewModel.pickupLat = it.latitude
+                                                            viewModel.pickupLng = it.longitude
+                                                            viewModel.dropOffLat = lat
+                                                            viewModel.dropOffLng = lng
+                                                            viewModel.dropOffLocation = address ?: "Destination"
+                                                            viewModel.isFullscreenMap = true
+                                                            viewModel.calculateRoute()
+                                                            scope.launch {
+                                                                sheetScaffoldState.bottomSheetState.partialExpand()
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                viewModel.dropOffLat = lat
+                                                viewModel.dropOffLng = lng
+                                                viewModel.dropOffLocation = address ?: "Destination"
+                                                viewModel.isFullscreenMap = true
+                                                viewModel.calculateRoute()
+                                            }
                                         } else {
                                             Toast.makeText(context, "Please set a destination first", Toast.LENGTH_SHORT).show()
                                             viewModel.navigateTo(CustomerScreen.RouteSelection)

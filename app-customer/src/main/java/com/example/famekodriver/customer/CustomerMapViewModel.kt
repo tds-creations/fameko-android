@@ -646,7 +646,7 @@ class CustomerMapViewModel(
     }
 
     fun calculateRoute() {
-        if (pickupLat == null || dropOffLat == null) {
+        if (pickupLat == null || dropOffLat == null || pickupLat == 0.0 || dropOffLat == 0.0) {
             // Requirement: Use suggested locations only. 
             // Do not attempt to resolve coordinates from raw text.
             isLoading = false
@@ -1027,17 +1027,16 @@ class CustomerMapViewModel(
             dropOffLng = targetLng
             dropOffLocation = targetLabel
             
+            // Force re-fetch of current location as pickup
+            pickupLat = null
+            pickupLng = null
+            
             isFullscreenMap = true
             currentScreen = CustomerScreen.MainMap
             
-            // If pickupLat (current location) is already known, calculate route immediately
-            if (pickupLat != null && pickupLat != 0.0) {
-                calculateRoute()
-            } else {
-                // MainMapContent is always active (isActive=true), so it will fill pickupLat shortly.
-                // We'll calculate route as soon as it arrives via LaunchedEffect in calculateRoute.
-                isLoading = true
-            }
+            // MainMapContent will pick up the null pickupLat and fill it with current location,
+            // then trigger calculateRoute() because isFullscreenMap is true.
+            isLoading = true
         } else {
             // No destination set yet. Switch to map and open search.
             isFullscreenMap = false
