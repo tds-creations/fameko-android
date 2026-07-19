@@ -26,9 +26,12 @@ import com.example.famekodriver.core.domain.model.ServiceType
 import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
+import com.example.famekodriver.customer.ui.theme.FamekoBlue
 
 @Composable
 fun CustomerLandingScreen(
+    activeRental: Map<String, Any>? = null,
+    onViewRental: (Map<String, Any>) -> Unit = {},
     onServiceSelected: (ServiceType) -> Unit,
     onScheduleClick: () -> Unit = {},
     recentPlaces: List<LocationSuggestion> = emptyList(),
@@ -52,6 +55,39 @@ fun CustomerLandingScreen(
             fontWeight = FontWeight.ExtraBold,
             fontSize = 28.sp
         )
+
+        activeRental?.let { rental ->
+            Spacer(Modifier.height(20.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onViewRental(rental) },
+                colors = CardDefaults.cardColors(containerColor = FamekoBlue.copy(alpha = 0.05f)),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, FamekoBlue.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = FamekoBlue,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.DirectionsCar, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Active Rental", fontWeight = FontWeight.Bold, color = FamekoBlue, fontSize = 14.sp)
+                        Text(rental["vehicle_name"]?.toString() ?: "Ongoing Trip", fontWeight = FontWeight.ExtraBold, color = BoltDark, fontSize = 16.sp)
+                    }
+                    Icon(Icons.Default.ArrowForwardIos, null, tint = FamekoBlue, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(24.dp))
 

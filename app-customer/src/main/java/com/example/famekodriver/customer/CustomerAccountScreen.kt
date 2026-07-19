@@ -151,6 +151,13 @@ fun CustomerAccountScreen(
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
         AccountMenuItem(
+            icon = Icons.Default.History,
+            title = "My Rentals",
+            subtitle = "View your active and past rentals",
+            onClick = { onNavigate(CustomerScreen.Rentals) }
+        )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
+        AccountMenuItem(
             icon = Icons.Default.LocalOffer,
             title = "Promotions",
             subtitle = "Promo codes, offers, and savings",

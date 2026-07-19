@@ -987,6 +987,8 @@ fun MainMapContent(
                     when (currentSheetState) {
                         CustomerSheetState.LANDING -> {
                             CustomerLandingScreen(
+                                activeRental = viewModel.activeRental,
+                                onViewRental = { viewModel.navigateTo(CustomerScreen.RentalDetails(it)) },
                                 onServiceSelected = { service ->
                                     viewModel.setServiceMode(service)
                                     if (service == ServiceType.RENTAL) {
@@ -1122,7 +1124,7 @@ fun MainMapContent(
                                     onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
                                     onNavigationClick = { lat, lng, address ->
                                         if (lat != null && lng != null && lat != 0.0) {
-                                            val gmmIntentUri = "google.navigation:q=$lat,$lng".toUri()
+                                            val gmmIntentUri = Uri.parse("google.navigation:q=$lat,$lng")
                                             val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                                             mapIntent.setPackage("com.google.android.apps.maps")
                                             try {
@@ -1131,7 +1133,7 @@ fun MainMapContent(
                                                 context.startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
                                             }
                                         } else if (!address.isNullOrBlank() && address != "Not set") {
-                                            val gmmIntentUri = "google.navigation:q=${Uri.encode(address)}".toUri()
+                                            val gmmIntentUri = Uri.parse("google.navigation:q=${Uri.encode(address)}")
                                             val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                                             mapIntent.setPackage("com.google.android.apps.maps")
                                             context.startActivity(mapIntent)
@@ -1141,6 +1143,7 @@ fun MainMapContent(
                                             isDropOffFocused = true
                                         }
                                     },
+                                    onDetailsClick = { viewModel.navigateTo(CustomerScreen.RentalDetails(rental)) },
                                     onCancel = {
                                         val id = rental.let { (it["id"] as? Double)?.toInt() ?: (it["id"] as? Int) ?: 0 }
                                         viewModel.cancelRental(id)
@@ -1609,6 +1612,7 @@ fun ActiveRentalSheetContent(
     rental: Map<String, Any>,
     onSearchClick: () -> Unit,
     onNavigationClick: (Double?, Double?, String?) -> Unit,
+    onDetailsClick: () -> Unit,
     onCancel: () -> Unit
 ) {
     val isUnlocked = rental["is_unlocked"] == true
@@ -1625,6 +1629,13 @@ fun ActiveRentalSheetContent(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(if (isSelfDrive) "Self-Drive Active" else "Active Rental", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = FamekoBlue)
             Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDetailsClick) {
+                Text("Details", fontWeight = FontWeight.Bold, color = FamekoBlue)
+                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, Modifier.size(12.dp).padding(start = 4.dp), FamekoBlue)
+            }
+        }
+        
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 16.dp)) {
             Surface(
                 color = if (isUnlocked) BoltGreen.copy(alpha = 0.1f) else Color(0xFFFFF9DB),
                 shape = RoundedCornerShape(4.dp)
@@ -1638,8 +1649,6 @@ fun ActiveRentalSheetContent(
                 )
             }
         }
-        
-        Spacer(Modifier.height(16.dp))
         
         Card(
             modifier = Modifier.fillMaxWidth(),
