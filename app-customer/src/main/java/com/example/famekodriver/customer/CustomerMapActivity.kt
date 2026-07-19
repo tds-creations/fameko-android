@@ -619,7 +619,6 @@ fun MainMapContent(
     }
     val audioPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasAudioPermission = it }
 
-    val scope = rememberCoroutineScope()
     var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
         val loader = context.imageLoader
@@ -1182,16 +1181,41 @@ fun MainMapContent(
                                         else -> emptyList()
                                     }
 
-                                    if (suggestions.isNotEmpty()) {
-                                        Spacer(Modifier.height(8.dp))
-                                        LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                                            items(suggestions) { suggestion ->
-                                                LocationSuggestionItem(suggestion) {
-                                                    when {
-                                                        isPickupFocused -> viewModel.selectSuggestion(suggestion, true)
-                                                        isDropOffFocused -> viewModel.selectSuggestion(suggestion, false)
-                                                        viewModel.focusedStopIndex != -1 -> viewModel.selectStopSuggestion(viewModel.focusedStopIndex, suggestion)
+                                    Spacer(Modifier.height(8.dp))
+                                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
+                                        val currentText = when {
+                                            isPickupFocused -> viewModel.pickupLocation
+                                            isDropOffFocused -> viewModel.dropOffLocation
+                                            viewModel.focusedStopIndex != -1 -> viewModel.stops.getOrElse(viewModel.focusedStopIndex) { "" }
+                                            else -> ""
+                                        }
+
+                                        if (currentText.isEmpty()) {
+                                            item {
+                                                ListItem(
+                                                    headlineContent = { Text("Use current location", fontWeight = FontWeight.Bold) },
+                                                    leadingContent = { Icon(Icons.Default.MyLocation, null, tint = BoltGreen) },
+                                                    modifier = Modifier.clickable { 
+                                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                                                            viewModel.isLoading = true
+                                                            fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
+                                                                .addOnSuccessListener { location: android.location.Location? ->
+                                                                    location?.let { 
+                                                                        viewModel.useCurrentLocation(it, isPickupFocused)
+                                                                    } ?: run { viewModel.isLoading = false }
+                                                                }.addOnFailureListener { viewModel.isLoading = false }
+                                                        }
                                                     }
+                                                )
+                                            }
+                                        }
+
+                                        items(suggestions) { suggestion ->
+                                            LocationSuggestionItem(suggestion) {
+                                                when {
+                                                    isPickupFocused -> viewModel.selectSuggestion(suggestion, true)
+                                                    isDropOffFocused -> viewModel.selectSuggestion(suggestion, false)
+                                                    viewModel.focusedStopIndex != -1 -> viewModel.selectStopSuggestion(viewModel.focusedStopIndex, suggestion)
                                                 }
                                             }
                                         }
@@ -1239,9 +1263,6 @@ fun MainMapContent(
                                     rental = rental,
                                     viewModel = viewModel,
                                     onDetailsClick = { viewModel.navigateTo(CustomerScreen.RentalDetails(rental)) },
-                                    onUpdateRoute = { 
-                                        viewModel.calculateRoute()
-                                    },
                                     onStartNavigation = {
                                         val lat = viewModel.dropOffLat
                                         val lng = viewModel.dropOffLng
@@ -1292,10 +1313,6 @@ fun MainMapContent(
             }
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                val polylinePoints = viewModel.polylinePoints
-                val drivers = viewModel.drivers
-                val orderStatusData = viewModel.orderStatusData
-                
                 AndroidView(
                     factory = { mapView },
                     modifier = Modifier.fillMaxSize(),
@@ -1782,19 +1799,12 @@ fun ActiveRentalSheetContent(
     rental: Map<String, Any>,
     viewModel: CustomerMapViewModel,
     onDetailsClick: () -> Unit,
-    onUpdateRoute: () -> Unit,
     onStartNavigation: () -> Unit
 ) {
     val isUnlocked = rental["is_unlocked"] == true
     val isSelfDrive = rental["is_self_drive"] == true || rental["is_self_drive"] == "true"
     val bookingCode = rental["booking_code"]?.toString() ?: "----"
     
-    val pickupFocusRequester = remember { FocusRequester() }
-    val dropOffFocusRequester = remember { FocusRequester() }
-    
-    var isPickupFocused by remember { mutableStateOf(false) }
-    var isDropOffFocused by remember { mutableStateOf(false) }
-
     Column(modifier = Modifier.padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(if (isSelfDrive) "Self-Drive Active" else "Active Rental", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = FamekoBlue)
@@ -2678,6 +2688,8 @@ fun RouteSelectionScreen(
     onMapClick: () -> Unit = {},
     onComplete: () -> Unit = onBack
 ) {
+    val context = LocalContext.current
+    val fusedLocationClient = remember { com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(context) }
     val focusManager = LocalFocusManager.current
     val pickupFocusRequester = remember { FocusRequester() }
     val dropOffFocusRequester = remember { FocusRequester() }
@@ -2950,7 +2962,23 @@ fun RouteSelectionScreen(
                 }
                 
                 if (currentText.isEmpty()) {
-                    // ... My Location item ...
+                    item {
+                        ListItem(
+                            headlineContent = { Text("Use current location", fontWeight = FontWeight.Bold) },
+                            leadingContent = { Icon(Icons.Default.MyLocation, null, tint = BoltGreen) },
+                            modifier = Modifier.clickable { 
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                                    viewModel.isLoading = true
+                                    fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
+                                        .addOnSuccessListener { location: android.location.Location? ->
+                                            location?.let { 
+                                                viewModel.useCurrentLocation(it, isPickupFocused)
+                                            } ?: run { viewModel.isLoading = false }
+                                        }.addOnFailureListener { viewModel.isLoading = false }
+                                }
+                            }
+                        )
+                    }
                 }
 
                 items(suggestions) { suggestion ->
