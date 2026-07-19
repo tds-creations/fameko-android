@@ -46,8 +46,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-
-
         .main-content {
             flex: 1;
             padding: 24px 32px;
@@ -227,7 +225,7 @@
 <body>
     <div th:replace="~{admin_sidebar :: sidebar}"></div>
 
-    <div class="main-content" id="main-content">
+    <main class="main-content" id="main-content">
         <div class="header">
             <h1>Fleet Owner Details</h1>
 
@@ -236,17 +234,17 @@
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
 
-                <div class="user-profile">
-                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                <div class="user-profile" th:if="${admin != null}">
+                    <div class="user-avatar" th:text="${admin.username != null ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
                     <div style="display:flex; flex-direction:column">
                         <span class="user-name" th:text="${admin.username}">Administrator</span>
-                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role}">SUPERADMIN</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div th:if="${owner != null}" th:with="status=${owner['status'] != null ? #strings.toUpperCase(owner['status']) : 'UNKNOWN'}">
+        <div th:if="${owner != null}" th:with="status=${owner['status'] != null ? owner['status'].toUpperCase() : 'UNKNOWN'}">
             <div class="card">
                 <div class="card-header">Company Information</div>
                 <div class="card-body">
@@ -290,36 +288,36 @@
                         <div class="doc-card">
                             <div class="doc-label">Profile Picture</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(owner['profile_picture']) and #strings.length(owner['profile_picture']) > 5}"
+                                <img th:if="${owner['profile_picture'] != null and #strings.length(owner['profile_picture']) > 5}"
                                      th:src="${owner['profile_picture']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(owner['profile_picture']) and #strings.length(owner['profile_picture']) > 5}"
+                                <span th:unless="${owner['profile_picture'] != null and #strings.length(owner['profile_picture']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
                         <div class="doc-card">
                             <div class="doc-label">Ghana Card (Front)</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(owner['id_front_image']) and #strings.length(owner['id_front_image']) > 5}"
+                                <img th:if="${owner['id_front_image'] != null and #strings.length(owner['id_front_image']) > 5}"
                                      th:src="${owner['id_front_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(owner['id_front_image']) and #strings.length(owner['id_front_image']) > 5}"
+                                <span th:unless="${owner['id_front_image'] != null and #strings.length(owner['id_front_image']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
                         <div class="doc-card">
                             <div class="doc-label">Ghana Card (Back)</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(owner['id_back_image']) and #strings.length(owner['id_back_image']) > 5}"
+                                <img th:if="${owner['id_back_image'] != null and #strings.length(owner['id_back_image']) > 5}"
                                      th:src="${owner['id_back_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(owner['id_back_image']) and #strings.length(owner['id_back_image']) > 5}"
+                                <span th:unless="${owner['id_back_image'] != null and #strings.length(owner['id_back_image']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
                         <div class="doc-card">
                             <div class="doc-label">Business Certificate</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(owner['business_certificate']) and #strings.length(owner['business_certificate']) > 5}"
+                                <img th:if="${owner['business_certificate'] != null and #strings.length(owner['business_certificate']) > 5}"
                                      th:src="${owner['business_certificate']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(owner['business_certificate']) and #strings.length(owner['business_certificate']) > 5}"
+                                <span th:unless="${owner['business_certificate'] != null and #strings.length(owner['business_certificate']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
@@ -327,19 +325,19 @@
 
                     <div class="action-buttons">
                         <div th:if="${status == 'PENDING' or status == 'REJECTED' or status == 'SUSPENDED'}" style="display:flex; gap:12px;">
-                            <form th:action="${'/admin/fleet-owner/approve/' + owner['id']}" method="post">
+                            <form th:action="@{/admin/fleet-owner/approve/{id}(id=${owner['id']})}" method="post">
                                 <button type="submit" class="btn btn-approve">
                                     <i class="fas fa-check"></i>
                                     <span th:text="${status == 'SUSPENDED' ? 'Re-activate Account' : 'Approve Fleet Owner'}">Approve Fleet Owner</span>
                                 </button>
                             </form>
-                            <form th:if="${status == 'PENDING'}" th:action="${'/admin/fleet-owner/reject/' + owner['id']}" method="post">
+                            <form th:if="${status == 'PENDING'}" th:action="@{/admin/fleet-owner/reject/{id}(id=${owner['id']})}" method="post">
                                 <button type="submit" class="btn btn-reject"><i class="fas fa-xmark"></i> Reject</button>
                             </form>
                         </div>
 
                         <div th:if="${status == 'APPROVED'}" style="display:flex; gap:12px; align-items:center">
-                            <form th:action="${'/admin/fleet-owner/suspend/' + owner['id']}" method="post">
+                            <form th:action="@{/admin/fleet-owner/suspend/{id}(id=${owner['id']})}" method="post">
                                 <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Fleet Owner</button>
                             </form>
                         </div>
@@ -347,7 +345,8 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
+
     <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
 </body>
 </html>

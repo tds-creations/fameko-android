@@ -46,9 +46,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-
-
-        /* Main Content */
         .main-content {
             flex: 1;
             padding: 24px 32px;
@@ -198,7 +195,6 @@
 
     </style>
     <script>
-        // Apply theme immediately
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
@@ -216,11 +212,11 @@
                     <input type="text" placeholder="Search drivers..." aria-label="Search">
                 </div>
 
-                <div class="user-profile">
-                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                <div class="user-profile" th:if="${admin != null}">
+                    <div class="user-avatar" th:text="${admin.username != null ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
                     <div style="display:flex; flex-direction:column">
                         <span class="user-name" th:text="${admin.username}">Administrator</span>
-                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role}">SUPERADMIN</span>
                     </div>
                     <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #adb5bd"></i>
                 </div>
@@ -244,8 +240,8 @@
                     <input type="hidden" id="statusFilter" th:value="${selectedStatus}"/>
 
                     <a href="/admin/drivers" class="btn" th:style="${selectedStatus == '' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">All</a>
-                    <a th:href="${'/admin/drivers?status=APPROVED' + (selectedRegion != '' ? '&amp;region=' + selectedRegion : '')}" class="btn" th:style="${selectedStatus == 'APPROVED' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Approved</a>
-                    <a th:href="${'/admin/drivers?status=PENDING' + (selectedRegion != '' ? '&amp;region=' + selectedRegion : '')}" class="btn" th:style="${selectedStatus == 'PENDING' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Pending</a>
+                    <a th:href="@{/admin/drivers(status='APPROVED', region=${selectedRegion})}" class="btn" th:style="${selectedStatus == 'APPROVED' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Approved</a>
+                    <a th:href="@{/admin/drivers(status='PENDING', region=${selectedRegion})}" class="btn" th:style="${selectedStatus == 'PENDING' ? 'background: var(--primary-color); color: white;' : 'background: var(--light-bg); color: var(--dark-text);'}">Pending</a>
                 </div>
             </div>
             <div class="table-container">
@@ -261,7 +257,6 @@
                     </thead>
                     <tbody>
                         <th:block th:each="driver, iterStat : ${drivers}">
-                            <!-- Region Header Row -->
                             <tr th:if="${iterStat.first or drivers[iterStat.index - 1]['region'] != driver['region']}" style="background: var(--light-bg);">
                                 <td colspan="5" style="padding: 12px 20px; font-weight: 800; font-size: 0.8rem; color: var(--primary-color); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); border-top: 1px solid var(--border-color);">
                                     <i class="fas fa-location-dot" style="margin-right: 8px;"></i>
@@ -298,39 +293,28 @@
                                 <td>
                                     <div th:with="s=${driver['status'] != null ? driver['status'].toString().toUpperCase() : 'UNKNOWN'}"
                                          style="display:flex; gap:8px">
-                                        <!-- Pending -->
                                         <th:block th:if="${s == 'PENDING' or s == 'PENDING_DOCS'}">
-                                            <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post">
+                                            <form th:action="@{/admin/driver/approve/{id}(id=${driver['id']})}" method="post">
                                                 <button type="submit" class="btn btn-approve">
                                                     <i class="fas fa-check"></i> Approve
                                                 </button>
                                             </form>
-                                            <form th:action="${'/admin/driver/reject/' + driver['id']}" method="post">
+                                            <form th:action="@{/admin/driver/reject/{id}(id=${driver['id']})}" method="post">
                                                 <button type="submit" class="btn btn-reject">
                                                     <i class="fas fa-xmark"></i> Reject
                                                 </button>
                                             </form>
                                         </th:block>
 
-                                        <!-- Approved -->
                                         <th:block th:if="${s == 'APPROVED'}">
-                                            <form th:action="${'/admin/driver/suspend/' + driver['id']}" method="post">
+                                            <form th:action="@{/admin/driver/suspend/{id}(id=${driver['id']})}" method="post">
                                                 <button type="submit" class="btn btn-reject" style="background: rgba(220, 53, 69, 0.1);">
                                                     <i class="fas fa-ban"></i> Suspend
                                                 </button>
                                             </form>
                                         </th:block>
 
-                                        <!-- Suspended -->
-                                        <th:block th:if="${s == 'SUSPENDED'}">
-                                            <form th:action="${'/admin/driver/release/' + driver['id']}" method="post">
-                                                <button type="submit" class="btn btn-approve">
-                                                    <i class="fas fa-unlock"></i> Release
-                                                </button>
-                                            </form>
-                                        </th:block>
-
-                                        <a th:href="${'/admin/driver/' + driver['id']}" class="btn" style="background: var(--light-bg); color: var(--primary-color)">
+                                        <a th:href="@{/admin/driver/{id}(id=${driver['id']})}" class="btn" style="background: var(--light-bg); color: var(--primary-color)">
                                             <i class="fas fa-eye"></i> View Profile
                                         </a>
                                     </div>
@@ -345,6 +329,3 @@
     <div th:replace="~{admin_sos_notifier :: sos_notifier}"></div>
 </body>
 </html>
-
-
-

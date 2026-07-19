@@ -46,9 +46,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-
-
-        /* Main Content */
         .main-content {
             flex: 1;
             padding: 24px 32px;
@@ -246,11 +243,8 @@
         .class-selector.active b { color: var(--primary-color); }
     </style>
     <script>
-        //<![CDATA[
-        // Apply theme immediately
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
-        //]]>
     </script>
 </head>
 <body>
@@ -265,17 +259,17 @@
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
 
-                <div class="user-profile">
-                    <div class="user-avatar" th:text="${not #strings.isEmpty(admin.username) ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
+                <div class="user-profile" th:if="${admin != null}">
+                    <div class="user-avatar" th:text="${admin.username != null ? #strings.substring(admin.username, 0, 1) : 'A'}">A</div>
                     <div style="display:flex; flex-direction:column">
                         <span class="user-name" th:text="${admin.username}">Administrator</span>
-                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role + (admin.region != null ? ' - ' + admin.region : '')}">SUPERADMIN</span>
+                        <span style="font-size:0.7rem; color: var(--muted-text); font-weight:700" th:text="${admin.role}">SUPERADMIN</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div th:if="${driver != null}" th:with="status=${driver['status'] != null ? #strings.toUpperCase(driver['status']) : 'UNKNOWN'}, isCar=${driver['vehicle_type'] != null and #strings.toLowerCase(driver['vehicle_type']) == 'car'}">
+        <div th:if="${driver != null}" th:with="status=${driver['status'] != null ? driver['status'].toUpperCase() : 'UNKNOWN'}, isCar=${driver['vehicle_type'] != null and #strings.toLowerCase(driver['vehicle_type']) == 'car'}">
             <!-- PERSONAL INFO -->
             <div class="card">
                 <div class="card-header">Personal Information</div>
@@ -322,7 +316,7 @@
             <div class="card" th:if="${isCar}">
                 <div class="card-header">Vehicle Classification</div>
                 <div class="card-body">
-                    <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post">
+                    <form th:action="@{/admin/driver/approve/{id}(id=${driver['id']})}" method="post">
                         <div style="display:flex; flex-direction:column; gap:12px;">
                             <p style="margin:0; font-size: 0.8rem; color: var(--muted-text); font-weight: 500;">
                                 Examine the vehicle details and photos below. Assign the appropriate ride class based on the vehicle quality.
@@ -359,9 +353,9 @@
                         <div class="doc-card">
                             <div class="doc-label">Profile Picture</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['profile_picture']) and #strings.length(driver['profile_picture']) > 5}"
+                                <img th:if="${driver['profile_picture'] != null and #strings.length(driver['profile_picture']) > 5}"
                                      th:src="${driver['profile_picture']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['profile_picture']) and #strings.length(driver['profile_picture']) > 5}"
+                                <span th:unless="${driver['profile_picture'] != null and #strings.length(driver['profile_picture']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
@@ -369,9 +363,9 @@
                         <div class="doc-card">
                             <div class="doc-label">Driver License</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['license_image']) and #strings.length(driver['license_image']) > 5}"
+                                <img th:if="${driver['license_image'] != null and #strings.length(driver['license_image']) > 5}"
                                      th:src="${driver['license_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['license_image']) and #strings.length(driver['license_image']) > 5}"
+                                <span th:unless="${driver['license_image'] != null and #strings.length(driver['license_image']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
@@ -379,9 +373,9 @@
                         <div class="doc-card">
                             <div class="doc-label">Ghana Card</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['id_front_image']) and #strings.length(driver['id_front_image']) > 5}"
+                                <img th:if="${driver['id_front_image'] != null and #strings.length(driver['id_front_image']) > 5}"
                                      th:src="${driver['id_front_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['id_front_image']) and #strings.length(driver['id_front_image']) > 5}"
+                                <span th:unless="${driver['id_front_image'] != null and #strings.length(driver['id_front_image']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
@@ -389,9 +383,9 @@
                         <div class="doc-card">
                             <div class="doc-label">Insurance Cert</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['insurance_cert']) and #strings.length(driver['insurance_cert']) > 5}"
+                                <img th:if="${driver['insurance_cert'] != null and #strings.length(driver['insurance_cert']) > 5}"
                                      th:src="${driver['insurance_cert']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['insurance_cert']) and #strings.length(driver['insurance_cert']) > 5}"
+                                <span th:unless="${driver['insurance_cert'] != null and #strings.length(driver['insurance_cert']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
@@ -399,9 +393,9 @@
                         <div class="doc-card">
                             <div class="doc-label">Roadworthy Cert</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['roadworthy_cert']) and #strings.length(driver['roadworthy_cert']) > 5}"
+                                <img th:if="${driver['roadworthy_cert'] != null and #strings.length(driver['roadworthy_cert']) > 5}"
                                      th:src="${driver['roadworthy_cert']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['roadworthy_cert']) and #strings.length(driver['roadworthy_cert']) > 5}"
+                                <span th:unless="${driver['roadworthy_cert'] != null and #strings.length(driver['roadworthy_cert']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
@@ -409,9 +403,9 @@
                         <div class="doc-card">
                             <div class="doc-label">Vehicle Image</div>
                             <div class="doc-img-container">
-                                <img th:if="${not #strings.isEmpty(driver['vehicle_image']) and #strings.length(driver['vehicle_image']) > 5}"
+                                <img th:if="${driver['vehicle_image'] != null and #strings.length(driver['vehicle_image']) > 5}"
                                      th:src="${driver['vehicle_image']}" onclick="window.open(this.src)" />
-                                <span th:unless="${not #strings.isEmpty(driver['vehicle_image']) and #strings.length(driver['vehicle_image']) > 5}"
+                                <span th:unless="${driver['vehicle_image'] != null and #strings.length(driver['vehicle_image']) > 5}"
                                       style="color: var(--muted-text); font-size: 0.8rem;">Not Uploaded</span>
                             </div>
                         </div>
@@ -421,8 +415,7 @@
                     <div class="action-buttons">
                         <!-- PENDING / REJECTED / SUSPENDED -->
                         <div th:if="${status == 'PENDING' or status == 'PENDING_DOCS' or status == 'REJECTED' or status == 'SUSPENDED'}" style="display:flex; flex-direction:column; gap:16px; width: 100%; max-width: 400px;">
-                            <form th:action="${'/admin/driver/approve/' + driver['id']}" method="post" style="display:flex; flex-direction:column; gap:12px;">
-                                <!-- For cars, use current category. For others, use vehicle type as category -->
+                            <form th:action="@{/admin/driver/approve/{id}(id=${driver['id']})}" method="post" style="display:flex; flex-direction:column; gap:12px;">
                                 <input type="hidden" name="category" th:value="${driver['vehicle_category'] != null ? driver['vehicle_category'] : driver['vehicle_type']}"/>
 
                                 <div style="display:flex; gap:12px;">
@@ -434,22 +427,22 @@
                                 </div>
                             </form>
 
-                            <form id="reject-form" th:action="${'/admin/driver/reject/' + driver['id']}" method="post" style="display:none;"></form>
+                            <form id="reject-form" th:action="@{/admin/driver/reject/{id}(id=${driver['id']})}" method="post" style="display:none;"></form>
                         </div>
 
                         <!-- APPROVED -->
                         <div th:if="${status == 'APPROVED'}" style="display:flex; gap:12px; align-items:center">
-                            <form th:action="${'/admin/driver/suspend/' + driver['id']}" method="post">
+                            <form th:action="@{/admin/driver/suspend/{id}(id=${driver['id']})}" method="post">
                                 <button type="submit" class="btn btn-suspend"><i class="fas fa-pause"></i> Suspend Driver</button>
                             </form>
                         </div>
 
-                        <!-- TERMINATION (All Statuses) -->
+                        <!-- TERMINATION -->
                         <div style="margin-left: auto;">
                             <button type="button" class="btn btn-reject" th:onclick="'confirmTerminate(' + ${driver['id']} + ')'">
                                 <i class="fas fa-trash-can"></i> Terminate Account
                             </button>
-                            <form th:id="'terminate-form-' + ${driver['id']}" th:action="${'/admin/driver/terminate/' + driver['id']}" method="post" style="display:none;"></form>
+                            <form th:id="'terminate-form-' + ${driver['id']}" th:action="@{/admin/driver/terminate/{id}(id=${driver['id']})}" method="post" style="display:none;"></form>
                         </div>
                     </div>
                 </div>
@@ -460,11 +453,10 @@
 
     <script th:inline="javascript">
         function confirmTerminate(id) {
-            if (confirm("CRITICAL ACTION: This will PERMANENTLY delete the driver profile from PostgreSQL and their authentication account from Firebase. The user will be immediately logged out and unable to log in again. \n\nAre you absolutely sure?")) {
+            if (confirm("CRITICAL ACTION: This will PERMANENTLY delete the driver profile. \n\nAre you absolutely sure?")) {
                 document.getElementById('terminate-form-' + id).submit();
             }
         }
     </script>
 </body>
 </html>
-
