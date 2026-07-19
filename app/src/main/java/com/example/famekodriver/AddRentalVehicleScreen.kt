@@ -277,7 +277,7 @@ fun AddRentalVehicleScreen(
                                 ExposedDropdownMenuBox(
                                     expanded = transExpanded,
                                     onExpandedChange = { transExpanded = !transExpanded },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1.3f)
                                 ) {
                                     OutlinedTextField(
                                         value = selectedTransmission,
@@ -347,7 +347,7 @@ fun AddRentalVehicleScreen(
                                 ExposedDropdownMenuBox(
                                     expanded = seatsExpanded,
                                     onExpandedChange = { seatsExpanded = !seatsExpanded },
-                                    modifier = Modifier.weight(0.8f)
+                                    modifier = Modifier.weight(0.5f)
                                 ) {
                                     OutlinedTextField(
                                         value = selectedSeats,
