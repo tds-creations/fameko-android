@@ -832,12 +832,14 @@ class CustomerMapViewModel(
     private fun updateEstimatedFare() {
         val pLat = pickupLat ?: return
         val pLng = pickupLng ?: return
+        Log.d("PricingDiag", "Updating estimated fare for ($pLat, $pLng), Dist: $distanceKm, Dur: $durationMin, Region: $currentRegion")
         isLoading = true
         viewModelScope.launch {
             // Be more flexible with regions: if extraction failed, the backend should handle null/empty by returning default rates
             val regionToPass = currentRegion?.ifEmpty { null } ?: "Greater Accra" // Default to a known active region if unknown
             orderRepository.getRideEstimates(pLat, pLng, distanceKm, durationMin, regionToPass)
                 .onSuccess { list ->
+                    Log.d("PricingDiag", "Ride estimates received: ${list.size} options found.")
                     rideEstimates = list
                     if (list.isNotEmpty()) {
                         // Find the selected vehicle in the new list
@@ -846,6 +848,7 @@ class CustomerMapViewModel(
                         if (currentSelected != null) {
                             estimatedFare = currentSelected.fare
                             pickupEtaMin = currentSelected.pickupEtaMin.toDouble()
+                            Log.d("PricingDiag", "Selected vehicle $selectedVehicleType found: fare=${currentSelected.fare}")
                         } else {
                             // If current selection is unavailable, pick the first available one
                             val firstAvailable = list.firstOrNull()
@@ -853,12 +856,16 @@ class CustomerMapViewModel(
                                 selectedVehicleType = firstAvailable.serviceId
                                 estimatedFare = firstAvailable.fare
                                 pickupEtaMin = firstAvailable.pickupEtaMin.toDouble()
+                                Log.d("PricingDiag", "Current selection unavailable, switched to ${firstAvailable.serviceId}: fare=${firstAvailable.fare}")
                             }
                         }
+                    } else {
+                        Log.w("PricingDiag", "Ride estimates list is empty from backend!")
                     }
                     isLoading = false
                 }
                 .onFailure {
+                    Log.e("PricingDiag", "Failed to fetch ride estimates", it)
                     isLoading = false
                 }
         }

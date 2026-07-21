@@ -754,7 +754,7 @@ fun MainMapContent(
     val animatingMarkerIds = remember { mutableSetOf<String>() }
 
     val currentSheetState = remember(viewModel.orderStatusData?.status, viewModel.estimatedFare, viewModel.currentOrderId, viewModel.isSearchMode, viewModel.pickupLocation, viewModel.dropOffLocation, viewModel.activeServiceMode, viewModel.pickupLat, viewModel.activeRental, viewModel.rentalPickupLat, viewModel.currentScreen, viewModel.isTimedOut, viewModel.polylinePoints) {
-        when {
+        val state = when {
             viewModel.isTimedOut -> CustomerSheetState.TIMED_OUT
             viewModel.orderStatusData?.status == "PENDING" -> CustomerSheetState.SEARCHING_FOR_DRIVER
             viewModel.orderStatusData?.status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
@@ -766,6 +766,8 @@ fun MainMapContent(
             ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) -> CustomerSheetState.PICKING_ADDRESS
             else -> CustomerSheetState.IDLE
         }
+        android.util.Log.d("SheetState", "Current State: $state, PolylinePoints: ${viewModel.polylinePoints.size}, isSearchMode: ${viewModel.isSearchMode}, activeMode: ${viewModel.activeServiceMode}")
+        state
     }
 
     LaunchedEffect(mapLibreMap, hasLocationPermission, viewModel.isFullscreenMap) {
