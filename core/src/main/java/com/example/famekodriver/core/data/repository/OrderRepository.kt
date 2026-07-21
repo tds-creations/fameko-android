@@ -148,6 +148,7 @@ class OrderRepository {
     }
 
     suspend fun calculateRoute(request: RouteRequest): Result<RouteResponse> = withContext(Dispatchers.IO) {
+        Log.d("OrderRepo", "Calculating route from (${request.start.lat}, ${request.start.lng}) to (${request.end.lat}, ${request.end.lng}) with ${request.stops.size} stops")
         // Priority 1: TomTom
         try {
             val points = mutableListOf<String>()
@@ -166,14 +167,22 @@ class OrderRepository {
                 val summary = route.summary ?: route.legs?.firstOrNull()?.summary
                 
                 if (summary != null) {
+                    var filteredCount = 0
                     val coordinates = route.legs?.flatMap { leg ->
                         leg.points?.mapNotNull { point ->
                             val lat = point.lat
                             val lon = point.lon
-                            if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) null
-                            else listOf(lon, lat)
+                            if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) {
+                                filteredCount++
+                                null
+                            } else listOf(lon, lat)
                         } ?: emptyList()
                     } ?: emptyList()
+
+                    Log.d("OrderRepo", "TomTom route found. Waypoints: ${coordinates.size}, Filtered (0,0) or null: $filteredCount")
+                    if (coordinates.isNotEmpty()) {
+                        Log.d("OrderRepo", "First point: ${coordinates.first()}, Last point: ${coordinates.last()}")
+                    }
 
                     val response = RouteResponse(
                         fromCache = false,
@@ -193,15 +202,17 @@ class OrderRepository {
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.e("OrderRepo", "TomTom Routing failed: ${e.message}")
+            Log.e("OrderRepo", "TomTom Routing failed: ${e.message}", e)
         }
 
         // Fallback: Internal Python Routing
         try {
+            Log.d("OrderRepo", "Falling back to Internal Routing Service")
             val response = NetworkClient.routingApi.calculateRoute(request)
             // Handle Python backend nesting
             val primary = response.primary
             if (primary != null) {
+                Log.d("OrderRepo", "Internal route found (primary). Points: ${primary.coordinates.size}")
                 val flatResponse = response.copy(
                     routeCoords = primary.coordinates,
                     distanceM = primary.distanceM.toInt(),
@@ -209,10 +220,11 @@ class OrderRepository {
                 )
                 Result.success(flatResponse)
             } else {
+                Log.d("OrderRepo", "Internal route found. Points: ${response.routeCoords.size}")
                 Result.success(response)
             }
         } catch (e: Exception) {
-            Log.e("OrderRepo", "Python Routing failed: ${e.message}")
+            Log.e("OrderRepo", "Python Routing failed: ${e.message}", e)
             Result.failure(e)
         }
     }

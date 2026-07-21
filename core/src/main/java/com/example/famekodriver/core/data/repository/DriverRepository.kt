@@ -724,6 +724,7 @@ class DriverRepository private constructor() {
     }
 
     suspend fun calculateRoute(request: RouteRequest): Result<RouteResponse> = withContext(Dispatchers.IO) {
+        Log.d("FamekoRepo", "Calculating route from (${request.start.lat}, ${request.start.lng}) to (${request.end.lat}, ${request.end.lng})")
         // Priority 1: OSRM (OpenStreetMap based, often more accurate local road data)
         try {
             val url = "https://router.project-osrm.org/route/v1/driving/" +
@@ -735,14 +736,27 @@ class DriverRepository private constructor() {
             
             if (osrmResponse.code == "Ok" && osrmResponse.routes.isNotEmpty()) {
                 val route = osrmResponse.routes[0]
+                var filteredCount = 0
+                val coordinates = route.geometry.coordinates.mapNotNull { point ->
+                    if (point.size < 2 || (point[0] == 0.0 && point[1] == 0.0)) {
+                        filteredCount++
+                        null
+                    } else point
+                }
+                
+                Log.d("FamekoRepo", "OSRM route found. Waypoints: ${coordinates.size}, Filtered: $filteredCount")
+                if (coordinates.isNotEmpty()) {
+                    Log.d("FamekoRepo", "First point: ${coordinates.first()}, Last point: ${coordinates.last()}")
+                }
+
                 val response = RouteResponse(
                     fromCache = false,
-                    routeCoords = route.geometry.coordinates,
+                    routeCoords = coordinates,
                     distanceM = route.distance.toInt(),
                     etaMin = route.duration / 60.0,
                     vehicleType = request.vehicleType,
                     routeType = request.routeType,
-                    waypoints = route.geometry.coordinates.size,
+                    waypoints = coordinates.size,
                     computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                         timeZone = TimeZone.getTimeZone("UTC")
                     }.format(Date())
@@ -767,14 +781,22 @@ class DriverRepository private constructor() {
                 val summary = route.summary ?: route.legs?.firstOrNull()?.summary
                 
                 if (summary != null) {
+                    var filteredCount = 0
                     val coordinates = route.legs?.flatMap { leg ->
                         leg.points?.mapNotNull { point ->
                             val lat = point.lat
                             val lon = point.lon
-                            if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) null
-                            else listOf(lon, lat)
+                            if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) {
+                                filteredCount++
+                                null
+                            } else listOf(lon, lat)
                         } ?: emptyList()
                     } ?: emptyList()
+
+                    Log.d("FamekoRepo", "TomTom route found. Waypoints: ${coordinates.size}, Filtered: $filteredCount")
+                    if (coordinates.isNotEmpty()) {
+                        Log.d("FamekoRepo", "First point: ${coordinates.first()}, Last point: ${coordinates.last()}")
+                    }
 
                     val response = RouteResponse(
                         fromCache = false,
@@ -797,10 +819,13 @@ class DriverRepository private constructor() {
             Log.e("FamekoRepo", "TomTom Routing failed as well, falling back to backend", e)
             try {
                 // Priority 3: Go Routing Service as last resort
+                Log.d("FamekoRepo", "Falling back to Internal Routing Service")
                 val response = NetworkClient.routingApi.calculateRoute(request)
+                Log.d("FamekoRepo", "Internal route found. Points: ${response.routeCoords.size}")
                 Result.success(response)
             } catch (e3: Exception) {
                 if (e3 is CancellationException) throw e3
+                Log.e("FamekoRepo", "All routing attempts failed", e3)
                 Result.failure(Exception("Routing failed completely"))
             }
         }
