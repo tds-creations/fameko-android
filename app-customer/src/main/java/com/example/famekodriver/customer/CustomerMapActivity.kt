@@ -85,11 +85,15 @@ import com.example.famekodriver.core.utils.NotificationHelper
 import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.customer.ui.screens.*
 import com.example.famekodriver.customer.ui.theme.*
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.messaging.FirebaseMessaging
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import kotlinx.coroutines.awaitCancellation
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
@@ -654,53 +658,108 @@ fun MainMapContent(
     var hasCentredOnLocation by remember { mutableStateOf(false) }
 
     LaunchedEffect(hasLocationPermission, viewModel.pickupLat, viewModel.pickupLng, isActive, mapLibreMap, viewModel.isFullscreenMap) {
-        while (isActive) {
-            if (hasLocationPermission) {
-                val targetLat = viewModel.pickupLat
-                val targetLng = viewModel.pickupLng
-                
-                if (targetLat != null && targetLng != null) {
-                    viewModel.updateNearbyDrivers(targetLat, targetLng)
-                } else {
-                    @SuppressLint("MissingPermission")
-                    fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
-                        location?.let {
-                            if (it.latitude != 0.0 && it.longitude != 0.0) {
-                                viewModel.updateNearbyDrivers(it.latitude, it.longitude)
-                                
-                                // Ensure ViewModel has current location for navigation and other tasks
-                                if (viewModel.pickupLat == null && viewModel.pickupLocation.isEmpty()) {
-                                    viewModel.pickupLat = it.latitude
-                                    viewModel.pickupLng = it.longitude
+        if (!isActive || mapLibreMap == null) return@LaunchedEffect
+
+        if (hasLocationPermission && viewModel.isFullscreenMap) {
+            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+                .setMinUpdateIntervalMillis(500)
+                .build()
+
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    val location = result.lastLocation ?: return
+                    if (location.latitude == 0.0 || location.longitude == 0.0) return
+
+                    // Update ViewModel location state for nearby driver queries and route logic
+                    viewModel.pickupLat = location.latitude
+                    viewModel.pickupLng = location.longitude
+                    viewModel.updateNearbyDrivers(location.latitude, location.longitude)
+                    
+                    // Off-route detection
+                    viewModel.checkOffRoute(location.latitude, location.longitude)
+
+                    // Navigation Progress
+                    if (viewModel.polylinePoints.isNotEmpty()) {
+                        voiceNavManager.updateProgress(
+                            currentLat = location.latitude,
+                            currentLng = location.longitude,
+                            route = viewModel.polylinePoints.map { p -> p.latitude to p.longitude },
+                            etaMin = viewModel.durationMin,
+                            distanceKm = viewModel.distanceKm
+                        )
+                    }
+
+                    // Live Camera Following (Navigation Mode)
+                    mapLibreMap?.let { map ->
+                        // Adaptive Zoom based on speed (m/s to km/h)
+                        val speedKmh = location.speed.toDouble() * 3.6
+                        val targetZoom = when {
+                            speedKmh > 80.0 -> 15.0
+                            speedKmh > 50.0 -> 16.0
+                            speedKmh > 20.0 -> 17.0
+                            else -> 18.0
+                        }
+
+                        val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                            .target(LatLng(location.latitude, location.longitude))
+                            .zoom(targetZoom)
+                            .bearing(location.bearing.toDouble()) // Align map with movement
+                            .tilt(50.0) // 3D perspective for road view
+                            .build()
+                        
+                        // Apply padding to keep vehicle in lower third
+                        map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
+                        
+                        map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                    }
+                }
+            }
+
+            try {
+                fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+                awaitCancellation()
+            } finally {
+                fusedLocationClient.removeLocationUpdates(locationCallback)
+                // Reset padding when exiting navigation
+                mapLibreMap?.setPadding(0, 0, 0, 0)
+            }
+        } else {
+            // Preview Mode or Background Polling
+            while (isActive) {
+                if (hasLocationPermission) {
+                    val targetLat = viewModel.pickupLat
+                    val targetLng = viewModel.pickupLng
+                    
+                    if (targetLat != null && targetLng != null) {
+                        viewModel.updateNearbyDrivers(targetLat, targetLng)
+                    } else {
+                        @SuppressLint("MissingPermission")
+                        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
+                            location?.let {
+                                if (it.latitude != 0.0 && it.longitude != 0.0) {
+                                    viewModel.updateNearbyDrivers(it.latitude, it.longitude)
                                     
-                                    // Auto-calculate route if we have a destination set (e.g. returning from search)
-                                    // Only if we're NOT in a screen where the user is manually editing the route
-                                    if (viewModel.dropOffLat != null && viewModel.polylinePoints.isEmpty() && 
-                                        viewModel.currentScreen != CustomerScreen.RouteSelection && !viewModel.isSearchMode) {
-                                        viewModel.calculateRoute()
+                                    if (viewModel.pickupLat == null && viewModel.pickupLocation.isEmpty()) {
+                                        viewModel.pickupLat = it.latitude
+                                        viewModel.pickupLng = it.longitude
+                                        
+                                        if (viewModel.dropOffLat != null && viewModel.polylinePoints.isEmpty() && 
+                                            viewModel.currentScreen != CustomerScreen.RouteSelection && !viewModel.isSearchMode) {
+                                            viewModel.calculateRoute()
+                                        }
                                     }
-                                }
 
-                                if (viewModel.isFullscreenMap && viewModel.polylinePoints.isNotEmpty()) {
-                                    voiceNavManager.updateProgress(
-                                        currentLat = it.latitude,
-                                        currentLng = it.longitude,
-                                        route = viewModel.polylinePoints.map { p -> p.latitude to p.longitude },
-                                        etaMin = viewModel.durationMin,
-                                        distanceKm = viewModel.distanceKm
-                                    )
-                                }
-
-                                if (!hasCentredOnLocation && mapLibreMap != null) {
-                                    mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
-                                    hasCentredOnLocation = true
+                                    if (!hasCentredOnLocation && mapLibreMap != null) {
+                                        mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
+                                        hasCentredOnLocation = true
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                delay(5.seconds)
             }
-            delay(if (viewModel.isFullscreenMap) 2.seconds else 5.seconds)
         }
     }
 

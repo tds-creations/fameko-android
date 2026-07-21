@@ -1267,4 +1267,29 @@ class CustomerMapViewModel(
             }
         }
     }
+
+    /**
+     * Checks if the user is off-route and triggers recalculation if needed.
+     */
+    fun checkOffRoute(currentLat: Double, currentLng: Double) {
+        if (polylinePoints.size < 2 || isLoading) return
+        
+        var minDistance = Double.MAX_VALUE
+        for (i in 0 until polylinePoints.size - 1) {
+            val p1 = polylinePoints[i]
+            val p2 = polylinePoints[i + 1]
+            val dist = LocationUtils.distanceToSegment(
+                currentLat, currentLng,
+                p1.latitude, p1.longitude,
+                p2.latitude, p2.longitude
+            )
+            if (dist < minDistance) minDistance = dist
+        }
+        
+        // If deviating more than 50 meters, recalculate
+        if (minDistance > 50.0) {
+            Log.w("NavDiag", "Off-route detected: ${minDistance.toInt()}m from path. Recalculating...")
+            calculateRoute()
+        }
+    }
 }
