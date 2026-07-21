@@ -686,7 +686,6 @@ object DatabaseRepository {
                 }
                 stmt.setDouble(paramIdx++, lat); stmt.setDouble(paramIdx++, lng); stmt.setDouble(paramIdx++, lat)
                 stmt.setDouble(paramIdx++, radius)
-                stmt.setDouble(paramIdx++, lat); stmt.setDouble(paramIdx++, lng); stmt.setDouble(paramIdx++, lat)
             } else {
                 if (vehicleType != null && !isPredefined(vehicleType)) {
                     stmt.setString(1, vehicleType)
