@@ -149,7 +149,55 @@ class OrderRepository {
 
     suspend fun calculateRoute(request: RouteRequest): Result<RouteResponse> = withContext(Dispatchers.IO) {
         Log.d("OrderRepo", "Calculating route from (${request.start.lat}, ${request.start.lng}) to (${request.end.lat}, ${request.end.lng}) with ${request.stops.size} stops")
-        // Priority 1: TomTom
+        
+        // Priority 1: OSRM (Often more reliable for local road data)
+        try {
+            val waypointsStr = mutableListOf<String>()
+            waypointsStr.add("${request.start.lng},${request.start.lat}")
+            request.stops.forEach { waypointsStr.add("${it.lng},${it.lat}") }
+            waypointsStr.add("${request.end.lng},${request.end.lat}")
+            
+            val url = "https://router.project-osrm.org/route/v1/driving/" +
+                    waypointsStr.joinToString(";") +
+                    "?overview=full&geometries=geojson"
+            
+            Log.d("OrderRepo", "Trying OSRM: $url")
+            val osrmResponse = NetworkClient.osmService.getRoute(url)
+            
+            if (osrmResponse.code == "Ok" && osrmResponse.routes.isNotEmpty()) {
+                val route = osrmResponse.routes[0]
+                var filteredCount = 0
+                val coordinates = route.geometry.coordinates.mapNotNull { point ->
+                    if (point.size < 2 || (point[0] == 0.0 && point[1] == 0.0)) {
+                        filteredCount++
+                        null
+                    } else point
+                }
+                
+                if (coordinates.isNotEmpty()) {
+                    Log.d("OrderRepo", "OSRM route found. Waypoints: ${coordinates.size}, Filtered: $filteredCount")
+                    val response = RouteResponse(
+                        fromCache = false,
+                        routeCoords = coordinates,
+                        distanceM = route.distance.toInt(),
+                        etaMin = route.duration / 60.0,
+                        vehicleType = request.vehicleType,
+                        routeType = request.routeType,
+                        waypoints = coordinates.size,
+                        computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                            timeZone = TimeZone.getTimeZone("UTC")
+                        }.format(Date()),
+                        instructions = emptyList()
+                    )
+                    return@withContext Result.success(response)
+                }
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("OrderRepo", "OSM Routing failed, falling back to TomTom", e)
+        }
+
+        // Priority 2: TomTom
         try {
             val points = mutableListOf<String>()
             points.add("${request.start.lat},${request.start.lng}")
@@ -157,6 +205,7 @@ class OrderRepository {
             points.add("${request.end.lat},${request.end.lng}")
 
             val locations = points.joinToString(":")
+            Log.d("OrderRepo", "Trying TomTom: $locations")
             val tomTomResponse = NetworkClient.tomTomService.calculateRoute(
                 locations = locations,
                 apiKey = NetworkClient.TOMTOM_API_KEY
@@ -179,25 +228,23 @@ class OrderRepository {
                         } ?: emptyList()
                     } ?: emptyList()
 
-                    Log.d("OrderRepo", "TomTom route found. Waypoints: ${coordinates.size}, Filtered (0,0) or null: $filteredCount")
                     if (coordinates.isNotEmpty()) {
-                        Log.d("OrderRepo", "First point: ${coordinates.first()}, Last point: ${coordinates.last()}")
+                        Log.d("OrderRepo", "TomTom route found. Waypoints: ${coordinates.size}, Filtered (0,0) or null: $filteredCount")
+                        val response = RouteResponse(
+                            fromCache = false,
+                            routeCoords = coordinates,
+                            distanceM = summary.lengthInMeters ?: 0,
+                            etaMin = (summary.travelTimeInSeconds ?: 0) / 60.0,
+                            vehicleType = request.vehicleType,
+                            routeType = request.routeType,
+                            waypoints = coordinates.size,
+                            computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                                timeZone = TimeZone.getTimeZone("UTC")
+                            }.format(Date()),
+                            instructions = emptyList()
+                        )
+                        return@withContext Result.success(response)
                     }
-
-                    val response = RouteResponse(
-                        fromCache = false,
-                        routeCoords = coordinates,
-                        distanceM = summary.lengthInMeters ?: 0,
-                        etaMin = (summary.travelTimeInSeconds ?: 0) / 60.0,
-                        vehicleType = request.vehicleType,
-                        routeType = request.routeType,
-                        waypoints = coordinates.size,
-                        computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                            timeZone = TimeZone.getTimeZone("UTC")
-                        }.format(Date()),
-                        instructions = emptyList()
-                    )
-                    return@withContext Result.success(response)
                 }
             }
         } catch (e: Exception) {
@@ -205,27 +252,29 @@ class OrderRepository {
             Log.e("OrderRepo", "TomTom Routing failed: ${e.message}", e)
         }
 
-        // Fallback: Internal Python Routing
+        // Fallback: Internal Routing Service
         try {
             Log.d("OrderRepo", "Falling back to Internal Routing Service")
             val response = NetworkClient.routingApi.calculateRoute(request)
-            // Handle Python backend nesting
+            // Handle Python/Go backend nesting
             val primary = response.primary
-            if (primary != null) {
+            if (primary != null && primary.coordinates.isNotEmpty()) {
                 Log.d("OrderRepo", "Internal route found (primary). Points: ${primary.coordinates.size}")
                 val flatResponse = response.copy(
                     routeCoords = primary.coordinates,
                     distanceM = primary.distanceM.toInt(),
                     etaMin = primary.durationMin
                 )
-                Result.success(flatResponse)
-            } else {
+                return@withContext Result.success(flatResponse)
+            } else if (response.routeCoords.isNotEmpty()) {
                 Log.d("OrderRepo", "Internal route found. Points: ${response.routeCoords.size}")
-                Result.success(response)
+                return@withContext Result.success(response)
             }
         } catch (e: Exception) {
-            Log.e("OrderRepo", "Python Routing failed: ${e.message}", e)
-            Result.failure(e)
+            if (e is CancellationException) throw e
+            Log.e("OrderRepo", "Internal Routing failed: ${e.message}", e)
         }
+        
+        Result.failure(Exception("All routing providers failed"))
     }
 }

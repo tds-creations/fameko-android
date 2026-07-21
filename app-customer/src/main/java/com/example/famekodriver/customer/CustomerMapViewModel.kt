@@ -1,6 +1,7 @@
 package com.example.famekodriver.customer
 
 import android.location.Location
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -779,30 +780,51 @@ class CustomerMapViewModel(
             
             orderRepository.calculateRoute(request)
                 .onSuccess { response ->
-                    android.util.Log.d("RouteDiag", "Route calculation success: ${response.routeCoords.size} points received. First: ${response.routeCoords.firstOrNull()}")
-                    if (response.routeCoords.isNotEmpty()) {
-                        polylinePoints = response.routeCoords.filter { it.size >= 2 }.map { LatLng(it[1], it[0]) }
-                        if (polylinePoints.isNotEmpty()) {
-                            val first = polylinePoints.first()
-                            android.util.Log.d("RouteDiag", "Polyline points set: ${polylinePoints.size}, Start: ${first.latitude}, ${first.longitude}")
-                        }
-                        instructions = response.instructions
-                        currentInstruction = instructions.firstOrNull()
-
-                        if (!isUpdate) {
-                            distanceKm = response.distanceM / 1000.0
-                            durationMin = response.etaMin
-                            
-                            if (activeServiceMode != ServiceType.RENTAL) {
-                                updateEstimatedFare()
-                            }
-                        }
-                        lastRouteCalcLatLng = LatLng(pLat, pLng)
+                    android.util.Log.d("RouteDiag", "Route calculation success: ${response.routeCoords.size} points received.")
+                    
+                    val coords = if (response.routeCoords.isNotEmpty()) {
+                        response.routeCoords
+                    } else {
+                        // Fallback to straight line if no route coords but we have start/end
+                        Log.w("RouteDiag", "No route coords received, using straight line fallback")
+                        listOf(listOf(pLng, pLat), listOf(dLng, dLat))
                     }
+
+                    polylinePoints = coords.filter { it.size >= 2 }.map { LatLng(it[1], it[0]) }
+                    
+                    if (polylinePoints.isNotEmpty()) {
+                        val first = polylinePoints.first()
+                        android.util.Log.d("RouteDiag", "Polyline points set: ${polylinePoints.size}, Start: ${first.latitude}, ${first.longitude}")
+                    }
+                    
+                    instructions = response.instructions
+                    currentInstruction = instructions.firstOrNull()
+
+                    if (!isUpdate) {
+                        distanceKm = if (response.distanceM > 0) response.distanceM / 1000.0 
+                                     else com.example.famekodriver.core.utils.LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
+                        durationMin = if (response.etaMin > 0) response.etaMin 
+                                      else (distanceKm * 2.0) // rough estimate: 2 mins per km
+                        
+                        if (activeServiceMode != ServiceType.RENTAL) {
+                            updateEstimatedFare()
+                        }
+                    }
+                    lastRouteCalcLatLng = LatLng(pLat, pLng)
                     isLoading = false
                 }
                 .onFailure {
                     isLoading = false
+                    Log.e("RouteDiag", "Route calculation failed completely", it)
+                    
+                    // Even on complete failure, try to show a straight line if we have coordinates
+                    // so the user isn't stuck without a pricing card
+                    if (!isUpdate && pLat != 0.0 && dLat != 0.0) {
+                        polylinePoints = listOf(LatLng(pLat, pLng), LatLng(dLat, dLng))
+                        distanceKm = com.example.famekodriver.core.utils.LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
+                        durationMin = distanceKm * 2.0
+                        updateEstimatedFare()
+                    }
                 }
         }
     }
@@ -1027,6 +1049,13 @@ class CustomerMapViewModel(
                         dropOffLng = location.longitude
                     }
                 }
+                
+                if (pickupLat != null && dropOffLat != null) {
+                    isSearchMode = false
+                    currentScreen = CustomerScreen.MainMap
+                    calculateRoute()
+                }
+                isLoading = false
             }.onFailure {
                 val name = "My Location"
                 if (stopIndex != -1) {
@@ -1053,11 +1082,13 @@ class CustomerMapViewModel(
                         dropOffLng = location.longitude
                     }
                 }
-            }
-            if (pickupLat != null && dropOffLat != null) {
-                isSearchMode = false
-                currentScreen = CustomerScreen.MainMap
-                calculateRoute()
+                
+                if (pickupLat != null && dropOffLat != null) {
+                    isSearchMode = false
+                    currentScreen = CustomerScreen.MainMap
+                    calculateRoute()
+                }
+                isLoading = false
             }
         }
     }
