@@ -1292,4 +1292,31 @@ class CustomerMapViewModel(
             calculateRoute()
         }
     }
+
+    /**
+     * Checks if the user has arrived at the destination.
+     * Returns true if arrived.
+     */
+    fun checkArrival(currentLat: Double, currentLng: Double): Boolean {
+        val dLat = dropOffLat ?: return false
+        val dLng = dropOffLng ?: return false
+        
+        val distToDest = LocationUtils.calculateDistance(currentLat, currentLng, dLat, dLng)
+        
+        if (distToDest < 30.0) { // Within 30 meters
+            Log.d("NavDiag", "Arrival detected! Distance: ${distToDest.toInt()}m")
+            isFullscreenMap = false
+            // Reset routing state
+            polylinePoints = emptyList()
+            instructions = emptyList()
+            currentInstruction = null
+            
+            if (currentOrderId != null) {
+                // If it was a real order, final fare should be set
+                showTripSummary = true
+            }
+            return true
+        }
+        return false
+    }
 }

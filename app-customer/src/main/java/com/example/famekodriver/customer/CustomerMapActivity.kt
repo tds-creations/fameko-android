@@ -677,6 +677,11 @@ fun MainMapContent(
                     
                     // Off-route detection
                     viewModel.checkOffRoute(location.latitude, location.longitude)
+                    
+                    // Arrival detection
+                    if (viewModel.checkArrival(location.latitude, location.longitude)) {
+                        voiceNavManager.announceArrival()
+                    }
 
                     // Navigation Progress
                     if (viewModel.polylinePoints.isNotEmpty()) {
@@ -1252,21 +1257,15 @@ fun MainMapContent(
                 )
 
                 if (viewModel.isFullscreenMap) {
-                    Box(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(16.dp)) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.White,
-                            shadowElevation = 4.dp,
-                            modifier = Modifier.size(48.dp).clickable { 
-                                viewModel.isFullscreenMap = false
-                                viewModel.polylinePoints = emptyList()
-                            }
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = BoltDark)
-                            }
+                    NavigationOverlay(
+                        instruction = viewModel.currentInstruction,
+                        distanceKm = viewModel.distanceKm,
+                        durationMin = viewModel.durationMin,
+                        onExit = {
+                            viewModel.isFullscreenMap = false
+                            viewModel.polylinePoints = emptyList()
                         }
-                    }
+                    )
                 }
 
                 // Immersive Floating Search Bar & Controls
@@ -2966,5 +2965,140 @@ fun LocationSuggestionItem(
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )
+    }
+}
+
+@Composable
+fun NavigationOverlay(
+    instruction: RouteInstruction?,
+    distanceKm: Double,
+    durationMin: Double,
+    onExit: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Top Instruction Card
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .statusBarsPadding(),
+            shape = RoundedCornerShape(16.dp),
+            color = BoltDark, // Use a dark high-contrast background for navigation
+            shadowElevation = 8.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Direction Icon (Placeholder logic)
+                val icon = when {
+                    instruction?.text?.contains("left", true) == true -> Icons.AutoMirrored.Filled.ArrowBack
+                    instruction?.text?.contains("right", true) == true -> Icons.AutoMirrored.Filled.ArrowForward
+                    else -> Icons.Default.Navigation
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color.White.copy(alpha = 0.1f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+                
+                Spacer(Modifier.width(16.dp))
+                
+                Column {
+                    Text(
+                        text = instruction?.text ?: "Follow the path",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Next turn in ...", // Distance to turn can be added later
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
+        // Bottom Stats and Exit
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .padding(24.dp)
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "${String.format("%.1f", distanceKm)} km",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = BoltDark
+                    )
+                    Text(
+                        text = "REMAINING",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val arrivalTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(System.currentTimeMillis() + (durationMin * 60000).toLong()))
+                    Text(
+                        text = arrivalTime,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = FamekoBlue
+                    )
+                    Text(
+                        text = "ARRIVAL",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${durationMin.toInt()} min",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = BoltGreen
+                    )
+                    Text(
+                        text = "ESTIMATED",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                onClick = onExit,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+            ) {
+                Icon(Icons.Default.Close, null)
+                Spacer(Modifier.width(12.dp))
+                Text("Exit Navigation", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        }
     }
 }
