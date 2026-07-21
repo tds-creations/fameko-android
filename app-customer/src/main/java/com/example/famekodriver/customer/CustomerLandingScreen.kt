@@ -8,11 +8,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,6 +40,8 @@ fun CustomerLandingScreen(
     onSearchClick: () -> Unit = {},
     onPlaceClick: (LocationSuggestion) -> Unit = {}
 ) {
+    val isRentalActive = activeRental != null
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -82,30 +86,32 @@ fun CustomerLandingScreen(
                     Spacer(Modifier.width(16.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Active Rental", fontWeight = FontWeight.Bold, color = FamekoBlue, fontSize = 14.sp)
-                        Text(rental["vehicle_name"]?.toString() ?: "Ongoing Trip", fontWeight = FontWeight.ExtraBold, color = BoltDark, fontSize = 16.sp)
+                        Text(rental["vehicle_name"]?.toString() ?: rental["name"]?.toString() ?: "Ongoing Trip", fontWeight = FontWeight.ExtraBold, color = BoltDark, fontSize = 16.sp)
                     }
-                    Icon(Icons.Default.ArrowForwardIos, null, tint = FamekoBlue, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = FamekoBlue, modifier = Modifier.size(16.dp))
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
 
         // Service Grid - Row 1
         Row(modifier = Modifier.fillMaxWidth()) {
             ServiceGridItem(
                 title = "Rides",
-                description = "Let's get moving",
+                description = if (isRentalActive) "Rental in progress" else "Let's get moving",
                 imageUrl = ImageLinks.RIDE,
                 modifier = Modifier.weight(1f),
+                enabled = !isRentalActive,
                 onClick = { onServiceSelected(ServiceType.RIDE_HAILING) }
             )
             Spacer(modifier = Modifier.width(12.dp))
             ServiceGridItem(
                 title = "Schedule",
-                description = "Book ahead",
+                description = if (isRentalActive) "Rental in progress" else "Book ahead",
                 icon = Icons.Default.CalendarMonth,
                 modifier = Modifier.weight(1f),
+                enabled = !isRentalActive,
                 onClick = { onScheduleClick() }
             )
         }
@@ -116,9 +122,10 @@ fun CustomerLandingScreen(
         Row(modifier = Modifier.fillMaxWidth()) {
             ServiceGridItem(
                 title = "Delivery",
-                description = "Send packages",
+                description = if (isRentalActive) "Rental in progress" else "Send packages",
                 imageUrl = ImageLinks.DELIVERY,
                 modifier = Modifier.weight(1f),
+                enabled = !isRentalActive,
                 onClick = { onServiceSelected(ServiceType.PACKAGE_DELIVERY) }
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -138,37 +145,39 @@ fun CustomerLandingScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .clickable { onSearchClick() },
+                .clickable(enabled = !isRentalActive) { onSearchClick() },
             shape = RoundedCornerShape(12.dp),
-            color = BoltLightGray
+            color = if (isRentalActive) BoltLightGray.copy(alpha = 0.5f) else BoltLightGray
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                Icon(Icons.Default.Search, null, tint = BoltDark, modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Search, null, tint = if (isRentalActive) Color.Gray else BoltDark, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Where to?",
+                    text = if (isRentalActive) "Complete rental to book rides" else "Where to?",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = BoltDark,
+                    color = if (isRentalActive) Color.Gray else BoltDark,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 
-                Surface(
-                    onClick = onScheduleClick,
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White,
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 12.dp)
+                if (!isRentalActive) {
+                    Surface(
+                        onClick = onScheduleClick,
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.White,
+                        modifier = Modifier.height(36.dp)
                     ) {
-                        Icon(Icons.Default.Schedule, null, tint = BoltDark, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Later", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        ) {
+                            Icon(Icons.Default.Schedule, null, tint = BoltDark, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Later", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
                     }
                 }
             }
@@ -180,6 +189,7 @@ fun CustomerLandingScreen(
         recentPlaces.forEach { place ->
             RecentPlaceItem(
                 suggestion = place,
+                enabled = !isRentalActive,
                 onClick = { onPlaceClick(place) }
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -196,17 +206,18 @@ fun ServiceGridItem(
     imageUrl: String? = null,
     icon: ImageVector? = null,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = modifier
             .height(140.dp)
-            .clickable { onClick() },
+            .clickable(enabled = enabled) { onClick() },
         shape = RoundedCornerShape(16.dp),
-        color = BoltLightGray
+        color = if (enabled) BoltLightGray else BoltLightGray.copy(alpha = 0.5f)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(12.dp).alpha(if (enabled) 1f else 0.5f),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -246,13 +257,15 @@ fun ServiceGridItem(
 @Composable
 fun RecentPlaceItem(
     suggestion: LocationSuggestion,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 8.dp),
+            .clickable(enabled = enabled) { onClick() }
+            .padding(vertical = 8.dp)
+            .alpha(if (enabled) 1f else 0.5f),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
@@ -270,7 +283,7 @@ fun RecentPlaceItem(
                 text = suggestion.name ?: suggestion.displayName.split(",")[0],
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                color = BoltDark,
+                color = if (enabled) BoltDark else Color.Gray,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

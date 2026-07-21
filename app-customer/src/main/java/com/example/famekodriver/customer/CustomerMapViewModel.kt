@@ -21,7 +21,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class CustomerMapViewModel(
-    private val repository: DriverRepository, // Kept for WebSockets and general tasks
+    private val repository: DriverRepository,
     private val orderRepository: OrderRepository,
     private val rentalRepository: RentalRepository,
     private val userRepository: UserRepository,
@@ -52,6 +52,9 @@ class CustomerMapViewModel(
     var stops by mutableStateOf<List<String>>(emptyList())
     var stopPoints by mutableStateOf<Map<Int, LatLng>>(emptyMap())
 
+    // --- Rental Specific State ---
+    var activeRental by mutableStateOf<Map<String, Any>?>(null)
+    var rentalRates by mutableStateOf<List<Map<String, Any>>>(emptyList())
     var rentalPickupLocation by mutableStateOf("")
     var rentalPickupLat by mutableStateOf<Double?>(null)
     var rentalPickupLng by mutableStateOf<Double?>(null)
@@ -70,7 +73,6 @@ class CustomerMapViewModel(
     var selectedVehicleType by mutableStateOf("Economy")
     var discountRate by mutableIntStateOf(0)
     var pricingConfig by mutableStateOf<PricingConfig?>(null)
-    var rentalRates by mutableStateOf<List<Map<String, Any>>>(emptyList())
     var scheduledRideTime by mutableStateOf<String?>(null)
         private set
 
@@ -83,7 +85,6 @@ class CustomerMapViewModel(
     var activeServiceMode by mutableStateOf(ServiceType.RIDE_HAILING)
     var isServiceModeSelected by mutableStateOf(true)
     var isSearchMode by mutableStateOf(false)
-    var activeRental by mutableStateOf<Map<String, Any>?>(null)
     var isFullscreenMap by mutableStateOf(false)
     var customerProfile by mutableStateOf<Map<String, Any>?>(null)
     
@@ -130,14 +131,13 @@ class CustomerMapViewModel(
     private var managePlacesSearchJob: Job? = null
     private var routeJob: Job? = null
     private var lastRouteCalcLatLng: LatLng? = null
-    private var isSelectingSuggestion = false
 
     init {
         loadInitialData()
         loadCustomerProfile()
         startWebSocket()
-        startActiveRentalPolling()
         startPricingPolling()
+        startActiveRentalPolling()
     }
 
     private fun loadCustomerProfile() {
@@ -213,10 +213,10 @@ class CustomerMapViewModel(
 
             fetchSavedPlaces()
             orderRepository.getPricingConfig().onSuccess { pricingConfig = it }
-            rentalRepository.getRentalRates().onSuccess { rentalRates = it }
             orderRepository.getDiscountRate(customerId).onSuccess { discountRate = it }
-            
-            // Restore active rental from backend (Redis-backed session)
+            rentalRepository.getRentalRates().onSuccess { rentalRates = it }
+
+            // Restore active rental from backend
             rentalRepository.getActiveRental(customerId.toIntOrNull() ?: 1).onSuccess { 
                 updateActiveRentalState(it)
                 if (it != null) {
@@ -237,7 +237,7 @@ class CustomerMapViewModel(
 
             // Restore active session from backend (Redis-backed on server)
             orderRepository.getActiveOrder(customerId).onSuccess { response ->
-                if (response.success && response.status != "DELIVERED" && response.status != "CANCELLED") {
+                if (response?.success == true && response.status != "DELIVERED" && response.status != "CANCELLED") {
                     val orderId = response.orderId
                     if (orderId != null) {
                         currentOrderId = orderId
@@ -388,21 +388,9 @@ class CustomerMapViewModel(
                         searchRadiusKm = (event.data["radius"] as? Double) ?: searchRadiusKm
                         searchMessage = event.data["message"]?.toString() ?: searchMessage
                     } else if (type == "RENTAL_STATUS_UPDATED") {
-                        val status = event.data["status"]?.toString()
-                        if (status == "ACTIVE" || status == "COMPLETED" || status == "REJECTED") {
-                            refreshActiveRental()
-                        }
+                        refreshActiveRental()
                     }
                 }
-            }
-        }
-    }
-
-    fun refreshActiveRental() {
-        viewModelScope.launch {
-            val customerId = sessionManager.getCustomerId() ?: return@launch
-            rentalRepository.getActiveRental(customerId.toInt()).onSuccess { 
-                updateActiveRentalState(it)
             }
         }
     }
@@ -436,15 +424,23 @@ class CustomerMapViewModel(
         isOrderPlacing = false
     }
 
-    private fun startActiveRentalPolling() {
-        rentalPollingJob?.cancel()
-        rentalPollingJob = viewModelScope.launch {
-            val customerId = sessionManager.getCustomerId() ?: "1"
-            while (true) {
-                rentalRepository.getActiveRental(customerId.toInt()).onSuccess { 
-                    updateActiveRentalState(it)
+    fun clearDestination() {
+        dropOffLocation = ""
+        dropOffLat = null
+        dropOffLng = null
+        stops = emptyList()
+        stopPoints = emptyMap()
+        polylinePoints = emptyList()
+        estimatedFare = null
+        isFullscreenMap = false
+        
+        val rental = activeRental
+        if (rental != null) {
+            val id = (rental["id"] as? Number)?.toInt() ?: 0
+            viewModelScope.launch {
+                rentalRepository.updateRentalDestination(id, "", 0.0, 0.0, null).onSuccess {
+                    refreshActiveRental()
                 }
-                delay(10.seconds)
             }
         }
     }
@@ -461,8 +457,6 @@ class CustomerMapViewModel(
             selectedVehicleType = "Okada" // Valid default for delivery
         } else if (mode == ServiceType.RIDE_HAILING) {
             selectedVehicleType = "Economy"
-        } else if (mode == ServiceType.RENTAL) {
-            scheduledRideTime = null
         }
     }
 
@@ -470,17 +464,19 @@ class CustomerMapViewModel(
         if (activeServiceMode == ServiceType.RENTAL) {
             if (query == rentalPickupLocation) return
             rentalPickupLocation = query
-            pickupLocation = query // Keep search UI in sync
+            pickupLocation = query
             rentalPickupLat = null
             rentalPickupLng = null
+            pickupLat = null
+            pickupLng = null
         } else {
             if (query == pickupLocation) return
             pickupLocation = query
             pickupLat = null
             pickupLng = null
-            estimatedFare = null
-            polylinePoints = emptyList()
         }
+        estimatedFare = null
+        polylinePoints = emptyList()
         fetchPickupSuggestions(query)
     }
 
@@ -531,7 +527,11 @@ class CustomerMapViewModel(
         stopPoints = newPoints
         
         if (pickupLat != null && dropOffLat != null) {
-            calculateRoute()
+            if (pickupLat != null && dropOffLat != null) {
+                isSearchMode = false
+                currentScreen = CustomerScreen.MainMap
+                calculateRoute()
+            }
         }
     }
 
@@ -635,32 +635,30 @@ class CustomerMapViewModel(
     }
 
     fun selectSavedPlace(place: SavedPlace) {
-        isSelectingSuggestion = true
         dropOffLocation = place.address
         dropOffLat = place.latitude
         dropOffLng = place.longitude
         isSearchMode = false
         
-        viewModelScope.launch {
-            delay(500.milliseconds)
-            isSelectingSuggestion = false
-        }
-        
         if (pickupLat != null) {
-            calculateRoute()
+            if (pickupLat != null && dropOffLat != null) {
+                isSearchMode = false
+                currentScreen = CustomerScreen.MainMap
+                calculateRoute()
+            }
         }
     }
 
     fun selectSuggestion(suggestion: LocationSuggestion, isPickup: Boolean) {
-        isSelectingSuggestion = true
         if (isPickup) pickupSearchJob?.cancel() else dropOffSearchJob?.cancel()
 
-        val lat = suggestion.latitude.toDoubleOrNull() ?: 0.0
-        val lng = suggestion.longitude.toDoubleOrNull() ?: 0.0
+        val lat = suggestion.latitude.toDoubleOrNull() ?: 99.0
+        val lng = suggestion.longitude.toDoubleOrNull() ?: 99.0
         
-        // Safety check: Avoid ocean (0,0) or invalid coords
-        if (lat == 0.0 && lng == 0.0) {
-            isSelectingSuggestion = false
+        android.util.Log.d("GeocodeDiag", "Selected suggestion: ${suggestion.displayName}, Lat: ${suggestion.latitude} ($lat), Lng: ${suggestion.longitude} ($lng)")
+
+        if (lat == 0.0 || lng == 0.0 || lat == 99.0 || lng == 99.0) {
+            addLocalNotification("Location Error", "Selected location has invalid coordinates.", "error")
             return
         }
 
@@ -672,11 +670,10 @@ class CustomerMapViewModel(
                 rentalPickupLocation = selectedText
                 rentalPickupLat = lat
                 rentalPickupLng = lng
-            } else {
-                pickupLocation = selectedText
-                pickupLat = lat
-                pickupLng = lng
             }
+            pickupLocation = selectedText
+            pickupLat = lat
+            pickupLng = lng
             pickupSuggestions = emptyList()
         } else {
             dropOffLocation = selectedText
@@ -689,30 +686,20 @@ class CustomerMapViewModel(
             }
         }
         
-        // Brief delay to allow keyboard "commit" events to be ignored
-        viewModelScope.launch {
-            delay(500.milliseconds)
-            isSelectingSuggestion = false
-        }
-        
-        val canCalcRoute = if (activeServiceMode == ServiceType.RENTAL) {
-            (rentalPickupLat != null || pickupLat != null) && dropOffLat != null
-        } else {
-            pickupLat != null && dropOffLat != null
-        }
-
-        if (canCalcRoute) {
+        if (pickupLat != null && dropOffLat != null) {
             isSearchMode = false
+            currentScreen = CustomerScreen.MainMap
             calculateRoute()
+        } else {
+            isSearchMode = true
         }
     }
 
     fun selectStopSuggestion(index: Int, suggestion: LocationSuggestion) {
-        isSelectingSuggestion = true
         val lat = suggestion.latitude.toDoubleOrNull() ?: 0.0
         val lng = suggestion.longitude.toDoubleOrNull() ?: 0.0
         
-        if (lat != 0.0) {
+        if (lat != 0.0 || lng != 0.0) {
             stopPoints = stopPoints.toMutableMap().apply { put(index, LatLng(lat, lng)) }
         }
 
@@ -723,76 +710,41 @@ class CustomerMapViewModel(
         stopSuggestions = emptyList()
         focusedStopIndex = -1
         
-        viewModelScope.launch {
-            delay(500.milliseconds)
-            isSelectingSuggestion = false
-        }
-
-        val pLat = if (activeServiceMode == ServiceType.RENTAL) rentalPickupLat ?: pickupLat else pickupLat
-        if (pLat != null && dropOffLat != null) {
-            calculateRoute()
-        }
-    }
-
-    private fun updateRentalDestinationInternal() {
-        val rental = activeRental ?: return
-        val id = (rental["id"] as? Double)?.toInt() ?: (rental["id"] as? Int) ?: 0
-        val dLat = dropOffLat ?: return
-        val dLng = dropOffLng ?: return
-        val stopsStr = if (stops.isNotEmpty()) stops.filter { it.isNotBlank() }.joinToString("|") else null
-        viewModelScope.launch {
-            rentalRepository.updateRentalDestination(id, dropOffLocation, dLat, dLng, stopsStr).onSuccess {
-                isSearchMode = false
-                // Re-fetch to sync with backend (Redis-backed state)
-                rentalRepository.getActiveRental(sessionManager.getCustomerId()?.toIntOrNull() ?: 1).onSuccess { 
-                    updateActiveRentalState(it)
-                }
-            }
-        }
+        calculateRoute()
     }
 
     fun calculateRoute() {
         val isUnlocked = activeRental?.let { it["is_unlocked"] == true || it["is_unlocked"] == "true" } ?: false
         
-        // Start point: prioritize live location if unlocked, otherwise use vehicle/rental pickup point
-        var pLat = if (activeServiceMode == ServiceType.RENTAL) {
+        val pLat = if (activeServiceMode == ServiceType.RENTAL) {
             if (isUnlocked) pickupLat ?: rentalPickupLat else rentalPickupLat ?: pickupLat
         } else {
             pickupLat
         }
         
-        var pLng = if (activeServiceMode == ServiceType.RENTAL) {
+        val pLng = if (activeServiceMode == ServiceType.RENTAL) {
             if (isUnlocked) pickupLng ?: rentalPickupLng else rentalPickupLng ?: pickupLng
         } else {
             pickupLng
         }
 
-        // Final fallback: Use current GPS location if no other pickup is set
-        if (pLat == null || pLat == 0.0) {
-            pLat = pickupLat
-            pLng = pickupLng
-        }
+        val dLat = dropOffLat
+        val dLng = dropOffLng
 
-        // Destination points are mandatory
-        if (dropOffLat == null || dropOffLng == null || dropOffLat == 0.0) {
+        if (pLat == null || pLng == null || dLat == null || dLng == null) {
             isLoading = false
             return
         }
 
-        // Start points are mandatory
-        if (pLat == null || pLng == null || pLat == 0.0) {
-            isLoading = false
-            return
-        }
-
-        performRouteCalculation(pLat, pLng, dropOffLat!!, dropOffLng!!)
+        android.util.Log.d("RouteDiag", "Calculating route from ($pLat, $pLng) to ($dLat, $dLng)")
+        performRouteCalculation(pLat, pLng, dLat, dLng)
     }
 
     private fun calculateRouteForActiveTrip(driverLat: Double, driverLng: Double, status: String) {
         val destLat = if (status == "ASSIGNED" || status == "ARRIVED") pickupLat else dropOffLat
         val destLng = if (status == "ASSIGNED" || status == "ARRIVED") pickupLng else dropOffLng
 
-        if (destLat == null || destLng == null || destLat == 0.0) return
+        if (destLat == null || destLng == null) return
 
         // Threshold to avoid spamming
         lastRouteCalcLatLng?.let { last ->
@@ -804,7 +756,10 @@ class CustomerMapViewModel(
     }
 
     private fun performRouteCalculation(pLat: Double, pLng: Double, dLat: Double, dLng: Double, isUpdate: Boolean = false) {
-        if (!isUpdate) isLoading = true
+        if (!isUpdate) {
+            isLoading = true
+            rideEstimates = emptyList()
+        }
         
         val waypoints = stops.indices.mapNotNull { idx -> 
             stopPoints[idx]?.let { RouteLocation(it.latitude, it.longitude) }
@@ -812,36 +767,40 @@ class CustomerMapViewModel(
 
         routeJob?.cancel()
         routeJob = viewModelScope.launch {
-            orderRepository.calculateRoute(
-                RouteRequest(
-                    start = RouteLocation(pLat, pLng), 
-                    end = RouteLocation(dLat, dLng), 
-                    stops = waypoints,
-                    vehicleType = "car"
-                )
+            val request = RouteRequest(
+                start = RouteLocation(pLat, pLng), 
+                end = RouteLocation(dLat, dLng), 
+                stops = waypoints,
+                vehicleType = "car"
             )
+            android.util.Log.d("RouteDiag", "Sending RouteRequest: Start=(${request.start.lat}, ${request.start.lng}), End=(${request.end.lat}, ${request.end.lng})")
+            
+            orderRepository.calculateRoute(request)
                 .onSuccess { response ->
-                    polylinePoints = response.routeCoords.map { LatLng(it[1], it[0]) }
-                    instructions = response.instructions ?: emptyList()
-                    currentInstruction = instructions.firstOrNull()
-
-                    if (!isUpdate) {
-                        distanceKm = response.distanceM / 1000.0
-                        durationMin = response.etaMin
-                        
-                        if (activeServiceMode != ServiceType.RENTAL) {
-                            updateEstimatedFare()
+                    android.util.Log.d("RouteDiag", "Route calculation success: ${response.routeCoords.size} points received. First: ${response.routeCoords.firstOrNull()}")
+                    if (response.routeCoords.isNotEmpty()) {
+                        polylinePoints = response.routeCoords.filter { it.size >= 2 }.map { LatLng(it[1], it[0]) }
+                        if (polylinePoints.isNotEmpty()) {
+                            val first = polylinePoints.first()
+                            android.util.Log.d("RouteDiag", "Polyline points set: ${polylinePoints.size}, Start: ${first.latitude}, ${first.longitude}")
                         }
+                        instructions = response.instructions
+                        currentInstruction = instructions.firstOrNull()
+
+                        if (!isUpdate) {
+                            distanceKm = response.distanceM / 1000.0
+                            durationMin = response.etaMin
+                            
+                            if (activeServiceMode != ServiceType.RENTAL) {
+                                updateEstimatedFare()
+                            }
+                        }
+                        lastRouteCalcLatLng = LatLng(pLat, pLng)
                     }
-                    lastRouteCalcLatLng = LatLng(pLat, pLng)
                     isLoading = false
                 }
                 .onFailure {
                     isLoading = false
-                    if (activeServiceMode == ServiceType.RENTAL) {
-                        // Log the failure to draw rental route
-                        android.util.Log.e("CustomerVM", "Failed to calculate rental route: ${it.message}")
-                    }
                 }
         }
     }
@@ -851,8 +810,8 @@ class CustomerMapViewModel(
         val pLng = pickupLng ?: return
         isLoading = true
         viewModelScope.launch {
-            // Be more flexible with regions: if extraction failed, try a wider search or just pass null to let backend decide
-            val regionToPass = currentRegion ?: "Nationwide" 
+            // Be more flexible with regions: if extraction failed, the backend should handle null/empty by returning default rates
+            val regionToPass = currentRegion?.ifEmpty { null } ?: "Greater Accra" // Default to a known active region if unknown
             orderRepository.getRideEstimates(pLat, pLng, distanceKm, durationMin, regionToPass)
                 .onSuccess { list ->
                     rideEstimates = list
@@ -886,7 +845,7 @@ class CustomerMapViewModel(
         val pLng = pickupLng
         val eFare = estimatedFare
         
-        if (pLat == null || pLng == null || pLat == 0.0 || pLng == 0.0 || eFare == null) {
+        if (pLat == null || pLng == null || eFare == null) {
             // Should show error to user
             return
         }
@@ -905,12 +864,22 @@ class CustomerMapViewModel(
                 ServiceType.PACKAGE_DELIVERY else ServiceType.RIDE_HAILING
             
             orderRepository.createOrder(
-                customerId, pickupLocation, dropOffLocation,
-                pLat, pLng, dropOffLat ?: 0.0, dropOffLng ?: 0.0,
-                distanceKm, finalFare, durationMin, serviceType,
-                selectedVehicleType, scheduledRideTime
-            ).onSuccess { orderIdStr ->
-                val newId = orderIdStr.toIntOrNull()
+                OrderCreateRequest(
+                    customerId = customerId,
+                    pickupLocation = pickupLocation,
+                    dropOffLocation = dropOffLocation,
+                    pickupLat = pLat,
+                    pickupLng = pLng,
+                    dropOffLat = dropOffLat ?: 0.0,
+                    dropOffLng = dropOffLng ?: 0.0,
+                    distanceKm = distanceKm,
+                    estimatedFare = finalFare,
+                    durationMin = durationMin,
+                    serviceType = serviceType,
+                    requestedVehicleType = selectedVehicleType,
+                    scheduledTime = scheduledRideTime
+                )
+            ).onSuccess { newId ->
                 orderStatusData = OrderStatusResponse(success = true, status = "PENDING")
                 currentOrderId = newId
                 sessionManager.setActiveOrderId(newId)
@@ -1021,31 +990,33 @@ class CustomerMapViewModel(
 
     fun useCurrentLocation(location: Location, forPickup: Boolean, stopIndex: Int = -1) {
         isLoading = true
-        isSelectingSuggestion = true
         viewModelScope.launch {
             repository.reverseGeocode(location.latitude, location.longitude).onSuccess { suggestion ->
+                val displayName = suggestion.displayName
                 if (forPickup || activeServiceMode == ServiceType.RENTAL) {
-                    currentRegion = RegionUtils.extractRegion(suggestion.displayName)
+                    currentRegion = RegionUtils.extractRegion(displayName)
                 }
                 
                 if (stopIndex != -1) {
                     val newStops = stops.toMutableList()
                     if (stopIndex < newStops.size) {
-                        newStops[stopIndex] = suggestion.name ?: suggestion.displayName
+                        newStops[stopIndex] = suggestion.name ?: displayName
                         stops = newStops
                         stopPoints = stopPoints.toMutableMap().apply { put(stopIndex, LatLng(location.latitude, location.longitude)) }
                     }
-                } else if (activeServiceMode == ServiceType.RENTAL && forPickup) {
-                    rentalPickupLocation = suggestion.displayName
-                    rentalPickupLat = location.latitude
-                    rentalPickupLng = location.longitude
                 } else {
+                    if (activeServiceMode == ServiceType.RENTAL && forPickup) {
+                        rentalPickupLocation = displayName
+                        rentalPickupLat = location.latitude
+                        rentalPickupLng = location.longitude
+                    }
+                    
                     if (forPickup) {
-                        pickupLocation = suggestion.displayName
+                        pickupLocation = displayName
                         pickupLat = location.latitude
                         pickupLng = location.longitude
                     } else {
-                        dropOffLocation = suggestion.displayName
+                        dropOffLocation = displayName
                         dropOffLat = location.latitude
                         dropOffLng = location.longitude
                     }
@@ -1059,11 +1030,13 @@ class CustomerMapViewModel(
                         stops = newStops
                         stopPoints = stopPoints.toMutableMap().apply { put(stopIndex, LatLng(location.latitude, location.longitude)) }
                     }
-                } else if (activeServiceMode == ServiceType.RENTAL && forPickup) {
-                    rentalPickupLocation = name
-                    rentalPickupLat = location.latitude
-                    rentalPickupLng = location.longitude
                 } else {
+                    if (activeServiceMode == ServiceType.RENTAL && forPickup) {
+                        rentalPickupLocation = name
+                        rentalPickupLat = location.latitude
+                        rentalPickupLng = location.longitude
+                    }
+
                     if (forPickup) {
                         pickupLocation = name
                         pickupLat = location.latitude
@@ -1075,17 +1048,9 @@ class CustomerMapViewModel(
                     }
                 }
             }
-            isLoading = false
-            delay(500.milliseconds)
-            isSelectingSuggestion = false
-            
-            val canCalcRoute = if (activeServiceMode == ServiceType.RENTAL) {
-                (rentalPickupLat != null || pickupLat != null) && dropOffLat != null
-            } else {
-                pickupLat != null && dropOffLat != null
-            }
-
-            if (canCalcRoute) {
+            if (pickupLat != null && dropOffLat != null) {
+                isSearchMode = false
+                currentScreen = CustomerScreen.MainMap
                 calculateRoute()
             }
         }
@@ -1108,79 +1073,6 @@ class CustomerMapViewModel(
 
     fun sendAudioData(data: ByteArray) {
         repository.sendAudioData(data)
-    }
-
-    fun setSelectedVehicleFromFleet(vehicle: Map<String, Any>?) {
-        if (vehicle != null) {
-            activeServiceMode = ServiceType.RENTAL
-            
-            // Populate rental pickup from vehicle's current location
-            val vLat = (vehicle["lat"] ?: vehicle["latitude"])?.toString()?.toDoubleOrNull()
-            val vLng = (vehicle["lng"] ?: vehicle["longitude"])?.toString()?.toDoubleOrNull()
-            val vAddr = vehicle["location"]?.toString() ?: ""
-            
-            if (vLat != null && vLng != null) {
-                rentalPickupLat = vLat
-                rentalPickupLng = vLng
-                rentalPickupLocation = vAddr
-                
-                // Keep standard pickup in sync for UI/Routing logic consistency
-                pickupLat = vLat
-                pickupLng = vLng
-                pickupLocation = vAddr
-            }
-
-            if (rentalPickupLat == null) {
-                isSearchMode = true
-            }
-        }
-    }
-
-    fun updateActiveRentalState(rental: Map<String, Any>?) {
-        if (rental != null) {
-            activeRental = rental
-            activeServiceMode = ServiceType.RENTAL
-            
-            // Only update locations if we're not currently in an active search to avoid disrupting the user
-            if (!isSearchMode) {
-                // Robust parsing for coordinates that might come from Redis as strings or numbers
-                rentalPickupLocation = rental["pickup_location"]?.toString() ?: ""
-                rentalPickupLat = rental["pickup_lat"]?.toString()?.toDoubleOrNull()
-                rentalPickupLng = rental["pickup_lng"]?.toString()?.toDoubleOrNull()
-                
-                dropOffLocation = rental["destination_location"]?.toString() ?: ""
-                dropOffLat = rental["destination_lat"]?.toString()?.toDoubleOrNull()
-                dropOffLng = rental["destination_lng"]?.toString()?.toDoubleOrNull()
-                
-                val stopsStr = rental["stops"]?.toString() ?: ""
-                stops = if (stopsStr.isNotEmpty()) stopsStr.split("|") else emptyList()
-
-                // "Make use of Redis": Check if the backend has already provided the calculated route polyline
-                val redisPolyline = rental["polyline"]?.toString() ?: rental["route_coords"]?.toString()
-                if (!redisPolyline.isNullOrBlank()) {
-                    try {
-                        // If it's a JSON string of coordinates, parse it
-                        // Simplified: Assume it's a standard encoded polyline or comma-separated list
-                        // For now, if Redis has it, we skip local calculation
-                        // polylinePoints = parseRedisPolyline(redisPolyline)
-                    } catch (e: Exception) {
-                        calculateRoute()
-                    }
-                } else if (dropOffLat != null && dropOffLat != 0.0) {
-                    calculateRoute()
-                }
-            }
-        } else {
-            activeRental = null
-        }
-    }
-
-    fun cancelRental(id: Int) {
-        viewModelScope.launch {
-            rentalRepository.cancelRental(id).onSuccess {
-                activeRental = null
-            }
-        }
     }
 
     fun updateSavedPlace(id: String, label: String, suggestion: LocationSuggestion) {
@@ -1224,42 +1116,111 @@ class CustomerMapViewModel(
         }
     }
 
+    // --- New Rental Scratch Logic ---
+
+    fun refreshActiveRental() {
+        viewModelScope.launch {
+            val customerId = sessionManager.getCustomerId() ?: return@launch
+            rentalRepository.getActiveRental(customerId.toInt()).onSuccess { 
+                updateActiveRentalState(it)
+            }
+        }
+    }
+
+    fun updateActiveRentalState(rental: Map<String, Any>?) {
+        if (rental != null) {
+            activeRental = rental
+            activeServiceMode = ServiceType.RENTAL
+            
+            if (!isSearchMode) {
+                rentalPickupLocation = rental["pickup_location"]?.toString() ?: ""
+                rentalPickupLat = rental["pickup_lat"]?.toString()?.toDoubleOrNull()
+                rentalPickupLng = rental["pickup_lng"]?.toString()?.toDoubleOrNull()
+                
+                dropOffLocation = rental["destination_location"]?.toString() ?: ""
+                dropOffLat = rental["destination_lat"]?.toString()?.toDoubleOrNull()
+                dropOffLng = rental["destination_lng"]?.toString()?.toDoubleOrNull()
+                
+                val stopsStr = rental["stops"]?.toString() ?: ""
+                stops = if (stopsStr.isNotEmpty()) stopsStr.split("|") else emptyList()
+
+                if (dropOffLat != null && dropOffLat != 0.0) {
+                    calculateRoute()
+                }
+            }
+        } else {
+            activeRental = null
+        }
+    }
+
+    private fun startActiveRentalPolling() {
+        rentalPollingJob?.cancel()
+        rentalPollingJob = viewModelScope.launch {
+            val customerId = sessionManager.getCustomerId() ?: return@launch
+            while (true) {
+                rentalRepository.getActiveRental(customerId.toInt()).onSuccess { 
+                    updateActiveRentalState(it)
+                }
+                delay(15.seconds)
+            }
+        }
+    }
+
     fun startNavigationForRental(rental: Map<String, Any>) {
         val isUnlocked = rental["is_unlocked"] == true || rental["is_unlocked"] == "true"
-        val dLat = rental["destination_lat"] as? Double
-        val dLng = rental["destination_lng"] as? Double
-        val pLat = rental["pickup_lat"] as? Double
-        val pLng = rental["pickup_lng"] as? Double
+        val dLat = rental["destination_lat"]?.toString()?.toDoubleOrNull()
+        val dLng = rental["destination_lng"]?.toString()?.toDoubleOrNull()
+        val pLat = rental["pickup_lat"]?.toString()?.toDoubleOrNull()
+        val pLng = rental["pickup_lng"]?.toString()?.toDoubleOrNull()
 
         val targetLat = if (isUnlocked) dLat else pLat
         val targetLng = if (isUnlocked) dLng else pLng
         val targetLabel = if (isUnlocked) (rental["destination_location"]?.toString() ?: "Destination") else (rental["pickup_location"]?.toString() ?: "Pickup")
 
-        if (targetLat != null && targetLng != null && targetLat != 0.0) {
+        if (targetLat != null && targetLng != null) {
             dropOffLat = targetLat
             dropOffLng = targetLng
             dropOffLocation = targetLabel
             
-            // Force re-fetch of current location as pickup
-            pickupLat = null
+            pickupLat = null // Force current location fetch
             pickupLng = null
             
             isFullscreenMap = true
             currentScreen = CustomerScreen.MainMap
-            
-            // MainMapContent will pick up the null pickupLat and fill it with current location,
-            // then trigger calculateRoute() because isFullscreenMap is true.
             isLoading = true
         } else {
-            // No destination set yet. Switch to map and open search.
-            isFullscreenMap = false
             currentScreen = CustomerScreen.MainMap
             isSearchMode = true
         }
     }
 
-    fun handleInitialStates(rental: Map<String, Any>?, vehicle: Map<String, Any>?) {
-        if (rental != null) updateActiveRentalState(rental)
-        if (vehicle != null) setSelectedVehicleFromFleet(vehicle)
+    private fun updateRentalDestinationInternal() {
+        val rental = activeRental ?: return
+        val id = (rental["id"] as? Number)?.toInt() ?: 0
+        val dLat = dropOffLat ?: return
+        val dLng = dropOffLng ?: return
+        val stopsStr = if (stops.isNotEmpty()) stops.filter { it.isNotBlank() }.joinToString("|") else null
+        viewModelScope.launch {
+            rentalRepository.updateRentalDestination(id, dropOffLocation, dLat, dLng, stopsStr).onSuccess {
+                isSearchMode = false
+                refreshActiveRental()
+            }
+        }
+    }
+
+    fun cancelRental(id: Int) {
+        viewModelScope.launch {
+            rentalRepository.cancelRental(id).onSuccess {
+                activeRental = null
+            }
+        }
+    }
+
+    fun endRental(id: Int) {
+        viewModelScope.launch {
+            rentalRepository.endRental(id).onSuccess {
+                activeRental = null
+            }
+        }
     }
 }

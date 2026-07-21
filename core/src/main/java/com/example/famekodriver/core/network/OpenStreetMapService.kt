@@ -53,13 +53,13 @@ data class OsrmLeg(
 )
 
 data class OsrmStep(
-    val maneuver: OsrmManeuver,
-    val distance: Double
+    val maneuver: OsrmManeuver? = null,
+    val distance: Double? = null
 )
 
 data class OsrmManeuver(
-    val instruction: String,
-    val location: List<Double> // [lng, lat]
+    val instruction: String? = null,
+    val location: List<Double>? = null // [lng, lat]
 )
 
 data class OsrmGeometry(

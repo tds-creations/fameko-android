@@ -70,8 +70,7 @@ fun PaystackWebViewScreen(
                                 val currentUrl = request?.url.toString()
                                 
                                 // Industry Standard: Detect success markers in URL
-                                if (currentUrl.contains("fameko://rental-payment") || 
-                                    currentUrl.contains("checkout.paystack.com/success") ||
+                                if (currentUrl.contains("checkout.paystack.com/success") ||
                                     currentUrl.contains("/success") ||
                                     currentUrl.contains("transaction/confirm")) {
                                     onSuccess()

@@ -276,6 +276,38 @@ class DriverRepository private constructor() {
         }
     }
 
+    suspend fun sendWebrtcOffer(callId: String, offer: String): Result<Unit> {
+        return try {
+            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_OFFER", gson.toJson(mapOf("call_id" to callId, "offer" to offer)))))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun sendWebrtcAnswer(callId: String, answer: String): Result<Unit> {
+        return try {
+            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ANSWER", gson.toJson(mapOf("call_id" to callId, "answer" to answer)))))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun sendIceCandidate(callId: String, candidate: String): Result<Unit> {
+        return try {
+            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ICE_CANDIDATE", gson.toJson(mapOf("call_id" to callId, "candidate" to candidate)))))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun sendLocationUpdateWs(lat: Double, lng: Double, bearing: Float) {
+        val payload = mapOf("lat" to lat, "lng" to lng, "bearing" to bearing)
+        webSocket?.send(gson.toJson(WebSocketMessage("LOCATION_UPDATE", gson.toJson(payload))))
+    }
+
     fun stopWebSocket() {
         isReconnectEnabled = false
         stopWebSocketOnly()
@@ -759,8 +791,8 @@ class DriverRepository private constructor() {
             if (e is CancellationException) throw e
             Log.e("FamekoRepo", "TomTom Routing failed as well, falling back to backend", e)
             try {
-                // Priority 3: Backend as last resort
-                val response = NetworkClient.famekoApi.calculateRoute(request)
+                // Priority 3: Go Routing Service as last resort
+                val response = NetworkClient.routingApi.calculateRoute(request)
                 Result.success(response)
             } catch (e3: Exception) {
                 if (e3 is CancellationException) throw e3

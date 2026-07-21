@@ -90,6 +90,32 @@ fun Application.configureSockets() {
                                         sendToUser(otherId, "CALL_ENDED", mapOf("call_id" to callId))
                                     }
                                 }
+                                "WEBRTC_OFFER", "WEBRTC_ANSWER", "WEBRTC_ICE_CANDIDATE" -> {
+                                    val data = gson.fromJson(msg.payload, Map::class.java)
+                                    val callId = data["call_id"]?.toString() ?: ""
+                                    val participants = activeCalls[callId]
+                                    if (participants != null) {
+                                        val targetId = if (userId == participants.initiatorId) participants.recipientId else participants.initiatorId
+                                        sendToUser(targetId, msg.type, data)
+                                    }
+                                }
+                                "LOCATION_UPDATE" -> {
+                                    if (userId.startsWith("DRIVER_")) {
+                                        val data = gson.fromJson(msg.payload, Map::class.java)
+                                        val lat = data["lat"]?.toString()?.toDoubleOrNull() ?: 0.0
+                                        val lng = data["lng"]?.toString()?.toDoubleOrNull() ?: 0.0
+                                        val bearing = data["bearing"]?.toString()?.toFloatOrNull() ?: 0f
+                                        val driverId = userId.removePrefix("DRIVER_")
+                                        
+                                        // Broadcast to all admins for live tracking
+                                        broadcastToAdmins("DRIVER_LOCATION_UPDATE", mapOf(
+                                            "driverId" to driverId,
+                                            "lat" to lat,
+                                            "lng" to lng,
+                                            "bearing" to bearing
+                                        ))
+                                    }
+                                }
                             }
                         } catch (_: Exception) {}
                     }

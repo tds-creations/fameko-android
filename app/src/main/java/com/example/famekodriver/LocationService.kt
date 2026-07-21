@@ -37,6 +37,14 @@ class LocationService : Service() {
                 }
                 locationResult.lastLocation?.let { location ->
                     val driverId = sessionManager.getDriverId() ?: return
+                    
+                    // Send via WebSocket for real-time tracking
+                    repository.sendLocationUpdateWs(
+                        location.latitude,
+                        location.longitude,
+                        location.bearing
+                    )
+
                     serviceScope.launch {
                         repository.updateLocation(
                             driverId,

@@ -337,7 +337,7 @@ func calculateETA(distance float64, vehicleType, routeType string) float64 {
 func generateRoadWaypoints(start, end RouteLocation) [][]float64 {
 	var waypoints [][]float64
 
-	// Start point
+	// Start point [Lng, Lat]
 	waypoints = append(waypoints, []float64{start.Lng, start.Lat})
 
 	// Calculate road network simulation parameters

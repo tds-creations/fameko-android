@@ -59,12 +59,12 @@ fun TermsAndConditionsScreen(onBack: () -> Unit) {
             
             TermsSection(
                 title = "3. Services",
-                content = "Fameko provides ride-hailing, package delivery, and vehicle rental services. Prices for these services are estimated and may vary based on traffic, demand, and other factors."
+                content = "Fameko provides ride-hailing and package delivery services. Prices for these services are estimated and may vary based on traffic, demand, and other factors."
             )
             
             TermsSection(
                 title = "4. Payments",
-                content = "Payments can be made via cash, mobile money, or card. For rentals, a commission may apply. You agree to pay all charges incurred in connection with your use of the services."
+                content = "Payments can be made via cash, mobile money, or card. You agree to pay all charges incurred in connection with your use of the services."
             )
             
             TermsSection(
