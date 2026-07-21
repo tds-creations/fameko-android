@@ -768,7 +768,10 @@ class DriverRepository private constructor() {
                 
                 if (summary != null) {
                     val coords = route.legs?.flatMap { leg ->
-                        leg.points?.map { listOf(it.lon ?: 0.0, it.lat ?: 0.0) } ?: emptyList()
+                        leg.points?.mapNotNull { 
+                            if (it.lat == null || it.lon == null || (it.lat == 0.0 && it.lon == 0.0)) null
+                            else listOf(it.lon, it.lat) 
+                        } ?: emptyList()
                     } ?: emptyList()
 
                     val response = RouteResponse(

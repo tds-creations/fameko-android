@@ -147,9 +147,9 @@ func main() {
 			return
 		}
 
-		// Validate request
-		if req.Start.Lat == 0 || req.Start.Lng == 0 || req.End.Lat == 0 || req.End.Lng == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Valid start and end coordinates are required"})
+		// Validate request - check for absolute zero (Equator/Meridian intersection) which is usually an error in this context
+		if (req.Start.Lat == 0 && req.Start.Lng == 0) || (req.End.Lat == 0 && req.End.Lng == 0) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Valid start and end coordinates are required (0,0 detected)"})
 			return
 		}
 

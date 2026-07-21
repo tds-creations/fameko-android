@@ -635,6 +635,8 @@ class CustomerMapViewModel(
     }
 
     fun selectSavedPlace(place: SavedPlace) {
+        if (place.latitude == 0.0 || place.longitude == 0.0) return
+        
         dropOffLocation = place.address
         dropOffLat = place.latitude
         dropOffLng = place.longitude
@@ -699,9 +701,9 @@ class CustomerMapViewModel(
         val lat = suggestion.latitude.toDoubleOrNull() ?: 0.0
         val lng = suggestion.longitude.toDoubleOrNull() ?: 0.0
         
-        if (lat != 0.0 || lng != 0.0) {
-            stopPoints = stopPoints.toMutableMap().apply { put(index, LatLng(lat, lng)) }
-        }
+        if (lat == 0.0 || lng == 0.0) return
+
+        stopPoints = stopPoints.toMutableMap().apply { put(index, LatLng(lat, lng)) }
 
         val selectedText = suggestion.name ?: suggestion.displayName.split(",").firstOrNull() ?: suggestion.displayName
         val newStops = stops.toMutableList()
@@ -723,7 +725,7 @@ class CustomerMapViewModel(
         }
         
         val pLng = if (activeServiceMode == ServiceType.RENTAL) {
-            if (isUnlocked) pickupLng ?: rentalPickupLng else rentalPickupLng ?: pickupLng
+            if (isUnlocked) pickupLng ?: rentalPickupLng else rentalPickupLng ?: rentalPickupLng
         } else {
             pickupLng
         }
@@ -731,7 +733,7 @@ class CustomerMapViewModel(
         val dLat = dropOffLat
         val dLng = dropOffLng
 
-        if (pLat == null || pLng == null || dLat == null || dLng == null) {
+        if (pLat == null || pLng == null || dLat == null || dLng == null || pLat == 0.0 || dLat == 0.0) {
             isLoading = false
             return
         }
@@ -980,6 +982,8 @@ class CustomerMapViewModel(
     }
 
     fun updateNearbyDrivers(lat: Double, lng: Double) {
+        if (lat == 0.0 && lng == 0.0) return
+
         viewModelScope.launch {
             orderRepository.getNearbyDrivers(lat, lng).onSuccess { list ->
                 drivers = list
@@ -988,7 +992,9 @@ class CustomerMapViewModel(
         }
     }
 
-    fun useCurrentLocation(location: Location, forPickup: Boolean, stopIndex: Int = -1) {
+    fun useCurrentLocation(location: android.location.Location, forPickup: Boolean, stopIndex: Int = -1) {
+        if (location.latitude == 0.0 || location.longitude == 0.0) return
+
         isLoading = true
         viewModelScope.launch {
             repository.reverseGeocode(location.latitude, location.longitude).onSuccess { suggestion ->
