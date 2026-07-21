@@ -166,22 +166,24 @@ class OrderRepository {
                 val summary = route.summary ?: route.legs?.firstOrNull()?.summary
                 
                 if (summary != null) {
-                    val coords = route.legs?.flatMap { leg ->
-                        leg.points?.mapNotNull { 
-                            if (it.lat == null || it.lon == null || (it.lat == 0.0 && it.lon == 0.0)) null
-                            else listOf(it.lon, it.lat) 
+                    val coordinates = route.legs?.flatMap { leg ->
+                        leg.points?.mapNotNull { point ->
+                            val lat = point.lat
+                            val lon = point.lon
+                            if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) null
+                            else listOf(lon, lat)
                         } ?: emptyList()
                     } ?: emptyList()
 
                     val response = RouteResponse(
                         fromCache = false,
-                        routeCoords = coords,
+                        routeCoords = coordinates,
                         distanceM = summary.lengthInMeters ?: 0,
                         etaMin = (summary.travelTimeInSeconds ?: 0) / 60.0,
                         vehicleType = request.vehicleType,
                         routeType = request.routeType,
-                        waypoints = coords.size,
-                        computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                        waypoints = coordinates.size,
+                        computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                             timeZone = TimeZone.getTimeZone("UTC")
                         }.format(Date()),
                         instructions = emptyList()
