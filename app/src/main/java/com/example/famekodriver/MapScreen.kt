@@ -292,6 +292,112 @@ fun MapScreen(
         }
     }
 
+    val activeMarkers = remember { java.util.concurrent.ConcurrentHashMap<String, org.maplibre.android.annotations.Marker>() }
+    val activePolylineRef = remember { object { var value: org.maplibre.android.annotations.Polyline? = null } }
+    val activeRouteMarkers = remember { mutableListOf<org.maplibre.android.annotations.Marker>() }
+
+    // Physical Back Button Logic
+    androidx.activity.compose.BackHandler(enabled = viewModel.isFullscreenMap) {
+        viewModel.isFullscreenMap = false
+    }
+
+    LaunchedEffect(mapLibreMap, viewModel.driverLatLng, viewModel.driverBearing, vehicleBitmap) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        val pos = viewModel.driverLatLng ?: return@LaunchedEffect
+        
+        val id = "DRIVER_ME"
+        val marker = activeMarkers[id]
+
+        val baseBitmap = vehicleBitmap ?: run {
+            val type = vehicleType.lowercase()
+            if (type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor")) {
+                null
+            } else {
+                ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+            }
+        }
+
+        val carIcon = baseBitmap?.let { 
+            val matrix = Matrix()
+            matrix.postRotate(viewModel.driverBearing)
+            val scaled = if (it.width != 40) it.scale(40, 40) else it
+            val rotated = Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
+            IconFactory.getInstance(context).fromBitmap(rotated) 
+        }
+
+        if (marker == null) {
+            @Suppress("DEPRECATION")
+            val newMarker = map.addMarker(MarkerOptions()
+                .position(pos)
+                .apply { if (carIcon != null) icon(carIcon) }
+            )
+            activeMarkers[id] = newMarker
+        } else {
+            marker.position = pos
+            if (carIcon != null) marker.icon = carIcon
+        }
+    }
+
+    val activeHeatmapPolygons = remember { mutableListOf<org.maplibre.android.annotations.Polygon>() }
+
+    LaunchedEffect(mapLibreMap, viewModel.heatmapPoints) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        
+        @Suppress("DEPRECATION")
+        activeHeatmapPolygons.forEach { map.removePolygon(it) }
+        activeHeatmapPolygons.clear()
+
+        viewModel.heatmapPoints.forEach { point ->
+            val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude))
+            @Suppress("DEPRECATION")
+            val polygon = map.addPolygon(org.maplibre.android.annotations.PolygonOptions()
+                .addAll(circlePoints)
+                .fillColor(Color(1f, 0f, 0f, (point.intensity * 0.5).toFloat()).toArgb())
+                .strokeColor(Color.Transparent.toArgb())
+            )
+            activeHeatmapPolygons.add(polygon)
+        }
+    }
+
+    LaunchedEffect(mapLibreMap, viewModel.navigationPath) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        val path = viewModel.navigationPath
+        
+        @Suppress("DEPRECATION")
+        activePolylineRef.value?.let { map.removePolyline(it) }
+        activePolylineRef.value = null
+        activeRouteMarkers.forEach { map.removeMarker(it) }
+        activeRouteMarkers.clear()
+
+        if (path.isNotEmpty()) {
+            @Suppress("DEPRECATION")
+            val polyline = map.addPolyline(PolylineOptions()
+                .addAll(path)
+                .color("#004E89".toColorInt())
+                .width(6f)
+            )
+            activePolylineRef.value = polyline
+            
+            @Suppress("DEPRECATION")
+            val destMarker = map.addMarker(MarkerOptions()
+                .position(path.last())
+                .title(if (viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED) "Pickup" else "Destination")
+            )
+            activeRouteMarkers.add(destMarker)
+
+            // Fit bounds if not in fullscreen nav
+            if (!viewModel.isFullscreenMap) {
+                try {
+                    val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
+                        .include(viewModel.driverLatLng ?: path.first())
+                        .include(path.last())
+                        .build()
+                    map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 150))
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     Scaffold(
         floatingActionButton = {
             Column(
@@ -352,72 +458,7 @@ fun MapScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxSize(),
-                update = { _ ->
-                    val map = mapLibreMap ?: return@AndroidView
-                    @Suppress("DEPRECATION")
-                    map.clear()
-                    
-                    // Driver Marker
-                    viewModel.driverLatLng?.let { pos ->
-                        val baseBitmap = vehicleBitmap ?: run {
-                            val type = vehicleType.lowercase()
-                            if (type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor")) {
-                                // Fallback for motorbike types if network image hasn't loaded yet
-                                // Since we don't have a local motorbike resource in 'app' module drawables (checked earlier),
-                                // we'll use a generic placeholder or wait for the async load.
-                                // If absolutely necessary to show something, and it's a bike, 
-                                // using the car is what the user wants to avoid.
-                                null
-                            } else {
-                                ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
-                            }
-                        }
-
-                        val carIcon = baseBitmap?.let { 
-                            val matrix = Matrix()
-                            matrix.postRotate(viewModel.driverBearing)
-                            val scaled = if (it.width != 40) it.scale(40, 40) else it
-                            val rotated = Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
-                            IconFactory.getInstance(context).fromBitmap(rotated) 
-                        }
-
-                        @Suppress("DEPRECATION")
-                        map.addMarker(MarkerOptions()
-                            .position(pos)
-                            .apply { if (carIcon != null) icon(carIcon) }
-                        )
-                    }
-                    
-                    viewModel.heatmapPoints.forEach { point ->
-                        val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude))
-                        @Suppress("DEPRECATION")
-                        map.addPolygon(PolygonOptions()
-                            .addAll(circlePoints)
-                            .fillColor(Color(1f, 0f, 0f, (point.intensity * 0.5).toFloat()).toArgb())
-                            .strokeColor(Color.Transparent.toArgb())
-                        )
-                    }
-
-                    if (viewModel.navigationPath.isNotEmpty()) {
-                        @Suppress("DEPRECATION")
-                        map.addPolyline(PolylineOptions()
-                            .addAll(viewModel.navigationPath)
-                            .color("#004E89".toColorInt())
-                            .width(5f)
-                        )
-                        
-                        @Suppress("DEPRECATION")
-                        map.addMarker(MarkerOptions()
-                            .position(viewModel.navigationPath.last())
-                            .title(if (viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED) {
-                                "Pickup"
-                            } else {
-                                "Destination"
-                            })
-                        )
-                    }
-                }
+                modifier = Modifier.fillMaxSize()
             )
 
             // Floating Menu Button
