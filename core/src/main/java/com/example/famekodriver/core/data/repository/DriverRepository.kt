@@ -42,6 +42,10 @@ class DriverRepository private constructor() {
     }
 
     fun startWebSocket(userId: String) {
+        if (currentUserId == userId && webSocket != null && isReconnectEnabled) {
+            Log.d("FamekoWS", "WebSocket already active for $userId, skipping start.")
+            return
+        }
         currentUserId = userId
         isReconnectEnabled = true
         connectWebSocket()
@@ -1256,10 +1260,20 @@ class DriverRepository private constructor() {
         }
     }
 
-    suspend fun getGeocodeSuggestions(query: String): Result<List<LocationSuggestion>> = withContext(Dispatchers.IO) {
+    suspend fun getGeocodeSuggestions(query: String, biasLat: Double? = null, biasLng: Double? = null): Result<List<LocationSuggestion>> = withContext(Dispatchers.IO) {
         // Priority 1: OSM Nominatim (Often more detailed local locations in Ghana)
         try {
-            val osmResponse = NetworkClient.osmService.search(query)
+            // Coordinate biasing for OSM (Viewbox)
+            var viewbox: String? = null
+            var bounded: Int? = null
+            if (biasLat != null && biasLng != null) {
+                // Accra roughly: Left: -0.5, Top: 5.8, Right: 0.1, Bottom: 5.5
+                // Dynamic viewbox +/- 0.5 degrees (~50km)
+                viewbox = "${biasLng - 0.5},${biasLat + 0.5},${biasLng + 0.5},${biasLat - 0.5}"
+                bounded = 0 // Prefer but don't strictly limit
+            }
+
+            val osmResponse = NetworkClient.osmService.search(query, viewbox = viewbox, bounded = bounded)
             val filteredResults = osmResponse.map { suggestion ->
                 suggestion.copy(
                     name = suggestion.displayName.split(",")[0],
@@ -1278,7 +1292,10 @@ class DriverRepository private constructor() {
         try {
             val tomTomResponse = NetworkClient.tomTomService.fuzzySearch(
                 query = query,
-                apiKey = NetworkClient.TOMTOM_API_KEY
+                apiKey = NetworkClient.TOMTOM_API_KEY,
+                lat = biasLat,
+                lon = biasLng,
+                radius = if (biasLat != null) 50000 else null // 50km radius
             )
 
             if (!tomTomResponse.results.isNullOrEmpty()) {

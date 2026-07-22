@@ -19,6 +19,8 @@ interface OpenStreetMapService {
         @Query("format") format: String = "json",
         @Query("limit") limit: Int = 5,
         @Query("countrycodes") countryCodes: String = "gh",
+        @Query("viewbox") viewbox: String? = null,
+        @Query("bounded") bounded: Int? = null,
         @Header("User-Agent") userAgent: String = "FamekoAndroidApp_Native_v1.0"
     ): List<LocationSuggestion>
 

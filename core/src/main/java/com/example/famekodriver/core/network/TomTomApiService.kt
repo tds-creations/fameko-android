@@ -16,7 +16,10 @@ interface TomTomApiService {
         @Query("key") apiKey: String,
         @Query("limit") limit: Int = 5,
         @Query("countrySet") countrySet: String = "GH", // Default to Ghana
-        @Query("language") language: String = "en-GB"
+        @Query("language") language: String = "en-GB",
+        @Query("lat") lat: Double? = null,
+        @Query("lon") lon: Double? = null,
+        @Query("radius") radius: Int? = null
     ): TomTomSearchResponse
 
     @GET("search/2/reverseGeocode/{lat},{lon}.json")

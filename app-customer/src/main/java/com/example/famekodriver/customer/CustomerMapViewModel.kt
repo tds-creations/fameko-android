@@ -540,7 +540,7 @@ class CustomerMapViewModel(
         if (query.length > 2) {
             viewModelScope.launch {
                 delay(500.milliseconds)
-                repository.getGeocodeSuggestions(query).onSuccess { 
+                repository.getGeocodeSuggestions(query, biasLat = pickupLat, biasLng = pickupLng).onSuccess { 
                     stopSuggestions = it 
                 }.onFailure {
                     stopSuggestions = emptyList()
@@ -567,7 +567,7 @@ class CustomerMapViewModel(
         if (query.length > 2) {
             pickupSearchJob = viewModelScope.launch {
                 delay(500.milliseconds)
-                repository.getGeocodeSuggestions(query).onSuccess { 
+                repository.getGeocodeSuggestions(query, biasLat = pickupLat, biasLng = pickupLng).onSuccess { 
                     pickupSuggestions = it 
                 }.onFailure {
                     pickupSuggestions = emptyList()
@@ -587,7 +587,7 @@ class CustomerMapViewModel(
         if (query.length > 2) {
             managePlacesSearchJob = viewModelScope.launch {
                 delay(500.milliseconds)
-                repository.getGeocodeSuggestions(query).onSuccess { 
+                repository.getGeocodeSuggestions(query, biasLat = pickupLat, biasLng = pickupLng).onSuccess { 
                     managePlacesSuggestions = it 
                 }.onFailure {
                     managePlacesSuggestions = emptyList()
@@ -614,7 +614,7 @@ class CustomerMapViewModel(
         if (query.length > 2) {
             dropOffSearchJob = viewModelScope.launch {
                 delay(500.milliseconds)
-                repository.getGeocodeSuggestions(query).onSuccess { 
+                repository.getGeocodeSuggestions(query, biasLat = pickupLat, biasLng = pickupLng).onSuccess {
                     dropOffSuggestions = it 
                 }.onFailure {
                     dropOffSuggestions = emptyList()
