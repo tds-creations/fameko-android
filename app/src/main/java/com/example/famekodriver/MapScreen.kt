@@ -50,7 +50,12 @@ import com.example.famekodriver.core.network.NetworkClient
 import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.ui.theme.*
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
@@ -60,6 +65,8 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.*
 import kotlin.time.Duration.Companion.seconds
@@ -143,8 +150,57 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(hasLocationPermission) {
-        if (hasLocationPermission) {
+    LaunchedEffect(hasLocationPermission, viewModel.isOnline, mapLibreMap, viewModel.isFullscreenMap) {
+        if (!hasLocationPermission || mapLibreMap == null) return@LaunchedEffect
+
+        if (viewModel.isFullscreenMap) {
+            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+                .setMinUpdateIntervalMillis(500)
+                .build()
+
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    val location = result.lastLocation ?: return
+                    if (location.latitude == 0.0 || location.longitude == 0.0) return
+
+                    viewModel.updateDriverLocation(location.latitude, location.longitude, location.bearing)
+
+                    // Live Camera Following (Navigation Mode)
+                    mapLibreMap?.let { map ->
+                        // Adaptive Zoom based on speed (m/s to km/h)
+                        val speedKmh = location.speed.toDouble() * 3.6
+                        val targetZoom = when {
+                            speedKmh > 80.0 -> 15.0
+                            speedKmh > 50.0 -> 16.0
+                            speedKmh > 20.0 -> 17.0
+                            else -> 18.0
+                        }
+
+                        val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                            .target(LatLng(location.latitude, location.longitude))
+                            .zoom(targetZoom)
+                            .bearing(location.bearing.toDouble()) // Align map with movement
+                            .tilt(50.0) // 3D perspective for road view
+                            .build()
+                        
+                        // Apply padding to keep vehicle in lower third
+                        map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
+                        
+                        map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                    }
+                }
+            }
+
+            try {
+                fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, context.mainLooper)
+                awaitCancellation()
+            } finally {
+                fusedLocationClient.removeLocationUpdates(locationCallback)
+                // Reset padding when exiting navigation
+                mapLibreMap?.setPadding(0, 0, 0, 0)
+            }
+        } else {
+            // Normal Mode or Background Updates
             @SuppressLint("MissingPermission")
             fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
                 loc?.let { 
@@ -153,21 +209,22 @@ fun MapScreen(
                 }
             }
             
-            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
-                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 5000
-            ).build()
+            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000).build()
             
-            fusedLocationClient.requestLocationUpdates(
-                locationRequest,
-                object : com.google.android.gms.location.LocationCallback() {
-                    override fun onLocationResult(res: com.google.android.gms.location.LocationResult) {
-                        res.lastLocation?.let { 
-                            viewModel.updateDriverLocation(it.latitude, it.longitude, it.bearing)
-                        }
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(res: LocationResult) {
+                    res.lastLocation?.let { 
+                        viewModel.updateDriverLocation(it.latitude, it.longitude, it.bearing)
                     }
-                },
-                context.mainLooper
-            )
+                }
+            }
+
+            try {
+                fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, context.mainLooper)
+                awaitCancellation()
+            } finally {
+                fusedLocationClient.removeLocationUpdates(locationCallback)
+            }
         }
     }
 
@@ -392,20 +449,31 @@ fun MapScreen(
                     if (it.isActive) SurgeIndicator(multiplier = it.multiplier) 
                 }
                 val delivery = viewModel.currentDelivery
-                if (viewModel.navigationPath.isNotEmpty() && delivery != null) {
+                if (viewModel.navigationPath.isNotEmpty() && delivery != null && !viewModel.isFullscreenMap) {
                     NavigationHUD(delivery = delivery)
                 }
+            }
+
+            if (viewModel.isFullscreenMap) {
+                DriverNavigationOverlay(
+                    instruction = viewModel.currentInstruction,
+                    distanceKm = viewModel.distanceKm,
+                    durationMin = viewModel.durationMin,
+                    onExit = { viewModel.isFullscreenMap = false }
+                )
             }
 
             // Bottom Sheets
             viewModel.currentDelivery?.let { delivery ->
                 DeliveryControlSheet(
                     delivery = delivery,
+                    isFullscreenMap = viewModel.isFullscreenMap,
                     onCall = { viewModel.initiateCall() },
                     onChat = { onNavigateToChat(delivery.orderId, delivery.customerName ?: "Customer") },
                     onStatusUpdate = { viewModel.updateDeliveryStatus(it) },
                     onCancel = { viewModel.cancelActiveTrip() },
-                    onArrived = { viewModel.showPinDialog = true }
+                    onArrived = { viewModel.showPinDialog = true },
+                    onNavigateClick = { viewModel.isFullscreenMap = !viewModel.isFullscreenMap }
                 )
             }
 
@@ -733,12 +801,16 @@ fun NavigationHUD(delivery: Delivery) {
 @Composable
 fun DeliveryControlSheet(
     delivery: Delivery,
+    isFullscreenMap: Boolean,
     onCall: () -> Unit,
     onChat: () -> Unit,
     onStatusUpdate: (DeliveryStatus) -> Unit,
     onCancel: () -> Unit,
-    onArrived: () -> Unit
+    onArrived: () -> Unit,
+    onNavigateClick: () -> Unit
 ) {
+    if (isFullscreenMap) return // Don't show sheet in navigation mode
+
     Card(
         modifier = Modifier
             .padding(16.dp)
@@ -865,11 +937,22 @@ fun DeliveryControlSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = onCancel,
-                    modifier = Modifier.weight(1f).height(60.dp),
+                    modifier = Modifier.weight(0.8f).height(60.dp),
                     shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, Color.LightGray)
                 ) {
-                    Text("Cancel Trip", fontWeight = FontWeight.Bold, color = BoltDark)
+                    Text("Cancel", fontWeight = FontWeight.Bold, color = BoltDark)
+                }
+
+                Button(
+                    onClick = onNavigateClick,
+                    modifier = Modifier.weight(1f).height(60.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BoltDark)
+                ) {
+                    Icon(Icons.Default.Navigation, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("NAVIGATE", fontWeight = FontWeight.Bold)
                 }
                 
                 Button(
@@ -877,16 +960,135 @@ fun DeliveryControlSheet(
                         if (delivery.status == DeliveryStatus.ASSIGNED) onArrived()
                         else onStatusUpdate(DeliveryStatus.DELIVERED)
                     },
-                    modifier = Modifier.weight(1.5f).height(60.dp),
+                    modifier = Modifier.weight(1.2f).height(60.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary)
                 ) {
                     Text(
-                        text = if (delivery.status == DeliveryStatus.ASSIGNED) "I'VE ARRIVED" else "COMPLETE TRIP",
+                        text = if (delivery.status == DeliveryStatus.ASSIGNED) "I'VE ARRIVED" else "COMPLETE",
                         fontWeight = FontWeight.Black,
-                        fontSize = 16.sp
+                        fontSize = 14.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DriverNavigationOverlay(
+    instruction: RouteInstruction?,
+    distanceKm: Double,
+    durationMin: Double,
+    onExit: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Top Instruction Card
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .statusBarsPadding(),
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF1A1C1E), // High contrast dark
+            shadowElevation = 12.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val icon = when {
+                    instruction?.text?.contains("left", true) == true -> Icons.AutoMirrored.Filled.ArrowBack
+                    instruction?.text?.contains("right", true) == true -> Icons.AutoMirrored.Filled.ArrowForward
+                    else -> Icons.Default.Navigation
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color.White.copy(alpha = 0.15f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                }
+                
+                Spacer(Modifier.width(20.dp))
+                
+                Column {
+                    Text(
+                        text = instruction?.text ?: "Follow the path",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Calculating distance to turn...",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
+        // Bottom Stats
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .padding(24.dp)
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "${String.format(Locale.US, "%.1f", distanceKm)} km",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Black,
+                        color = BoltDark
+                    )
+                    Text("REMAINING", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val arrivalTime = SimpleDateFormat("HH:mm", Locale.US).format(Date(System.currentTimeMillis() + (durationMin * 60000).toLong()))
+                    Text(
+                        text = arrivalTime,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Black,
+                        color = FamekoPrimary
+                    )
+                    Text("ARRIVAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${durationMin.toInt()} min",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Black,
+                        color = BoltGreen
+                    )
+                    Text("ESTIMATED", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                onClick = onExit,
+                modifier = Modifier.fillMaxWidth().height(60.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+            ) {
+                Icon(Icons.Default.Close, null)
+                Spacer(Modifier.width(12.dp))
+                Text("EXIT NAVIGATION", fontWeight = FontWeight.Black, fontSize = 16.sp)
             }
         }
     }

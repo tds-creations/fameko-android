@@ -3,6 +3,7 @@ package com.example.famekodriver
 import android.app.Application
 import android.content.Context
 import android.os.PowerManager
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -41,6 +42,11 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var ongoingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
     var isAccepting by mutableStateOf(false)
     var navigationPath by mutableStateOf<List<LatLng>>(emptyList())
+    var instructions by mutableStateOf<List<RouteInstruction>>(emptyList())
+    var currentInstruction by mutableStateOf<RouteInstruction?>(null)
+    var distanceKm by mutableDoubleStateOf(0.0)
+    var durationMin by mutableDoubleStateOf(0.0)
+    var isFullscreenMap by mutableStateOf(false)
     var driverLatLng by mutableStateOf<LatLng?>(null)
     var driverBearing by mutableStateOf(0f)
     var heatmapPoints by mutableStateOf<List<HeatmapPoint>>(emptyList())
@@ -449,6 +455,10 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 .onSuccess { response ->
                     val isFirstCalc = navigationPath.isEmpty()
                     navigationPath = response.routeCoords.map { LatLng(it[1], it[0]) }
+                    instructions = response.instructions
+                    currentInstruction = instructions.firstOrNull()
+                    distanceKm = response.distanceM / 1000.0
+                    durationMin = response.etaMin
                     lastRouteCalcLatLng = start
                     
                     if (isFirstCalc) {
@@ -463,16 +473,86 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         driverLatLng = LatLng(lat, lng)
         driverBearing = bearing
         
-        currentDelivery?.let { delivery ->
-            if (navigationPath.isNotEmpty()) {
-                voiceNavManager.updateProgress(
-                    lat, lng, 
-                    navigationPath.map { it.latitude to it.longitude },
-                    delivery.pickupEtaMin ?: 5.0, // Placeholder ETA
-                    delivery.distanceKm
-                )
+        val delivery = currentDelivery
+        if (delivery != null && navigationPath.isNotEmpty()) {
+            // Off-route detection
+            checkOffRoute(lat, lng)
+            
+            // Arrival detection
+            if (checkArrival(lat, lng)) {
+                voiceNavManager.announceArrival()
+            }
+
+            voiceNavManager.updateProgress(
+                lat, lng, 
+                navigationPath.map { it.latitude to it.longitude },
+                durationMin,
+                distanceKm
+            )
+        }
+    }
+
+    /**
+     * Checks if the user is off-route and triggers recalculation if needed.
+     */
+    fun checkOffRoute(currentLat: Double, currentLng: Double) {
+        if (navigationPath.size < 2 || routeJob?.isActive == true) return
+        
+        var minDistance = Double.MAX_VALUE
+        for (i in 0 until navigationPath.size - 1) {
+            val p1 = navigationPath[i]
+            val p2 = navigationPath[i + 1]
+            val dist = LocationUtils.distanceToSegment(
+                currentLat, currentLng,
+                p1.latitude, p1.longitude,
+                p2.latitude, p2.longitude
+            )
+            if (dist < minDistance) minDistance = dist
+        }
+        
+        // If deviating more than 50 meters, recalculate
+        if (minDistance > 50.0) {
+            val delivery = currentDelivery ?: return
+            val dest = if (delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.ARRIVED) {
+                LatLng(delivery.pickupLat ?: 0.0, delivery.pickupLng ?: 0.0)
+            } else {
+                LatLng(delivery.dropOffLat ?: 0.0, delivery.dropOffLng ?: 0.0)
+            }
+            if (dest.latitude != 0.0) {
+                calculateRoute(LatLng(currentLat, currentLng), dest)
             }
         }
+    }
+
+    /**
+     * Checks if the driver has arrived at the next stop (pickup or dropoff).
+     */
+    fun checkArrival(currentLat: Double, currentLng: Double): Boolean {
+        val delivery = currentDelivery ?: return false
+        val destLat = if (delivery.status == DeliveryStatus.ASSIGNED) delivery.pickupLat else delivery.dropOffLat
+        val destLng = if (delivery.status == DeliveryStatus.ASSIGNED) delivery.pickupLng else delivery.dropOffLng
+        
+        if (destLat == null || destLng == null || destLat == 0.0) return false
+        
+        val distToDest = LocationUtils.calculateDistance(currentLat, currentLng, destLat, destLng)
+        
+        if (distToDest < 30.0) { // Within 30 meters
+            if (delivery.status == DeliveryStatus.ASSIGNED) {
+                // Arrived at pickup, auto-trigger "Arrived" state
+                updateDeliveryStatus(DeliveryStatus.ARRIVED)
+                showPinDialog = true // Prompt for pickup PIN
+            } else if (delivery.status == DeliveryStatus.IN_TRANSIT) {
+                // Arrived at destination
+                updateDeliveryStatus(DeliveryStatus.DELIVERED)
+            }
+            
+            isFullscreenMap = false
+            navigationPath = emptyList()
+            instructions = emptyList()
+            currentInstruction = null
+            return true
+        }
+        return false
     }
 
     fun toggleVoice(enabled: Boolean) {
