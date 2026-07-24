@@ -1149,32 +1149,6 @@ fun MainMapContent(
                                     }
                                 }
                                 
-                                Spacer(Modifier.height(24.dp))
-                                
-                                // Direct Search Access in Bottom Sheet
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(56.dp)
-                                        .clickable { viewModel.navigateTo(CustomerScreen.RouteSelection) },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = BoltLightGray
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 16.dp)
-                                    ) {
-                                        Icon(Icons.Default.Search, null, tint = BoltDark, modifier = Modifier.size(24.dp))
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = "Where to?",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = BoltDark,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                                
                                 Spacer(Modifier.height(12.dp))
                             }
                         }
@@ -1187,18 +1161,6 @@ fun MainMapContent(
                                         Text("Preparing your ride...", color = Color.Gray, fontSize = 14.sp)
                                     }
                                 }
-                            } else {
-                                // Show SearchBox in bottom sheet if picking but not loading
-                                SearchBox(
-                                    pickupLocation = viewModel.pickupLocation,
-                                    dropOffLocation = viewModel.dropOffLocation,
-                                    onPickupChange = { viewModel.updatePickupLocation(it) },
-                                    onDropOffChange = { viewModel.updateDropOffLocation(it) },
-                                    onSearch = { viewModel.calculateRoute() },
-                                    isLoading = viewModel.isLoading,
-                                    onPickupFocus = { if (it) viewModel.navigateTo(CustomerScreen.RouteSelection) },
-                                    onDropOffFocus = { if (it) viewModel.navigateTo(CustomerScreen.RouteSelection) }
-                                )
                             }
                         }
                         CustomerSheetState.SELECTING_SERVICE -> {
@@ -1334,8 +1296,8 @@ fun MainMapContent(
                     )
                 }
 
-                // Immersive Floating Search Bar (Top) - Only show when a route is already calculated
-                if (viewModel.currentOrderId == null && currentSheetState == CustomerSheetState.SELECTING_SERVICE && !viewModel.isFullscreenMap) {
+                // Immersive Floating Search Bar (Top)
+                if (viewModel.currentOrderId == null && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
