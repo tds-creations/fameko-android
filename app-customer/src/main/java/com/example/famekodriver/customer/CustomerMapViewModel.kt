@@ -460,6 +460,11 @@ class CustomerMapViewModel(
         } else if (mode == ServiceType.RIDE_HAILING) {
             selectedVehicleType = "Economy"
         }
+        
+        if (mode != ServiceType.RENTAL) {
+            isSearchMode = true
+            currentScreen = CustomerScreen.RouteSelection
+        }
     }
 
     fun updatePickupLocation(query: String) {

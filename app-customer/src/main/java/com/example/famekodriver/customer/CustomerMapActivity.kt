@@ -1102,6 +1102,7 @@ fun MainMapContent(
                         }
                         CustomerSheetState.IDLE -> {
                             Column(modifier = Modifier.fillMaxWidth()) {
+                                // Home, Work shortcuts
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceAround
@@ -1147,6 +1148,33 @@ fun MainMapContent(
                                         viewModel.updateDropOffLocation("")
                                     }
                                 }
+                                
+                                Spacer(Modifier.height(24.dp))
+                                
+                                // Direct Search Access in Bottom Sheet
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp)
+                                        .clickable { viewModel.navigateTo(CustomerScreen.RouteSelection) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = BoltLightGray
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    ) {
+                                        Icon(Icons.Default.Search, null, tint = BoltDark, modifier = Modifier.size(24.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = "Where to?",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = BoltDark,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                                
                                 Spacer(Modifier.height(12.dp))
                             }
                         }
@@ -1159,6 +1187,18 @@ fun MainMapContent(
                                         Text("Preparing your ride...", color = Color.Gray, fontSize = 14.sp)
                                     }
                                 }
+                            } else {
+                                // Show SearchBox in bottom sheet if picking but not loading
+                                SearchBox(
+                                    pickupLocation = viewModel.pickupLocation,
+                                    dropOffLocation = viewModel.dropOffLocation,
+                                    onPickupChange = { viewModel.updatePickupLocation(it) },
+                                    onDropOffChange = { viewModel.updateDropOffLocation(it) },
+                                    onSearch = { viewModel.calculateRoute() },
+                                    isLoading = viewModel.isLoading,
+                                    onPickupFocus = { if (it) viewModel.navigateTo(CustomerScreen.RouteSelection) },
+                                    onDropOffFocus = { if (it) viewModel.navigateTo(CustomerScreen.RouteSelection) }
+                                )
                             }
                         }
                         CustomerSheetState.SELECTING_SERVICE -> {
@@ -1294,8 +1334,8 @@ fun MainMapContent(
                     )
                 }
 
-                // Immersive Floating Search Bar & Controls
-                if (viewModel.currentOrderId == null && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
+                // Immersive Floating Search Bar (Top) - Only show when a route is already calculated
+                if (viewModel.currentOrderId == null && currentSheetState == CustomerSheetState.SELECTING_SERVICE && !viewModel.isFullscreenMap) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2051,6 +2091,123 @@ fun DriverInfoSheetContent(
     }
 }
 
+
+@Composable
+fun SearchBox(
+    pickupLocation: String, 
+    dropOffLocation: String, 
+    stops: List<String> = emptyList(),
+    onPickupChange: (String) -> Unit, 
+    onDropOffChange: (String) -> Unit, 
+    onStopChange: (Int, String) -> Unit = { _, _ -> },
+    onAddStop: () -> Unit = {},
+    onRemoveStop: (Int) -> Unit = {},
+    onPickupFocus: (Boolean) -> Unit = {}, 
+    onDropOffFocus: (Boolean) -> Unit = {}, 
+    onStopFocus: (Int, Boolean) -> Unit = { _, _ -> },
+    onSearch: () -> Unit = {}, 
+    isLoading: Boolean = false, 
+    pickupFocusRequester: FocusRequester = remember { FocusRequester() }, 
+    dropOffFocusRequester: FocusRequester = remember { FocusRequester() },
+    isRentalMode: Boolean = false
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        shadowElevation = 12.dp,
+        border = BorderStroke(1.dp, BoltLightGray)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Pickup
+            Row(verticalAlignment = Alignment.CenterVertically) { 
+                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(BoltGreen))
+                Spacer(modifier = Modifier.width(16.dp))
+                BasicTextField(
+                    value = pickupLocation, 
+                    onValueChange = onPickupChange, 
+                    modifier = Modifier.weight(1f).focusRequester(pickupFocusRequester).onFocusChanged { onPickupFocus(it.isFocused) }, 
+                    textStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = BoltDark),
+                    decorationBox = { innerTextField -> 
+                        if (pickupLocation.isEmpty()) Text(if (isRentalMode) "Pickup for rental" else "Pickup location", color = Color.Gray, fontSize = 16.sp)
+                        innerTextField() 
+                    }
+                )
+                if (pickupLocation.isNotEmpty()) {
+                    IconButton(onClick = { onPickupChange("") }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+            }
+            
+            // Stops
+            stops.forEachIndexed { index, stop ->
+                Row(modifier = Modifier.fillMaxWidth().height(32.dp)) {
+                    Box(modifier = Modifier.width(10.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.width(2.dp).fillMaxHeight().background(Color.LightGray))
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color.Gray))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    BasicTextField(
+                        value = stop,
+                        onValueChange = { onStopChange(index, it) },
+                        modifier = Modifier.weight(1f).onFocusChanged { onStopFocus(index, it.isFocused) },
+                        textStyle = TextStyle(fontSize = 16.sp, color = BoltDark),
+                        decorationBox = { innerTextField -> 
+                            if (stop.isEmpty()) Text("Stop ${index + 1}", color = Color.Gray, fontSize = 16.sp)
+                            innerTextField() 
+                        }
+                    )
+                    IconButton(onClick = { onRemoveStop(index) }) { Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp), tint = Color.Gray) }
+                }
+            }
+
+            // Connection line
+            Row(modifier = Modifier.fillMaxWidth().height(32.dp)) {
+                Box(modifier = Modifier.width(10.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(2.dp).fillMaxHeight().background(Color.LightGray))
+                }
+            }
+
+            // Destination
+            Row(verticalAlignment = Alignment.CenterVertically) { 
+                Box(modifier = Modifier.size(10.dp).background(BoltOrange, RoundedCornerShape(2.dp)))
+                Spacer(modifier = Modifier.width(16.dp))
+                BasicTextField(
+                    value = dropOffLocation, 
+                    onValueChange = onDropOffChange, 
+                    modifier = Modifier.weight(1f).focusRequester(dropOffFocusRequester).onFocusChanged { onDropOffFocus(it.isFocused) }, 
+                    textStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = BoltDark),
+                    decorationBox = { innerTextField -> 
+                        if (dropOffLocation.isEmpty()) Text("Where to?", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        innerTextField() 
+                    }
+                )
+                
+                if (dropOffLocation.isNotEmpty()) {
+                    IconButton(onClick = { onDropOffChange("") }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+
+                if (isRentalMode) {
+                    IconButton(onClick = onAddStop) { Icon(Icons.Default.Add, null, modifier = Modifier.size(24.dp), tint = FamekoBlue) }
+                }
+
+                if (pickupLocation.isNotEmpty() && (dropOffLocation.isNotEmpty() || (isRentalMode && stops.isNotEmpty()))) {
+                    IconButton(onClick = onSearch, modifier = Modifier.size(36.dp).background(FamekoBlue, CircleShape)) { 
+                        if (isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White) 
+                        else Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    } 
+                } 
+            }
+        }
+    }
+}
 
 @Composable
 fun ServiceSelectionSheet(
