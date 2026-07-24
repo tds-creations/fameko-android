@@ -463,7 +463,8 @@ class CustomerMapViewModel(
         
         if (mode != ServiceType.RENTAL) {
             isSearchMode = true
-            currentScreen = CustomerScreen.RouteSelection
+            // We stay on MainMap so the top floating search bar is visible
+            currentScreen = CustomerScreen.MainMap
         }
     }
 
