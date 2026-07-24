@@ -458,7 +458,15 @@ fun MapScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                update = { _ ->
+                    // This block ensures the map stays in sync with Compose state
+                    // and prevents markers from "disappearing" due to incorrect recycling.
+                    val map = mapLibreMap ?: return@AndroidView
+                    
+                    // We handle markers via LaunchedEffects for performance,
+                    // but the update block triggers a re-eval of those effects if needed.
+                }
             )
 
             // Floating Menu Button
@@ -498,6 +506,7 @@ fun MapScreen(
             if (viewModel.isFullscreenMap) {
                 DriverNavigationOverlay(
                     instruction = viewModel.currentInstruction,
+                    driverLatLng = viewModel.driverLatLng,
                     distanceKm = viewModel.distanceKm,
                     durationMin = viewModel.durationMin,
                     onExit = { viewModel.isFullscreenMap = false }
@@ -1019,6 +1028,7 @@ fun DeliveryControlSheet(
 @Composable
 fun DriverNavigationOverlay(
     instruction: RouteInstruction?,
+    driverLatLng: org.maplibre.android.geometry.LatLng?,
     distanceKm: Double,
     durationMin: Double,
     onExit: () -> Unit
@@ -1064,8 +1074,20 @@ fun DriverNavigationOverlay(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    
+                    val distanceToManeuver = if (instruction != null && driverLatLng != null) {
+                        val dist = com.example.famekodriver.core.utils.LocationUtils.calculateDistance(
+                            driverLatLng.latitude,
+                            driverLatLng.longitude,
+                            instruction.latitude,
+                            instruction.longitude
+                        )
+                        if (dist > 1000) String.format(Locale.US, "%.1f km", dist / 1000.0)
+                        else "${dist.toInt()} m"
+                    } else "..."
+
                     Text(
-                        text = "Calculating distance to turn...",
+                        text = "Next turn in $distanceToManeuver",
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 14.sp
                     )

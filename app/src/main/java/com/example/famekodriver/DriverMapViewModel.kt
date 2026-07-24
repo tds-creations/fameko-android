@@ -541,16 +541,17 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 // Arrived at pickup, auto-trigger "Arrived" state
                 updateDeliveryStatus(DeliveryStatus.ARRIVED)
                 showPinDialog = true // Prompt for pickup PIN
+                
+                isFullscreenMap = false
+                navigationPath = emptyList()
+                instructions = emptyList()
+                currentInstruction = null
+                return true
             } else if (delivery.status == DeliveryStatus.IN_TRANSIT) {
-                // Arrived at destination
-                updateDeliveryStatus(DeliveryStatus.DELIVERED)
+                // Arrived at destination - Handled by the driver clicking "COMPLETE" in our current UI
+                // But we can trigger the transition automatically here as well if preferred.
+                // For now, let's keep navigation active until they reach it, then they click Complete.
             }
-            
-            isFullscreenMap = false
-            navigationPath = emptyList()
-            instructions = emptyList()
-            currentInstruction = null
-            return true
         }
         return false
     }
