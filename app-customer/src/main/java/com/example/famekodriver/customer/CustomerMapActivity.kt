@@ -6,7 +6,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -81,6 +80,7 @@ import com.example.famekodriver.core.data.repository.*
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
 import com.example.famekodriver.core.utils.ImageLinks
+import com.example.famekodriver.core.utils.LocationUtils
 import com.example.famekodriver.core.utils.NotificationHelper
 import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.customer.ui.screens.*
@@ -400,8 +400,6 @@ fun CustomerMapScreen() {
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-            val showMap = mapViewModel.currentScreen == CustomerScreen.Landing || mapViewModel.currentScreen is CustomerScreen.MainMap || mapViewModel.currentScreen == CustomerScreen.RouteSelection || mapViewModel.isFullscreenMap
-            
             // Map layer (Always present to avoid recreation and state loss)
             MainMapContent(
                 viewModel = mapViewModel,
@@ -671,6 +669,7 @@ fun MainMapContent(
                     if (location.latitude == 0.0 || location.longitude == 0.0) return
 
                     // Update ViewModel location state for nearby driver queries and route logic
+                    viewModel.currentLatLng = LatLng(location.latitude, location.longitude)
                     viewModel.pickupLat = location.latitude
                     viewModel.pickupLng = location.longitude
                     viewModel.updateNearbyDrivers(location.latitude, location.longitude)
@@ -713,6 +712,7 @@ fun MainMapContent(
                             .build()
                         
                         // Apply padding to keep vehicle in lower third
+                        @Suppress("DEPRECATION")
                         map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
                         
                         map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
@@ -742,6 +742,7 @@ fun MainMapContent(
                         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
                             location?.let {
                                 if (it.latitude != 0.0 && it.longitude != 0.0) {
+                                    viewModel.currentLatLng = LatLng(it.latitude, it.longitude)
                                     viewModel.updateNearbyDrivers(it.latitude, it.longitude)
                                     
                                     if (viewModel.pickupLat == null && viewModel.pickupLocation.isEmpty()) {
@@ -816,6 +817,9 @@ fun MainMapContent(
     val activePolylineRef = remember { object { var value: Polyline? = null } }
     val activeRouteMarkers = remember { mutableListOf<Marker>() }
     val animatingMarkerIds = remember { mutableSetOf<String>() }
+
+    val pickupIcon = remember(context) { createMarkerIcon(context, BoltGreen) }
+    val dropoffIcon = remember(context) { createMarkerIcon(context, BoltOrange) }
 
     val currentSheetState = remember(viewModel.orderStatusData?.status, viewModel.estimatedFare, viewModel.currentOrderId, viewModel.isSearchMode, viewModel.pickupLocation, viewModel.dropOffLocation, viewModel.activeServiceMode, viewModel.pickupLat, viewModel.activeRental, viewModel.rentalPickupLat, viewModel.currentScreen, viewModel.isTimedOut, viewModel.polylinePoints) {
         val state = when {
@@ -967,8 +971,14 @@ fun MainMapContent(
             val pickupPos = points.first()
             val dropoffPos = points.last()
             
-            val pickupMarker = map.addMarker(MarkerOptions().position(pickupPos).title("PICKUP"))
-            val dropoffMarker = map.addMarker(MarkerOptions().position(dropoffPos).title("DROPOFF"))
+            val pickupMarker = map.addMarker(MarkerOptions()
+                .position(pickupPos)
+                .icon(pickupIcon)
+                .title("PICKUP"))
+            val dropoffMarker = map.addMarker(MarkerOptions()
+                .position(dropoffPos)
+                .icon(dropoffIcon)
+                .title("DROPOFF"))
             activeRouteMarkers.add(pickupMarker)
             activeRouteMarkers.add(dropoffMarker)
             
@@ -1259,6 +1269,7 @@ fun MainMapContent(
                 if (viewModel.isFullscreenMap) {
                     NavigationOverlay(
                         instruction = viewModel.currentInstruction,
+                        currentLatLng = viewModel.currentLatLng,
                         distanceKm = viewModel.distanceKm,
                         durationMin = viewModel.durationMin,
                         onExit = {
@@ -1517,6 +1528,30 @@ fun MainMapContent(
             }
         }
     }
+
+private fun createMarkerIcon(context: android.content.Context, color: Color): org.maplibre.android.annotations.Icon {
+    val size = 64
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    
+    // Draw pin body
+    paint.color = color.toArgb()
+    val pinPath = android.graphics.Path()
+    pinPath.moveTo(size / 2f, size.toFloat())
+    pinPath.lineTo(size * 0.15f, size * 0.4f)
+    val rectF = android.graphics.RectF(size * 0.15f, 0f, size * 0.85f, size * 0.7f)
+    pinPath.arcTo(rectF, 150f, 240f, false)
+    pinPath.close()
+    
+    canvas.drawPath(pinPath, paint)
+
+    // Draw inner circle
+    paint.color = android.graphics.Color.WHITE
+    canvas.drawCircle(size / 2f, size * 0.35f, size / 7f, paint)
+
+    return IconFactory.getInstance(context).fromBitmap(bitmap)
+}
 
 @Composable
 fun TripSummaryDialog(
@@ -1996,130 +2031,6 @@ fun DriverInfoSheetContent(
                 Icon(Icons.Default.Warning, null, tint = Color(0xFFCF1322), modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Emergency Assistance", color = Color(0xFFCF1322), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-        }
-    }
-}
-
-
-@Composable
-fun SearchBox(
-    pickupLocation: String, 
-    dropOffLocation: String, 
-    stops: List<String> = emptyList(),
-    onPickupChange: (String) -> Unit, 
-    onDropOffChange: (String) -> Unit, 
-    onStopChange: (Int, String) -> Unit = { _, _ -> },
-    onAddStop: () -> Unit = {},
-    onRemoveStop: (Int) -> Unit = {},
-    onPickupFocus: (Boolean) -> Unit = {}, 
-    onDropOffFocus: (Boolean) -> Unit = {}, 
-    onStopFocus: (Int, Boolean) -> Unit = { _, _ -> },
-    onSearch: () -> Unit = {}, 
-    isLoading: Boolean = false, 
-    pickupFocusRequester: FocusRequester = remember { FocusRequester() }, 
-    dropOffFocusRequester: FocusRequester = remember { FocusRequester() },
-    isRentalMode: Boolean = false
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White,
-        shadowElevation = 12.dp,
-        border = BorderStroke(1.dp, BoltLightGray)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Pickup
-            Row(verticalAlignment = Alignment.CenterVertically) { 
-                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(BoltGreen))
-                Spacer(modifier = Modifier.width(16.dp))
-                BasicTextField(
-                    value = pickupLocation, 
-                    onValueChange = onPickupChange, 
-                    modifier = Modifier.weight(1f).focusRequester(pickupFocusRequester).onFocusChanged { onPickupFocus(it.isFocused) }, 
-                    textStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = BoltDark),
-                    decorationBox = { innerTextField -> 
-                        if (pickupLocation.isEmpty()) Text(if (isRentalMode) "Pickup for rental" else "Pickup location", color = Color.Gray, fontSize = 16.sp)
-                        innerTextField() 
-                    }
-                )
-                if (pickupLocation.isNotEmpty()) {
-                    IconButton(onClick = { onPickupChange("") }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                }
-                if (isRentalMode && pickupLocation.isNotEmpty() && dropOffLocation.isEmpty() && stops.isEmpty()) { 
-                    IconButton(onClick = onSearch, modifier = Modifier.size(36.dp).background(FamekoBlue, CircleShape)) { 
-                        if (isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White) 
-                        else Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.White, modifier = Modifier.size(20.dp)) 
-                    } 
-                } 
-            }
-            
-            // Stops
-            stops.forEachIndexed { index, stop ->
-                Row(modifier = Modifier.fillMaxWidth().height(32.dp)) {
-                    Box(modifier = Modifier.width(10.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        Box(modifier = Modifier.width(2.dp).fillMaxHeight().background(Color.LightGray))
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color.Gray))
-                    Spacer(modifier = Modifier.width(16.dp))
-                    BasicTextField(
-                        value = stop,
-                        onValueChange = { onStopChange(index, it) },
-                        modifier = Modifier.weight(1f).onFocusChanged { onStopFocus(index, it.isFocused) },
-                        textStyle = TextStyle(fontSize = 16.sp, color = BoltDark),
-                        decorationBox = { innerTextField -> 
-                            if (stop.isEmpty()) Text("Stop ${index + 1}", color = Color.Gray, fontSize = 16.sp)
-                            innerTextField() 
-                        }
-                    )
-                    IconButton(onClick = { onRemoveStop(index) }) { Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp), tint = Color.Gray) }
-                }
-            }
-
-            // Connection line
-            Row(modifier = Modifier.fillMaxWidth().height(32.dp)) {
-                Box(modifier = Modifier.width(10.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                    Box(modifier = Modifier.width(2.dp).fillMaxHeight().background(Color.LightGray))
-                }
-            }
-
-            // Destination
-            Row(verticalAlignment = Alignment.CenterVertically) { 
-                Box(modifier = Modifier.size(10.dp).background(BoltOrange, RoundedCornerShape(2.dp)))
-                Spacer(modifier = Modifier.width(16.dp))
-                BasicTextField(
-                    value = dropOffLocation, 
-                    onValueChange = onDropOffChange, 
-                    modifier = Modifier.weight(1f).focusRequester(dropOffFocusRequester).onFocusChanged { onDropOffFocus(it.isFocused) }, 
-                    textStyle = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = BoltDark),
-                    decorationBox = { innerTextField -> 
-                        if (dropOffLocation.isEmpty()) Text("Where to?", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        innerTextField() 
-                    }
-                )
-                
-                if (dropOffLocation.isNotEmpty()) {
-                    IconButton(onClick = { onDropOffChange("") }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                }
-
-                if (isRentalMode) {
-                    IconButton(onClick = onAddStop) { Icon(Icons.Default.Add, null, modifier = Modifier.size(24.dp), tint = FamekoBlue) }
-                }
-
-                if (pickupLocation.isNotEmpty() && (dropOffLocation.isNotEmpty() || (isRentalMode && stops.isNotEmpty()))) {
-                    IconButton(onClick = onSearch, modifier = Modifier.size(36.dp).background(FamekoBlue, CircleShape)) { 
-                        if (isLoading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White) 
-                        else Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                    } 
-                } 
             }
         }
     }
@@ -2968,9 +2879,11 @@ fun LocationSuggestionItem(
     }
 }
 
+@Suppress("DEPRECATION")
 @Composable
 fun NavigationOverlay(
     instruction: RouteInstruction?,
+    currentLatLng: LatLng?,
     distanceKm: Double,
     durationMin: Double,
     onExit: () -> Unit
@@ -3017,8 +2930,22 @@ fun NavigationOverlay(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    
+                    val distanceToManeuver = if (instruction != null && currentLatLng != null) {
+                        val instrLat = instruction.point?.getOrNull(1) ?: 0.0
+                        val instrLng = instruction.point?.getOrNull(0) ?: 0.0
+                        val dist = LocationUtils.calculateDistance(
+                            currentLatLng.latitude,
+                            currentLatLng.longitude,
+                            instrLat,
+                            instrLng
+                        )
+                        if (dist > 1000) String.format(Locale.US, "%.1f km", dist / 1000.0)
+                        else "${dist.toInt()} m"
+                    } else "..."
+
                     Text(
-                        text = "Next turn in ...", // Distance to turn can be added later
+                        text = "Next turn in $distanceToManeuver",
                         color = Color.White.copy(alpha = 0.7f),
                         fontSize = 14.sp
                     )

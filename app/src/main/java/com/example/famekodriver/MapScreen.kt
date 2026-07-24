@@ -44,13 +44,13 @@ import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
-import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
 import com.example.famekodriver.core.utils.ImageLinks
+import com.example.famekodriver.core.utils.LocationUtils
 import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.ui.theme.*
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
@@ -71,6 +71,7 @@ import java.util.Locale
 import kotlin.math.*
 import kotlin.time.Duration.Companion.seconds
 
+@Suppress("DEPRECATION")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -184,6 +185,7 @@ fun MapScreen(
                             .build()
                         
                         // Apply padding to keep vehicle in lower third
+                        @Suppress("DEPRECATION")
                         map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
                         
                         map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
@@ -296,6 +298,9 @@ fun MapScreen(
     val activePolylineRef = remember { object { var value: org.maplibre.android.annotations.Polyline? = null } }
     val activeRouteMarkers = remember { mutableListOf<org.maplibre.android.annotations.Marker>() }
 
+    val pickupIcon = remember(context) { createMarkerIcon(context, BoltGreen) }
+    val destinationIcon = remember(context) { createMarkerIcon(context, BoltOrange) }
+
     // Physical Back Button Logic
     androidx.activity.compose.BackHandler(enabled = viewModel.isFullscreenMap) {
         viewModel.isFullscreenMap = false
@@ -350,7 +355,7 @@ fun MapScreen(
         viewModel.heatmapPoints.forEach { point ->
             val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude))
             @Suppress("DEPRECATION")
-            val polygon = map.addPolygon(org.maplibre.android.annotations.PolygonOptions()
+            val polygon = map.addPolygon(PolygonOptions()
                 .addAll(circlePoints)
                 .fillColor(Color(1f, 0f, 0f, (point.intensity * 0.5).toFloat()).toArgb())
                 .strokeColor(Color.Transparent.toArgb())
@@ -379,9 +384,11 @@ fun MapScreen(
             activePolylineRef.value = polyline
             
             @Suppress("DEPRECATION")
+            val isPickup = viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED
             val destMarker = map.addMarker(MarkerOptions()
                 .position(path.last())
-                .title(if (viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED) "Pickup" else "Destination")
+                .icon(if (isPickup) pickupIcon else destinationIcon)
+                .title(if (isPickup) "Pickup" else "Destination")
             )
             activeRouteMarkers.add(destMarker)
 
@@ -462,10 +469,6 @@ fun MapScreen(
                 update = { _ ->
                     // This block ensures the map stays in sync with Compose state
                     // and prevents markers from "disappearing" due to incorrect recycling.
-                    val map = mapLibreMap ?: return@AndroidView
-                    
-                    // We handle markers via LaunchedEffects for performance,
-                    // but the update block triggers a re-eval of those effects if needed.
                 }
             )
 
@@ -663,6 +666,38 @@ fun MapScreen(
             }
         }
     }
+}
+
+private fun createMarkerIcon(context: android.content.Context, color: Color): org.maplibre.android.annotations.Icon {
+    val size = 64
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    
+    // Draw pin body
+    paint.color = color.toArgb()
+    val path = android.graphics.Path()
+    path.moveTo(size / 2f, size.toFloat())
+    path.lineTo(size * 0.2f, size * 0.4f)
+    path.arcTo(size * 0.2f, 0f, size * 0.8f, size * 0.8f, 180f, 180f, false)
+    path.lineTo(size / 2f, size.toFloat())
+    path.close()
+    
+    // Simpler path for pin
+    val pinPath = android.graphics.Path()
+    pinPath.moveTo(size / 2f, size.toFloat())
+    pinPath.lineTo(size * 0.15f, size * 0.4f)
+    val rectF = android.graphics.RectF(size * 0.15f, 0f, size * 0.85f, size * 0.7f)
+    pinPath.arcTo(rectF, 150f, 240f, false)
+    pinPath.close()
+    
+    canvas.drawPath(pinPath, paint)
+
+    // Draw inner circle
+    paint.color = android.graphics.Color.WHITE
+    canvas.drawCircle(size / 2f, size * 0.35f, size / 7f, paint)
+
+    return IconFactory.getInstance(context).fromBitmap(bitmap)
 }
 
 private fun createCirclePoints(center: LatLng, radiusInMeters: Double = 300.0): List<LatLng> {
@@ -1028,7 +1063,7 @@ fun DeliveryControlSheet(
 @Composable
 fun DriverNavigationOverlay(
     instruction: RouteInstruction?,
-    driverLatLng: org.maplibre.android.geometry.LatLng?,
+    driverLatLng: LatLng?,
     distanceKm: Double,
     durationMin: Double,
     onExit: () -> Unit
@@ -1076,11 +1111,13 @@ fun DriverNavigationOverlay(
                     )
                     
                     val distanceToManeuver = if (instruction != null && driverLatLng != null) {
-                        val dist = com.example.famekodriver.core.utils.LocationUtils.calculateDistance(
+                        val instrLat = instruction.point?.getOrNull(1) ?: 0.0
+                        val instrLng = instruction.point?.getOrNull(0) ?: 0.0
+                        val dist = LocationUtils.calculateDistance(
                             driverLatLng.latitude,
                             driverLatLng.longitude,
-                            instruction.latitude,
-                            instruction.longitude
+                            instrLat,
+                            instrLng
                         )
                         if (dist > 1000) String.format(Locale.US, "%.1f km", dist / 1000.0)
                         else "${dist.toInt()} m"

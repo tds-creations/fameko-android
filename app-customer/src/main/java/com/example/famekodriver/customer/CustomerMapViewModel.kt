@@ -50,6 +50,7 @@ class CustomerMapViewModel(
     var pickupLng by mutableStateOf<Double?>(null)
     var dropOffLat by mutableStateOf<Double?>(null)
     var dropOffLng by mutableStateOf<Double?>(null)
+    var currentLatLng by mutableStateOf<LatLng?>(null)
     var stops by mutableStateOf<List<String>>(emptyList())
     var stopPoints by mutableStateOf<Map<Int, LatLng>>(emptyMap())
 
