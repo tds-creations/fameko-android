@@ -810,10 +810,14 @@ class CustomerMapViewModel(
                         
                         if (activeServiceMode != ServiceType.RENTAL) {
                             updateEstimatedFare()
+                            // Note: isLoading will be set to false inside updateEstimatedFare()
+                        } else {
+                            isLoading = false
                         }
+                    } else {
+                        isLoading = false
                     }
                     lastRouteCalcLatLng = LatLng(pLat, pLng)
-                    isLoading = false
                 }
                 .onFailure {
                     isLoading = false

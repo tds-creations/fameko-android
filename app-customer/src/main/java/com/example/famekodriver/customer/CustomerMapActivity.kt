@@ -829,9 +829,14 @@ fun MainMapContent(
             viewModel.orderStatusData?.status != null && viewModel.orderStatusData?.status != "CANCELLED" && viewModel.orderStatusData?.status != "DELIVERED" -> CustomerSheetState.ON_TRIP
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             viewModel.isSearchMode -> CustomerSheetState.PICKING_ADDRESS
-            (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && viewModel.polylinePoints.isNotEmpty() && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
+            viewModel.currentOrderId != null -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
-            ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) -> CustomerSheetState.PICKING_ADDRESS
+            // Precedence for SELECTING_SERVICE over the general address FALLBACK
+            (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
+                viewModel.polylinePoints.isNotEmpty() && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
+            
+            ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
+                (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) -> CustomerSheetState.PICKING_ADDRESS
             else -> CustomerSheetState.IDLE
         }
         android.util.Log.d("SheetState", "Current State: $state, PolylinePoints: ${viewModel.polylinePoints.size}, isSearchMode: ${viewModel.isSearchMode}, activeMode: ${viewModel.activeServiceMode}")
@@ -1145,7 +1150,17 @@ fun MainMapContent(
                                 Spacer(Modifier.height(12.dp))
                             }
                         }
-                        CustomerSheetState.PICKING_ADDRESS -> { }
+                        CustomerSheetState.PICKING_ADDRESS -> { 
+                            if (viewModel.pickupLat != null && viewModel.dropOffLat != null) {
+                                Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(color = FamekoBlue)
+                                        Spacer(Modifier.height(12.dp))
+                                        Text("Preparing your ride...", color = Color.Gray, fontSize = 14.sp)
+                                    }
+                                }
+                            }
+                        }
                         CustomerSheetState.SELECTING_SERVICE -> {
                             ServiceSelectionSheet(
                                 estimates = viewModel.rideEstimates,
@@ -2056,6 +2071,15 @@ fun ServiceSelectionSheet(
             ServiceType.RIDE_HAILING -> estimate.serviceType.equals("RIDE_HAILING", ignoreCase = true)
             ServiceType.PACKAGE_DELIVERY -> estimate.serviceType.equals("PACKAGE_DELIVERY", ignoreCase = true)
             else -> true
+        }
+    }
+    
+    LaunchedEffect(estimates.size, filteredEstimates.size) {
+        if (estimates.isNotEmpty() && filteredEstimates.isEmpty()) {
+            android.util.Log.w("PricingDiag", "All ${estimates.size} estimates filtered out! Mode: $activeServiceMode")
+            estimates.forEach { 
+                android.util.Log.d("PricingDiag", " - ${it.name}: type=${it.serviceType}")
+            }
         }
     }
 
