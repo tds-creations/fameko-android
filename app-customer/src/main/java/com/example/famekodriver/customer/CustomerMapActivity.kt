@@ -655,7 +655,7 @@ fun MainMapContent(
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var hasCentredOnLocation by remember { mutableStateOf(false) }
 
-    LaunchedEffect(hasLocationPermission, viewModel.pickupLat, viewModel.pickupLng, isActive, mapLibreMap, viewModel.isFullscreenMap) {
+    LaunchedEffect(hasLocationPermission, isActive, mapLibreMap, viewModel.isFullscreenMap) {
         if (!isActive || mapLibreMap == null) return@LaunchedEffect
 
         if (hasLocationPermission && viewModel.isFullscreenMap) {
@@ -668,10 +668,8 @@ fun MainMapContent(
                     val location = result.lastLocation ?: return
                     if (location.latitude == 0.0 || location.longitude == 0.0) return
 
-                    // Update ViewModel location state for nearby driver queries and route logic
+                    // Update ViewModel location state for real-time logic
                     viewModel.currentLatLng = LatLng(location.latitude, location.longitude)
-                    viewModel.pickupLat = location.latitude
-                    viewModel.pickupLng = location.longitude
                     viewModel.updateNearbyDrivers(location.latitude, location.longitude)
                     
                     // Off-route detection
