@@ -364,7 +364,7 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(mapLibreMap, viewModel.navigationPath) {
+    LaunchedEffect(mapLibreMap, viewModel.navigationPath, viewModel.currentDelivery?.status, pickupIcon, destinationIcon) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val path = viewModel.navigationPath
         

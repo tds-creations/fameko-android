@@ -332,8 +332,10 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateDeliveryStatus(nextStatus: DeliveryStatus) {
         val delivery = currentDelivery ?: return
+        Log.d("TripStatus", "Updating status for delivery ${delivery.id} to $nextStatus")
         viewModelScope.launch {
             repository.updateDeliveryStatus(delivery.id, nextStatus).onSuccess {
+                Log.d("TripStatus", "Status update SUCCESS for ${delivery.id}")
                 if (nextStatus == DeliveryStatus.DELIVERED) {
                     voiceNavManager.announceArrival()
                     finalFare = delivery.estimatedEarnings
@@ -349,6 +351,8 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 } else {
                     currentDelivery = delivery.copy(status = nextStatus)
                 }
+            }.onFailure {
+                Log.e("TripStatus", "Status update FAILED for ${delivery.id}", it)
             }
         }
     }
@@ -547,10 +551,10 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 instructions = emptyList()
                 currentInstruction = null
                 return true
-            } else if (delivery.status == DeliveryStatus.IN_TRANSIT) {
-                // Arrived at destination - Handled by the driver clicking "COMPLETE" in our current UI
-                // But we can trigger the transition automatically here as well if preferred.
-                // For now, let's keep navigation active until they reach it, then they click Complete.
+            } else if (delivery.status == DeliveryStatus.IN_TRANSIT || delivery.status == DeliveryStatus.ARRIVED) {
+                // Already arrived or on the way to destination.
+                // We keep navigation active until they manually click COMPLETE to avoid 
+                // losing the screen if they just drive past the point.
             }
         }
         return false

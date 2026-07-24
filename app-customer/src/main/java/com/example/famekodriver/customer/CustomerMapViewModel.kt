@@ -740,6 +740,7 @@ class CustomerMapViewModel(
             return
         }
 
+        isSearchMode = false
         android.util.Log.d("RouteDiag", "Calculating route from ($pLat, $pLng) to ($dLat, $dLng)")
         performRouteCalculation(pLat, pLng, dLat, dLng)
     }
