@@ -282,6 +282,7 @@ class CustomerMapViewModel(
                         finalFare = response.fare ?: 0.0
                         showTripSummary = true
                         clearActiveOrder()
+                        resetSearch()
                     } else if (response.status == "CANCELLED") {
                         clearActiveOrder()
                     }
@@ -340,6 +341,7 @@ class CustomerMapViewModel(
                                 finalFare = eventFare ?: response.fare ?: 0.0
                                 showTripSummary = true
                                 clearActiveOrder()
+                                resetSearch()
                             } else if (response.status == "CANCELLED") {
                                 if (!isTimedOut) {
                                     clearActiveOrder()
@@ -401,8 +403,10 @@ class CustomerMapViewModel(
         pollingJob?.cancel()
         currentOrderId = null
         sessionManager.setActiveOrderId(null)
-        polylinePoints = emptyList()
-        estimatedFare = null
+        // We no longer clear polylinePoints or estimatedFare here. 
+        // This allows the UI to transition back to the "Selection" state 
+        // (showing the pricing card) instead of getting stuck in an infinite 
+        // loading spinner in the "Picking Address" state.
         orderStatusData = null
         scheduledRideTime = null
         isTimedOut = false
@@ -939,6 +943,9 @@ class CustomerMapViewModel(
         viewModelScope.launch {
             currentOrderId?.let { orderRepository.cancelOrder(it, reason) }
             clearActiveOrder()
+            // After manual cancellation, return to the landing screen and clear the search
+            resetSearch()
+            navigateTo(CustomerScreen.Landing)
         }
     }
 

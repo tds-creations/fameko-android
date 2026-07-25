@@ -16,7 +16,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
@@ -44,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.scale
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -60,7 +60,6 @@ import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
 import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.core.utils.NotificationHelper
-import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.customer.ui.components.*
 import com.example.famekodriver.customer.ui.modes.*
 import com.example.famekodriver.customer.ui.screens.*
@@ -304,7 +303,10 @@ fun CustomerMapScreen() {
                     mapViewModel.isSearchMode -> {
                         mapViewModel.isSearchMode = false
                     }
-                    else -> mapViewModel.navigateTo(CustomerScreen.Landing)
+                    else -> {
+                        mapViewModel.resetSearch()
+                        mapViewModel.navigateTo(CustomerScreen.Landing)
+                    }
                 }
             }
             CustomerScreen.RouteSelection -> {
@@ -589,7 +591,7 @@ fun MainMapContent(
         val loader = context.imageLoader
         val request = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
         val result = (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
-        if (result != null) motorbikeBitmap = Bitmap.createScaledBitmap(result, 40, 40, false)
+        if (result != null) motorbikeBitmap = result.scale(40, 40, false)
     }
 
     LaunchedEffect(Unit) { if (!hasLocationPermission) launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
@@ -654,7 +656,7 @@ fun MainMapContent(
                 mapLibreMap?.setPadding(0, 0, 0, 0)
             }
         } else {
-            while (isActive) {
+            while (true) {
                 if (hasLocationPermission) {
                     val targetLat = viewModel.pickupLat
                     val targetLng = viewModel.pickupLng
@@ -716,7 +718,7 @@ fun MainMapContent(
             viewModel.currentOrderId != null -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
             (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
-                viewModel.polylinePoints.isNotEmpty() && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
+                viewModel.polylinePoints.isNotEmpty() && viewModel.dropOffLocation.isNotEmpty() && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
             ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
                 (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) -> CustomerSheetState.PICKING_ADDRESS
             else -> CustomerSheetState.IDLE
@@ -766,7 +768,7 @@ fun MainMapContent(
             } else { ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap() }
             
             val carIcon = baseBitmap?.let { 
-                val scaled = if (it.width != 40) Bitmap.createScaledBitmap(it, 40, 40, false) else it
+                val scaled = if (it.width != 40) it.scale(40, 40, false) else it
                 org.maplibre.android.annotations.IconFactory.getInstance(context).fromBitmap(scaled) 
             }
 
@@ -813,13 +815,23 @@ fun MainMapContent(
         }
     }
 
+    val isBaseMapScreen = viewModel.currentScreen == CustomerScreen.Landing || viewModel.currentScreen == CustomerScreen.MainMap
+
     BottomSheetScaffold(
         scaffoldState = sheetScaffoldState,
             sheetPeekHeight = if (viewModel.isFullscreenMap) { if (viewModel.activeRental != null) 110.dp else 0.dp }
+                             else if (!isBaseMapScreen) 0.dp
                              else if (currentSheetState == CustomerSheetState.LANDING) 140.dp
-                             else if (currentSheetState == CustomerSheetState.IDLE) 120.dp
-                             else if (viewModel.currentOrderId != null || viewModel.activeRental != null || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS) 110.dp
-                             else 0.dp,
+                             else if (currentSheetState == CustomerSheetState.SELECTING_SERVICE || 
+                                     currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER || 
+                                     currentSheetState == CustomerSheetState.ON_TRIP || 
+                                     currentSheetState == CustomerSheetState.RIDE_SCHEDULED || 
+                                     currentSheetState == CustomerSheetState.TIMED_OUT ||
+                                     viewModel.currentOrderId != null || 
+                                     viewModel.activeRental != null) 110.dp
+                             else if (currentSheetState == CustomerSheetState.PICKING_ADDRESS && 
+                                     viewModel.pickupLat != null && viewModel.dropOffLat != null) 110.dp
+                             else 0.dp, // This covers IDLE state on the map as well
             sheetContainerColor = Color.White,
             sheetShadowElevation = 32.dp,
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -851,12 +863,12 @@ fun MainMapContent(
                             }
                         }
                         CustomerSheetState.PICKING_ADDRESS -> { if (viewModel.pickupLat != null && viewModel.dropOffLat != null) { Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(color = FamekoBlue); Spacer(Modifier.height(12.dp)); Text("Preparing your ride...", color = Color.Gray, fontSize = 14.sp) } } } }
-                        CustomerSheetState.SELECTING_SERVICE -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
-                        CustomerSheetState.SEARCHING_FOR_DRIVER -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
-                        CustomerSheetState.ON_TRIP -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.SELECTING_SERVICE -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.SEARCHING_FOR_DRIVER -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.ON_TRIP -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
                         CustomerSheetState.ACTIVE_RENTAL -> { RentalSheetContent(state = currentSheetState, viewModel = viewModel, onDetailsClick = { viewModel.navigateTo(CustomerScreen.RentalDetails(it)) }, onStartNavigation = { val lat = viewModel.dropOffLat; val lng = viewModel.dropOffLng; val address = viewModel.dropOffLocation; if (lat != null && lng != null && lat != 0.0) { if (hasLocationPermission) { fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location -> location?.let { if (it.latitude != 0.0 && it.longitude != 0.0) { viewModel.pickupLat = it.latitude; viewModel.pickupLng = it.longitude; viewModel.dropOffLat = lat; viewModel.dropOffLng = lng; viewModel.dropOffLocation = address; viewModel.isFullscreenMap = true; viewModel.calculateRoute() } } } } else { viewModel.isFullscreenMap = true; viewModel.calculateRoute() } } else { viewModel.navigateTo(CustomerScreen.RouteSelection) } }) }
-                        CustomerSheetState.RIDE_SCHEDULED -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
-                        CustomerSheetState.TIMED_OUT -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.RIDE_SCHEDULED -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.TIMED_OUT -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
                     }
                 }
             }
@@ -931,4 +943,3 @@ fun MainMapContent(
             }
         }
     }
-}

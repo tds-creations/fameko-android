@@ -2,7 +2,6 @@ package com.example.famekodriver.customer.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +21,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -417,7 +415,7 @@ fun SearchingSheetContent(viewModel: CustomerMapViewModel, onCancel: () -> Unit)
         
         Text(viewModel.searchMessage, color = Color.Gray, fontSize = 14.sp)
         if (viewModel.retryAttempt > 0) {
-            Text("Search radius: ${String.format("%.1f", viewModel.searchRadiusKm)} km", color = BoltGreen, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text("Search radius: ${String.format(Locale.US, "%.1f", viewModel.searchRadiusKm)} km", color = BoltGreen, fontSize = 12.sp, fontWeight = FontWeight.Medium)
         }
 
         Spacer(Modifier.height(32.dp))

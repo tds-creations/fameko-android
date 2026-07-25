@@ -1,12 +1,12 @@
 package com.example.famekodriver.customer.ui.components
 
-import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.animation.LinearInterpolator
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.createBitmap
 import org.maplibre.android.annotations.Icon
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.Marker
@@ -16,7 +16,7 @@ import kotlin.math.min
 @Suppress("DEPRECATION")
 fun createMarkerIcon(context: android.content.Context, color: Color): Icon {
     val size = 64
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(size, size)
     val canvas = android.graphics.Canvas(bitmap)
     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
     
