@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -1204,154 +1203,178 @@ fun IncomingRequestSheet(
 ) {
     Card(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(12.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(16.dp),
-        border = BorderStroke(1.dp, BoltLightGray)
+        elevation = CardDefaults.cardElevation(12.dp),
+        border = BorderStroke(1.dp, BoltLightGray.copy(alpha = 0.5f))
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxWidth()
         ) {
+            // Thinner Timer Progress Bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .background(BoltLightGray, CircleShape)
+                    .height(3.dp)
+                    .background(BoltLightGray.copy(alpha = 0.3f))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(timerProgress)
                         .fillMaxHeight()
-                        .background(BoltOrange, CircleShape)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            Text(
-                text = "New Ride Request",
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 20.sp,
-                color = BoltDark
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = CircleShape,
-                    color = BoltLightGray,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    if (!request.customerProfilePic.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = request.customerProfilePic,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                    } else {
-                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(12.dp), tint = Color.Gray)
-                    }
-                }
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = request.customerName ?: "Customer",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = BoltDark
+                        .background(BoltOrange)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = FamekoLightBlue,
-                    shape = RoundedCornerShape(12.dp)
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Header Info
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        shape = CircleShape,
+                        color = BoltLightGray,
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(18.dp), tint = FamekoPrimary)
-                        Spacer(Modifier.width(8.dp))
+                        if (!request.customerProfilePic.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = request.customerProfilePic,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, null, modifier = Modifier.padding(10.dp), tint = Color.Gray)
+                        }
+                    }
+                    
+                    Spacer(Modifier.width(12.dp))
+                    
+                    Column(Modifier.weight(1f)) {
                         Text(
-                            text = "${request.pickupEtaMin?.toInt() ?: 5} min away",
-                            fontWeight = FontWeight.Bold,
-                            color = FamekoPrimary,
-                            fontSize = 16.sp
+                            text = request.customerName ?: "Customer",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 17.sp,
+                            color = BoltDark,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "New Ride Request",
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Surface(
+                        color = FamekoLightBlue,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = FamekoPrimary)
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "${request.pickupEtaMin?.toInt() ?: 5} min",
+                                fontWeight = FontWeight.Bold,
+                                color = FamekoPrimary,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                
+                // Condensed Route
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(BoltLightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.MyLocation, null, tint = BoltGreen, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = request.pickupLocation,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = BoltDark,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Navigation, null, tint = BoltOrange, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = request.dropOffLocation,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = BoltDark,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(BoltLightGray, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                LocationRow(icon = Icons.Default.MyLocation, color = BoltGreen, address = request.pickupLocation)
-                Box(modifier = Modifier.padding(start = 7.dp).width(2.dp).height(12.dp).background(Color.LightGray))
-                LocationRow(icon = Icons.Default.Navigation, color = BoltOrange, address = request.dropOffLocation)
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                IconButton(
-                    onClick = onCancel,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(Color(0xFFFFF1F0), RoundedCornerShape(16.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Modern Action Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(Icons.Default.Close, null, tint = Color.Red)
-                }
-                
-                Button(
-                    onClick = onAccept,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(64.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
-                    enabled = !isAccepting
-                ) {
-                    if (isAccepting) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text(
-                            text = "Accept Ride",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 20.sp
-                        )
+                    OutlinedButton(
+                        onClick = onCancel,
+                        modifier = Modifier
+                            .weight(0.4f)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
+                    ) {
+                        Icon(Icons.Default.Close, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Decline", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                    
+                    Button(
+                        onClick = onAccept,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
+                        enabled = !isAccepting,
+                        elevation = ButtonDefaults.buttonElevation(4.dp)
+                    ) {
+                        if (isAccepting) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Check, null, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "ACCEPT RIDE",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 16.sp,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun LocationRow(icon: ImageVector, color: Color, address: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = color, modifier = Modifier.size(16.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(address, fontSize = 14.sp, maxLines = 1)
     }
 }
 

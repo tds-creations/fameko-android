@@ -429,13 +429,36 @@ fun SearchingSheetContent(viewModel: CustomerMapViewModel, onCancel: () -> Unit)
 fun DriverInfoSheetContent(
     data: OrderStatusResponse, 
     orderId: Int, 
+    serviceType: ServiceType,
     onNavigateToChat: (Int, String) -> Unit, 
     onCancel: () -> Unit, 
     onInitiateCall: () -> Unit,
     onShareTrip: () -> Unit
 ) {
     val pin = data.verificationPin
+    val isDelivery = serviceType == ServiceType.PACKAGE_DELIVERY
+    val showPin = pin != null && (data.status == "ASSIGNED" || data.status == "ARRIVED")
+
     Column(modifier = Modifier.fillMaxWidth()) {
+        if (isDelivery && showPin) {
+            Surface(
+                color = FamekoBlue.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Verified, null, tint = FamekoBlue, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "Share the PIN below with the driver to start delivery",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = FamekoBlue
+                    )
+                }
+            }
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(contentAlignment = Alignment.BottomEnd) {
                 Surface(
@@ -532,9 +555,9 @@ fun DriverInfoSheetContent(
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                if (data.status == "ASSIGNED" && pin != null) {
+                if (showPin && pin != null) {
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("PIN", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Text(if (isDelivery) "DELIVERY PIN" else "PIN", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                         Text(pin, fontSize = 20.sp, fontWeight = FontWeight.Black, color = FamekoBlue, letterSpacing = 2.sp)
                     }
                 }

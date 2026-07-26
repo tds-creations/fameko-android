@@ -39,7 +39,13 @@ data class OrderCreateRequest(
     val durationMin: Double,
     val serviceType: ServiceType = ServiceType.RIDE_HAILING,
     val requestedVehicleType: String? = null,
-    val scheduledTime: String? = null
+    val scheduledTime: String? = null,
+    val packageCategory: String? = null,
+    val packageWeightSize: String? = null,
+    val isFragile: Boolean = false,
+    val recipientName: String? = null,
+    val recipientPhone: String? = null,
+    val packageNotes: String? = null
 )
 
 data class OrderStatusResponse(

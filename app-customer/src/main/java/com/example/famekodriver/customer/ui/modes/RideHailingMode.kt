@@ -3,6 +3,7 @@ package com.example.famekodriver.customer.ui.modes
 import androidx.compose.runtime.Composable
 import com.example.famekodriver.customer.CustomerMapViewModel
 import com.example.famekodriver.customer.CustomerSheetState
+import com.example.famekodriver.core.domain.model.ServiceType
 import com.example.famekodriver.customer.ui.components.*
 
 @Composable
@@ -25,7 +26,13 @@ fun RideHailingSheetContent(
                 peakMultiplier = viewModel.pricingConfig?.peakMultiplier ?: 1.0,
                 selectedType = viewModel.selectedVehicleType,
                 onTypeSelected = { type, _ -> viewModel.setVehicleType(type) },
-                onConfirm = { viewModel.confirmOrder() }, 
+                onConfirm = { 
+                    if (viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) {
+                        viewModel.showPackageDetailsSheet = true
+                    } else {
+                        viewModel.confirmOrder()
+                    }
+                }, 
                 onScheduleClick = onScheduleClick,
                 isPlacing = viewModel.isOrderPlacing,
                 isLoading = viewModel.isLoading
@@ -40,6 +47,7 @@ fun RideHailingSheetContent(
                     DriverInfoSheetContent(
                         data = data,
                         orderId = id,
+                        serviceType = viewModel.activeServiceMode,
                         onNavigateToChat = onNavigateToChat,
                         onCancel = { viewModel.showCancelConfirmation = true },
                         onInitiateCall = { viewModel.initiateCall() },

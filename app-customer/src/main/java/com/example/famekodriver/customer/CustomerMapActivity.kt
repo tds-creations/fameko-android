@@ -109,7 +109,8 @@ enum class CustomerSheetState {
     ON_TRIP,
     ACTIVE_RENTAL,
     RIDE_SCHEDULED,
-    TIMED_OUT
+    TIMED_OUT,
+    ENTERING_PACKAGE_DETAILS
 }
 
 sealed class CustomerScreen {
@@ -221,6 +222,7 @@ fun FamekoTheme(content: @Composable () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerMapScreen() {
     val context = LocalContext.current
@@ -235,6 +237,11 @@ fun CustomerMapScreen() {
         modelClass = CustomerMapViewModel::class.java,
         factory = CustomerMapViewModelFactory(repository, orderRepository, rentalRepository, userRepository, sessionManager, savedPlaceRepository)
     )
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+    val timePickerState = rememberTimePickerState()
 
     val mapView = remember { MapView(context) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -284,43 +291,21 @@ fun CustomerMapScreen() {
 
     // Physical Back Button Logic
     BackHandler(enabled = true) {
-        when (mapViewModel.currentScreen) {
-            CustomerScreen.Landing -> {
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastBackPressTime < 2000) {
-                    (context as? Activity)?.finish()
-                } else {
-                    lastBackPressTime = currentTime
-                    Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
-                }
+        if (!mapViewModel.navigateBack()) {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastBackPressTime < 2000) {
+                (context as? Activity)?.finish()
+            } else {
+                lastBackPressTime = currentTime
+                Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
             }
-            is CustomerScreen.MainMap -> {
-                when {
-                    mapViewModel.isFullscreenMap -> {
-                        mapViewModel.isFullscreenMap = false
-                        mapViewModel.polylinePoints = emptyList()
-                    }
-                    mapViewModel.isSearchMode -> {
-                        mapViewModel.isSearchMode = false
-                    }
-                    else -> {
-                        mapViewModel.resetSearch()
-                        mapViewModel.navigateTo(CustomerScreen.Landing)
-                    }
-                }
-            }
-            CustomerScreen.RouteSelection -> {
-                mapViewModel.resetSearch()
-                mapViewModel.navigateTo(CustomerScreen.Landing)
-            }
-            else -> mapViewModel.navigateTo(CustomerScreen.Landing)
         }
     }
 
     Scaffold(
         bottomBar = {
             val showBottomBar = (mapViewModel.currentScreen == CustomerScreen.Landing || mapViewModel.currentScreen == CustomerScreen.MainMap || mapViewModel.currentScreen == CustomerScreen.Account)
-                    && mapViewModel.polylinePoints.isEmpty() && mapViewModel.currentOrderId == null
+                    && mapViewModel.polylinePoints.isEmpty() && (mapViewModel.currentOrderId == null || mapViewModel.orderStatusData == null)
             
             if (showBottomBar) {
                 NavigationBar(
@@ -370,12 +355,13 @@ fun CustomerMapScreen() {
                 viewModel = mapViewModel,
                 mapView = mapView,
                 isActive = true, // Always track location for seamless transitions
-                onNavigateToChat = { orderId, name -> mapViewModel.navigateTo(CustomerScreen.Chat(orderId, name)) }
+                onNavigateToChat = { orderId, name -> mapViewModel.navigateTo(CustomerScreen.Chat(orderId, name)) },
+                onScheduleClick = { showDatePicker = true }
             )
 
             when (val screen = mapViewModel.currentScreen) {
                 CustomerScreen.Landing, is CustomerScreen.MainMap -> {
-                    // Back handler is now global
+                    // Handled by BottomSheet in MainMapContent
                 }
                 CustomerScreen.Account -> {
                     CustomerAccountScreen(
@@ -556,6 +542,9 @@ fun CustomerMapScreen() {
                     TermsAndConditionsScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
             }
+
+            if (showDatePicker) { DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { showDatePicker = false; showTimePicker = true }) { Text("Next") } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState) } }
+            if (showTimePicker) { AlertDialog(onDismissRequest = { showTimePicker = false }, confirmButton = { TextButton(onClick = { val dateStr = datePickerState.selectedDateMillis?.let { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()); val timeStr = "%02d:%02d".format(timePickerState.hour, timePickerState.minute); val scheduledTime = "$dateStr $timeStr"; mapViewModel.updateScheduledRideTime(scheduledTime); mapViewModel.setServiceMode(ServiceType.RIDE_HAILING); mapViewModel.navigateTo(CustomerScreen.MainMap); mapViewModel.isSearchMode = true; showTimePicker = false }) { Text("Confirm") } }, dismissButton = { TextButton(onClick = { showTimePicker = false; showDatePicker = true }) { Text("Back") } }, text = { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("Select Time", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp)); TimePicker(state = timePickerState) } } ) }
         }
     }
 }
@@ -567,7 +556,8 @@ fun MainMapContent(
     viewModel: CustomerMapViewModel,
     mapView: MapView,
     isActive: Boolean,
-    onNavigateToChat: (Int, String) -> Unit
+    onNavigateToChat: (Int, String) -> Unit,
+    onScheduleClick: () -> Unit
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -576,10 +566,6 @@ fun MainMapContent(
     DisposableEffect(voiceNavManager) { onDispose { voiceNavManager.shutdown() } }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
-    val timePickerState = rememberTimePickerState()
 
     var hasLocationPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
@@ -707,24 +693,49 @@ fun MainMapContent(
     val pickupIcon = remember(context) { createMarkerIcon(context, BoltGreen) }
     val dropoffIcon = remember(context) { createMarkerIcon(context, BoltOrange) }
 
-    val currentSheetState = remember(viewModel.orderStatusData?.status, viewModel.estimatedFare, viewModel.currentOrderId, viewModel.isSearchMode, viewModel.pickupLocation, viewModel.dropOffLocation, viewModel.activeServiceMode, viewModel.pickupLat, viewModel.activeRental, viewModel.rentalPickupLat, viewModel.currentScreen, viewModel.isTimedOut, viewModel.polylinePoints) {
+    val currentSheetState = remember(viewModel.orderStatusData?.status, viewModel.estimatedFare, viewModel.currentOrderId, viewModel.isSearchMode, viewModel.pickupLocation, viewModel.dropOffLocation, viewModel.activeServiceMode, viewModel.pickupLat, viewModel.activeRental, viewModel.rentalPickupLat, viewModel.currentScreen, viewModel.isTimedOut, viewModel.polylinePoints, viewModel.showPackageDetailsSheet) {
+        val status = viewModel.orderStatusData?.status
+        val isTerminalStatus = status == "CANCELLED" || status == "DELIVERED"
+        val hasActiveOrder = viewModel.currentOrderId != null && viewModel.orderStatusData != null && !isTerminalStatus
+
         val state = when {
             viewModel.isTimedOut -> CustomerSheetState.TIMED_OUT
-            viewModel.orderStatusData?.status == "PENDING" -> CustomerSheetState.SEARCHING_FOR_DRIVER
-            viewModel.orderStatusData?.status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
-            viewModel.orderStatusData?.status != null && viewModel.orderStatusData?.status != "CANCELLED" && viewModel.orderStatusData?.status != "DELIVERED" -> CustomerSheetState.ON_TRIP
+            status == "PENDING" -> CustomerSheetState.SEARCHING_FOR_DRIVER
+            status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
+            hasActiveOrder -> CustomerSheetState.ON_TRIP
+            viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
-            viewModel.isSearchMode -> CustomerSheetState.PICKING_ADDRESS
-            viewModel.currentOrderId != null -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
+            
+            // Priority: Pricing Card (Only if we have a route and NOT actively searching/typing)
             (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
-                viewModel.polylinePoints.isNotEmpty() && viewModel.dropOffLocation.isNotEmpty() && viewModel.currentOrderId == null -> CustomerSheetState.SELECTING_SERVICE
-            ((viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
-                (viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty())) -> CustomerSheetState.PICKING_ADDRESS
+                viewModel.polylinePoints.isNotEmpty() && !viewModel.isSearchMode -> CustomerSheetState.SELECTING_SERVICE
+            
+            // Picking/Typing State
+            viewModel.isSearchMode || viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty() -> CustomerSheetState.PICKING_ADDRESS
+            
             else -> CustomerSheetState.IDLE
         }
         state
     }
+
+    LaunchedEffect(currentSheetState) {
+        when (currentSheetState) {
+            CustomerSheetState.LANDING,
+            CustomerSheetState.SELECTING_SERVICE,
+            CustomerSheetState.SEARCHING_FOR_DRIVER,
+            CustomerSheetState.ON_TRIP,
+            CustomerSheetState.TIMED_OUT,
+            CustomerSheetState.ENTERING_PACKAGE_DETAILS -> {
+                sheetScaffoldState.bottomSheetState.expand()
+            }
+            else -> {
+                sheetScaffoldState.bottomSheetState.partialExpand()
+            }
+        }
+    }
+
+    val isBaseMapScreen = viewModel.currentScreen == CustomerScreen.Landing || viewModel.currentScreen == CustomerScreen.MainMap
 
     LaunchedEffect(mapLibreMap, hasLocationPermission, viewModel.isFullscreenMap) {
         val map = mapLibreMap ?: return@LaunchedEffect
@@ -815,13 +826,16 @@ fun MainMapContent(
         }
     }
 
-    val isBaseMapScreen = viewModel.currentScreen == CustomerScreen.Landing || viewModel.currentScreen == CustomerScreen.MainMap
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
 
     BottomSheetScaffold(
         scaffoldState = sheetScaffoldState,
             sheetPeekHeight = if (viewModel.isFullscreenMap) { if (viewModel.activeRental != null) 110.dp else 0.dp }
                              else if (!isBaseMapScreen) 0.dp
-                             else if (currentSheetState == CustomerSheetState.LANDING) 140.dp
+                             else if (currentSheetState == CustomerSheetState.LANDING) 120.dp
+                             else if (currentSheetState == CustomerSheetState.IDLE || 
+                                     (currentSheetState == CustomerSheetState.PICKING_ADDRESS && (viewModel.pickupLat == null || viewModel.dropOffLat == null))) 120.dp
                              else if (currentSheetState == CustomerSheetState.SELECTING_SERVICE || 
                                      currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER || 
                                      currentSheetState == CustomerSheetState.ON_TRIP || 
@@ -831,7 +845,7 @@ fun MainMapContent(
                                      viewModel.activeRental != null) 110.dp
                              else if (currentSheetState == CustomerSheetState.PICKING_ADDRESS && 
                                      viewModel.pickupLat != null && viewModel.dropOffLat != null) 110.dp
-                             else 0.dp, // This covers IDLE state on the map as well
+                             else 0.dp,
             sheetContainerColor = Color.White,
             sheetShadowElevation = 32.dp,
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -844,31 +858,67 @@ fun MainMapContent(
                             CustomerLandingScreen(
                                 activeRental = viewModel.activeRental,
                                 onViewRental = { viewModel.navigateTo(CustomerScreen.RentalDetails(it)) },
-                                onServiceSelected = { viewModel.setServiceMode(it); if (it == ServiceType.RENTAL) viewModel.navigateTo(CustomerScreen.FleetBrowse) else viewModel.navigateTo(CustomerScreen.MainMap) },
-                                onScheduleClick = { showDatePicker = true },
+                                onServiceSelected = { 
+                                    viewModel.setServiceMode(it)
+                                    if (it == ServiceType.RENTAL) viewModel.navigateTo(CustomerScreen.FleetBrowse) 
+                                    else viewModel.navigateTo(CustomerScreen.MainMap) 
+                                },
+                                onScheduleClick = onScheduleClick,
                                 recentPlaces = viewModel.recentPlaces,
                                 onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
-                                onPlaceClick = { viewModel.setServiceMode(ServiceType.RIDE_HAILING); viewModel.selectSuggestion(it, isPickup = false); viewModel.navigateTo(CustomerScreen.MainMap) }
+                                onPlaceClick = { 
+                                    viewModel.setServiceMode(ServiceType.RIDE_HAILING)
+                                    viewModel.selectSuggestion(it, isPickup = false)
+                                    viewModel.navigateTo(CustomerScreen.MainMap) 
+                                }
                             )
                         }
-                        CustomerSheetState.IDLE -> {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                                    QuickShortcutItem("Home", Icons.Default.Home, BoltGreen) { if (viewModel.savedPlaces.value.any { it.label.equals("Home", true) }) { viewModel.applyShortcut("Home") { if (hasLocationPermission) { @SuppressLint("MissingPermission") fusedLocationClient.lastLocation.addOnSuccessListener { loc -> loc?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) } } } } } else { Toast.makeText(context, "Please set your Home address in Manage Places", Toast.LENGTH_SHORT).show(); viewModel.navigateTo(CustomerScreen.ManagePlaces) } }
-                                    QuickShortcutItem("Work", Icons.Default.Work, FamekoBlue) { if (viewModel.savedPlaces.value.any { it.label.equals("Work", true) }) { viewModel.applyShortcut("Work") { if (hasLocationPermission) { @SuppressLint("MissingPermission") fusedLocationClient.lastLocation.addOnSuccessListener { loc -> loc?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) } } } } } else { Toast.makeText(context, "Please set your Work address in Manage Places", Toast.LENGTH_SHORT).show(); viewModel.navigateTo(CustomerScreen.ManagePlaces) } }
-                                    QuickShortcutItem("Recent", Icons.Default.History, Color.Gray) { viewModel.navigateTo(CustomerScreen.RouteSelection); viewModel.selectedTab = 0; viewModel.updateDropOffLocation("") }
-                                    QuickShortcutItem("Saved", Icons.Default.Star, BoltYellow) { viewModel.navigateTo(CustomerScreen.RouteSelection); viewModel.selectedTab = 1; viewModel.updateDropOffLocation("") }
+                        CustomerSheetState.IDLE, CustomerSheetState.PICKING_ADDRESS -> {
+                            if (currentSheetState == CustomerSheetState.PICKING_ADDRESS && viewModel.pickupLat != null && viewModel.dropOffLat != null && viewModel.isLoading) {
+                                Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(color = FamekoBlue)
+                                        Spacer(Modifier.height(12.dp))
+                                        Text("Preparing your ride...", color = Color.Gray, fontSize = 14.sp)
+                                    }
                                 }
-                                Spacer(Modifier.height(12.dp))
+                            } else {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                                        QuickShortcutItem("Home", Icons.Default.Home, BoltGreen) { if (viewModel.savedPlaces.value.any { it.label.equals("Home", true) }) { viewModel.applyShortcut("Home") { if (hasLocationPermission) { @SuppressLint("MissingPermission") fusedLocationClient.lastLocation.addOnSuccessListener { loc -> loc?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) } } } } } else { Toast.makeText(context, "Please set your Home address in Manage Places", Toast.LENGTH_SHORT).show(); viewModel.navigateTo(CustomerScreen.ManagePlaces) } }
+                                        QuickShortcutItem("Work", Icons.Default.Work, FamekoBlue) { if (viewModel.savedPlaces.value.any { it.label.equals("Work", true) }) { viewModel.applyShortcut("Work") { if (hasLocationPermission) { @SuppressLint("MissingPermission") fusedLocationClient.lastLocation.addOnSuccessListener { loc -> loc?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) } } } } } else { Toast.makeText(context, "Please set your Home address in Manage Places", Toast.LENGTH_SHORT).show(); viewModel.navigateTo(CustomerScreen.ManagePlaces) } }
+                                        QuickShortcutItem("Recent", Icons.Default.History, Color.Gray) { viewModel.navigateTo(CustomerScreen.RouteSelection); viewModel.selectedTab = 0; viewModel.updateDropOffLocation("") }
+                                        QuickShortcutItem("Saved", Icons.Default.Star, BoltYellow) { viewModel.navigateTo(CustomerScreen.RouteSelection); viewModel.selectedTab = 1; viewModel.updateDropOffLocation("") }
+                                    }
+                                    Spacer(Modifier.height(12.dp))
+                                }
                             }
                         }
-                        CustomerSheetState.PICKING_ADDRESS -> { if (viewModel.pickupLat != null && viewModel.dropOffLat != null) { Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(color = FamekoBlue); Spacer(Modifier.height(12.dp)); Text("Preparing your ride...", color = Color.Gray, fontSize = 14.sp) } } } }
-                        CustomerSheetState.SELECTING_SERVICE -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
-                        CustomerSheetState.SEARCHING_FOR_DRIVER -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
-                        CustomerSheetState.ON_TRIP -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.SELECTING_SERVICE -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = onScheduleClick, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.SEARCHING_FOR_DRIVER -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = onScheduleClick, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.ON_TRIP -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = onScheduleClick, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
                         CustomerSheetState.ACTIVE_RENTAL -> { RentalSheetContent(state = currentSheetState, viewModel = viewModel, onDetailsClick = { viewModel.navigateTo(CustomerScreen.RentalDetails(it)) }, onStartNavigation = { val lat = viewModel.dropOffLat; val lng = viewModel.dropOffLng; val address = viewModel.dropOffLocation; if (lat != null && lng != null && lat != 0.0) { if (hasLocationPermission) { fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location -> location?.let { if (it.latitude != 0.0 && it.longitude != 0.0) { viewModel.pickupLat = it.latitude; viewModel.pickupLng = it.longitude; viewModel.dropOffLat = lat; viewModel.dropOffLng = lng; viewModel.dropOffLocation = address; viewModel.isFullscreenMap = true; viewModel.calculateRoute() } } } } else { viewModel.isFullscreenMap = true; viewModel.calculateRoute() } } else { viewModel.navigateTo(CustomerScreen.RouteSelection) } }) }
-                        CustomerSheetState.RIDE_SCHEDULED -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
-                        CustomerSheetState.TIMED_OUT -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = { showDatePicker = true }, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.RIDE_SCHEDULED -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = onScheduleClick, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.TIMED_OUT -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = onScheduleClick, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
+                        CustomerSheetState.ENTERING_PACKAGE_DETAILS -> {
+                            PackageDetailsSheet(
+                                category = viewModel.packageCategory,
+                                weightSize = viewModel.packageWeightSize,
+                                isFragile = viewModel.isFragile,
+                                recipientName = viewModel.recipientName,
+                                recipientPhone = viewModel.recipientPhone,
+                                notes = viewModel.packageNotes,
+                                onCategoryChange = { viewModel.packageCategory = it },
+                                onWeightSizeChange = { viewModel.packageWeightSize = it },
+                                onFragileChange = { viewModel.isFragile = it },
+                                onRecipientNameChange = { viewModel.recipientName = it },
+                                onRecipientPhoneChange = { viewModel.recipientPhone = it },
+                                onNotesChange = { viewModel.packageNotes = it },
+                                onConfirm = { viewModel.confirmOrder() },
+                                onBack = { viewModel.showPackageDetailsSheet = false },
+                                isPlacing = viewModel.isOrderPlacing
+                            )
+                        }
                     }
                 }
             }
@@ -917,7 +967,7 @@ fun MainMapContent(
 
                 if (!viewModel.isFullscreenMap && (currentSheetState == CustomerSheetState.IDLE || currentSheetState == CustomerSheetState.LANDING || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS)) {
                     Column(modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 160.dp, end = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        FloatingActionButton(onClick = { hasLocationPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED; if (hasLocationPermission) { fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { loc -> loc?.let { mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLng(LatLng(it.latitude, it.longitude))) } } } }, containerColor = Color.White, contentColor = BoltDark, shape = CircleShape, modifier = Modifier.size(48.dp)) { Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(20.dp)) }
+                        FloatingActionButton(onClick = { hasLocationPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED; if (hasLocationPermission) { fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { loc -> loc?.let { mapLibreMap?.animateCamera(CameraUpdateFactory.newCameraPosition(org.maplibre.android.camera.CameraPosition.Builder().target(LatLng(it.latitude, it.longitude)).zoom(15.0).build()), 1000) } } } }, containerColor = Color.White, contentColor = BoltDark, shape = CircleShape, modifier = Modifier.size(48.dp)) { Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(20.dp)) }
                     }
                 }
                 
@@ -935,9 +985,6 @@ fun MainMapContent(
                     var selectedReason by remember { mutableStateOf("") }; val reasons = listOf("Driver is too far away", "Wait time is too long", "Changed my mind", "Order placed by mistake", "Incorrect pickup location", "Driver asked me to cancel", "Other")
                     AlertDialog(onDismissRequest = { viewModel.showCancelConfirmation = false }, title = { Text("Cancel Ride?", fontWeight = FontWeight.Bold) }, text = { Column { Text("Please tell us why you're cancelling:"); Spacer(Modifier.height(12.dp)); reasons.forEach { reason -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { selectedReason = reason }.padding(vertical = 4.dp)) { RadioButton(selected = selectedReason == reason, onClick = { selectedReason = reason }, colors = RadioButtonDefaults.colors(selectedColor = BoltGreen)); Text(text = reason, modifier = Modifier.padding(start = 8.dp)) } } } }, confirmButton = { Button(onClick = { viewModel.showCancelConfirmation = false; viewModel.cancelOrder(selectedReason.ifEmpty { "Not specified" }) }, enabled = selectedReason.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) { Text("Confirm Cancellation") } }, dismissButton = { TextButton(onClick = { viewModel.showCancelConfirmation = false }) { Text("No, Keep Ride") } }, shape = RoundedCornerShape(24.dp), containerColor = Color.White)
                 }
-
-                if (showDatePicker) { DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { showDatePicker = false; showTimePicker = true }) { Text("Next") } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState) } }
-                if (showTimePicker) { AlertDialog(onDismissRequest = { showTimePicker = false }, confirmButton = { TextButton(onClick = { val dateStr = datePickerState.selectedDateMillis?.let { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()); val timeStr = "%02d:%02d".format(timePickerState.hour, timePickerState.minute); val scheduledTime = "$dateStr $timeStr"; viewModel.updateScheduledRideTime(scheduledTime); viewModel.setServiceMode(ServiceType.RIDE_HAILING); viewModel.navigateTo(CustomerScreen.MainMap); viewModel.isSearchMode = true; showTimePicker = false }) { Text("Confirm") } }, dismissButton = { TextButton(onClick = { showTimePicker = false; showDatePicker = true }) { Text("Back") } }, text = { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("Select Time", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp)); TimePicker(state = timePickerState) } } ) }
 
                 viewModel.showRegionalError?.let { error -> AlertDialog(onDismissRequest = { viewModel.showRegionalError = null }, title = { Text("Service Unavailable") }, text = { Text(error) }, confirmButton = { Button(onClick = { viewModel.showRegionalError = null }) { Text("OK") } }, shape = RoundedCornerShape(24.dp)) }
             }

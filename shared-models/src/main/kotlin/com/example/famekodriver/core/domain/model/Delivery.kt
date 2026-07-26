@@ -20,7 +20,13 @@ data class Delivery(
     val serviceType: ServiceType = ServiceType.PACKAGE_DELIVERY,
     val pickupEtaMin: Double? = null,
     val totalFare: Double? = null,
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val packageCategory: String? = null,
+    val packageWeightSize: String? = null,
+    val isFragile: Boolean = false,
+    val recipientName: String? = null,
+    val recipientPhone: String? = null,
+    val packageNotes: String? = null
 )
 
 enum class DeliveryStatus {

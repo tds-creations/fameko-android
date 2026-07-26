@@ -1,6 +1,5 @@
 package com.example.famekodriver.customer
 
-import android.location.Location
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
@@ -17,6 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.maplibre.android.geometry.LatLng
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -37,8 +38,43 @@ class CustomerMapViewModel(
     }
 
     // --- Screen State ---
-    var currentScreen by mutableStateOf<CustomerScreen>(CustomerScreen.Landing)
-        private set
+    private val _screenStack = mutableStateListOf<CustomerScreen>(CustomerScreen.Landing)
+    val currentScreen: CustomerScreen get() = _screenStack.lastOrNull() ?: CustomerScreen.Landing
+
+    fun navigateTo(screen: CustomerScreen) {
+        if (currentScreen != screen) {
+            // Avoid pushing duplicate base screens to maintain clean history
+            if (screen == CustomerScreen.Landing || screen == CustomerScreen.MainMap || screen == CustomerScreen.Account) {
+                _screenStack.clear()
+            }
+            _screenStack.add(screen)
+        }
+    }
+
+    fun navigateBack(): Boolean {
+        // Special logic for MainMap search mode
+        if (currentScreen is CustomerScreen.MainMap) {
+            if (isFullscreenMap) {
+                isFullscreenMap = false
+                polylinePoints = emptyList()
+                return true
+            }
+            if (isSearchMode) {
+                isSearchMode = false
+                return true
+            }
+            if (polylinePoints.isNotEmpty()) {
+                resetSearch()
+                return true
+            }
+        }
+
+        if (_screenStack.size > 1) {
+            _screenStack.removeAt(_screenStack.size - 1)
+            return true
+        }
+        return false
+    }
 
     // --- Map & Location State ---
     var drivers by mutableStateOf<List<DriverLocation>>(emptyList())
@@ -89,6 +125,15 @@ class CustomerMapViewModel(
     var isSearchMode by mutableStateOf(false)
     var isFullscreenMap by mutableStateOf(false)
     var customerProfile by mutableStateOf<Map<String, Any>?>(null)
+
+    // --- Package Delivery State ---
+    var packageCategory by mutableStateOf("Document")
+    var packageWeightSize by mutableStateOf("Small")
+    var isFragile by mutableStateOf(false)
+    var recipientName by mutableStateOf("")
+    var recipientPhone by mutableStateOf("")
+    var packageNotes by mutableStateOf("")
+    var showPackageDetailsSheet by mutableStateOf(false)
     
     val savedPlaces: StateFlow<List<SavedPlace>> = savedPlaceRepository.savedPlaces
     private val _savedPlacesUiState = MutableStateFlow<SavedPlacesUiState>(SavedPlacesUiState.Loading)
@@ -110,7 +155,6 @@ class CustomerMapViewModel(
     var pickupSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var dropOffSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     var stopSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
-    var managePlacesSuggestions by mutableStateOf<List<LocationSuggestion>>(emptyList())
     
     var focusedStopIndex by mutableIntStateOf(-1)
     
@@ -130,7 +174,6 @@ class CustomerMapViewModel(
     private var rentalPollingJob: Job? = null
     private var pickupSearchJob: Job? = null
     private var dropOffSearchJob: Job? = null
-    private var managePlacesSearchJob: Job? = null
     private var routeJob: Job? = null
     private var lastRouteCalcLatLng: LatLng? = null
 
@@ -222,7 +265,7 @@ class CustomerMapViewModel(
             rentalRepository.getActiveRental(customerId.toIntOrNull() ?: 1).onSuccess { 
                 updateActiveRentalState(it)
                 if (it != null) {
-                    currentScreen = CustomerScreen.MainMap
+                    navigateTo(CustomerScreen.MainMap)
                 }
             }
             
@@ -258,9 +301,14 @@ class CustomerMapViewModel(
                             calculateRoute()
                         }
 
-                        currentScreen = CustomerScreen.MainMap
+                        navigateTo(CustomerScreen.MainMap)
                         startStatusPolling(orderId)
                     }
+                } else {
+                    // Stale or no active order on server, clear local session
+                    currentOrderId = null
+                    orderStatusData = null
+                    sessionManager.setActiveOrderId(null)
                 }
             }
 
@@ -411,6 +459,13 @@ class CustomerMapViewModel(
         scheduledRideTime = null
         isTimedOut = false
         isOrderPlacing = false
+        packageCategory = "Document"
+        packageWeightSize = "Small"
+        isFragile = false
+        recipientName = ""
+        recipientPhone = ""
+        packageNotes = ""
+        showPackageDetailsSheet = false
     }
 
     fun resetSearch() {
@@ -428,6 +483,13 @@ class CustomerMapViewModel(
         rentalPickupLat = null
         rentalPickupLng = null
         isOrderPlacing = false
+        packageCategory = "Document"
+        packageWeightSize = "Small"
+        isFragile = false
+        recipientName = ""
+        recipientPhone = ""
+        packageNotes = ""
+        showPackageDetailsSheet = false
     }
 
     fun clearDestination() {
@@ -451,10 +513,6 @@ class CustomerMapViewModel(
         }
     }
 
-    fun navigateTo(screen: CustomerScreen) {
-        currentScreen = screen
-    }
-
     fun setServiceMode(mode: ServiceType) {
         activeServiceMode = mode
         isServiceModeSelected = true
@@ -468,7 +526,7 @@ class CustomerMapViewModel(
         if (mode != ServiceType.RENTAL) {
             isSearchMode = true
             // We stay on MainMap so the top floating search bar is visible
-            currentScreen = CustomerScreen.MainMap
+            navigateTo(CustomerScreen.MainMap)
         }
     }
 
@@ -539,11 +597,9 @@ class CustomerMapViewModel(
         stopPoints = newPoints
         
         if (pickupLat != null && dropOffLat != null) {
-            if (pickupLat != null && dropOffLat != null) {
-                isSearchMode = false
-                currentScreen = CustomerScreen.MainMap
-                calculateRoute()
-            }
+            isSearchMode = false
+            navigateTo(CustomerScreen.MainMap)
+            calculateRoute()
         }
     }
 
@@ -589,26 +645,6 @@ class CustomerMapViewModel(
         }
     }
 
-    fun updateSaveSearchQuery(query: String) {
-        managePlacesSearchJob?.cancel()
-        if (query.isBlank()) {
-            managePlacesSuggestions = recentPlaces
-            return
-        }
-        if (query.length > 2) {
-            managePlacesSearchJob = viewModelScope.launch {
-                delay(500.milliseconds)
-                repository.getGeocodeSuggestions(query, biasLat = pickupLat, biasLng = pickupLng).onSuccess { 
-                    managePlacesSuggestions = it 
-                }.onFailure {
-                    managePlacesSuggestions = emptyList()
-                }
-            }
-        } else {
-            managePlacesSuggestions = emptyList()
-        }
-    }
-
     private fun fetchDropOffSuggestions(query: String) {
         dropOffSearchJob?.cancel()
         if (query.isBlank()) {
@@ -643,6 +679,7 @@ class CustomerMapViewModel(
             onGetCurrentLocation?.invoke()
         } else {
             isSearchMode = true
+            navigateTo(CustomerScreen.MainMap)
         }
     }
 
@@ -655,11 +692,9 @@ class CustomerMapViewModel(
         isSearchMode = false
         
         if (pickupLat != null) {
-            if (pickupLat != null && dropOffLat != null) {
-                isSearchMode = false
-                currentScreen = CustomerScreen.MainMap
-                calculateRoute()
-            }
+            isSearchMode = false
+            navigateTo(CustomerScreen.MainMap)
+            calculateRoute()
         }
     }
 
@@ -669,7 +704,7 @@ class CustomerMapViewModel(
         val lat = suggestion.latitude.toDoubleOrNull() ?: 99.0
         val lng = suggestion.longitude.toDoubleOrNull() ?: 99.0
         
-        android.util.Log.d("GeocodeDiag", "Selected suggestion: ${suggestion.displayName}, Lat: ${suggestion.latitude} ($lat), Lng: ${suggestion.longitude} ($lng)")
+        Log.d("GeocodeDiag", "Selected suggestion: ${suggestion.displayName}, Lat: ${suggestion.latitude} ($lat), Lng: ${suggestion.longitude} ($lng)")
 
         if (lat == 0.0 || lng == 0.0 || lat == 99.0 || lng == 99.0) {
             addLocalNotification("Location Error", "Selected location has invalid coordinates.", "error")
@@ -702,10 +737,11 @@ class CustomerMapViewModel(
         
         if (pickupLat != null && dropOffLat != null) {
             isSearchMode = false
-            currentScreen = CustomerScreen.MainMap
+            navigateTo(CustomerScreen.MainMap)
             calculateRoute()
         } else {
             isSearchMode = true
+            navigateTo(CustomerScreen.MainMap)
         }
     }
 
@@ -751,7 +787,7 @@ class CustomerMapViewModel(
         }
 
         isSearchMode = false
-        android.util.Log.d("RouteDiag", "Calculating route from ($pLat, $pLng) to ($dLat, $dLng)")
+        Log.d("RouteDiag", "Calculating route from ($pLat, $pLng) to ($dLat, $dLng)")
         performRouteCalculation(pLat, pLng, dLat, dLng)
     }
 
@@ -792,11 +828,10 @@ class CustomerMapViewModel(
             
             orderRepository.calculateRoute(request)
                 .onSuccess { response ->
-                    android.util.Log.d("RouteDiag", "Route calculation success: ${response.routeCoords.size} points received.")
+                    Log.d("RouteDiag", "Route calculation success: ${response.routeCoords.size} points received.")
+                    isSearchMode = false
                     
-                    val coords = if (response.routeCoords.isNotEmpty()) {
-                        response.routeCoords
-                    } else {
+                    val coords = response.routeCoords.ifEmpty {
                         // Fallback to straight line if no route coords but we have start/end
                         Log.w("RouteDiag", "No route coords received, using straight line fallback")
                         listOf(listOf(pLng, pLat), listOf(dLng, dLat))
@@ -814,7 +849,7 @@ class CustomerMapViewModel(
 
                     if (!isUpdate) {
                         distanceKm = if (response.distanceM > 0) response.distanceM / 1000.0 
-                                     else com.example.famekodriver.core.utils.LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
+                                     else LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
                         durationMin = if (response.etaMin > 0) response.etaMin 
                                       else (distanceKm * 2.0) // rough estimate: 2 mins per km
                         
@@ -836,8 +871,9 @@ class CustomerMapViewModel(
                     // Even on complete failure, try to show a straight line if we have coordinates
                     // so the user isn't stuck without a pricing card
                     if (!isUpdate && pLat != 0.0 && dLat != 0.0) {
+                        isSearchMode = false
                         polylinePoints = listOf(LatLng(pLat, pLng), LatLng(dLat, dLng))
-                        distanceKm = com.example.famekodriver.core.utils.LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
+                        distanceKm = LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
                         durationMin = distanceKm * 2.0
                         updateEstimatedFare()
                     }
@@ -846,8 +882,15 @@ class CustomerMapViewModel(
     }
 
     private fun updateEstimatedFare() {
-        val pLat = pickupLat ?: return
-        val pLng = pickupLng ?: return
+        val pLat = pickupLat
+        val pLng = pickupLng
+        
+        // Safety: Don't poll if route was cleared or locations are missing
+        if (pLat == null || pLng == null || dropOffLat == null) {
+            isLoading = false
+            return
+        }
+        
         Log.d("PricingDiag", "Updating estimated fare for ($pLat, $pLng), Dist: $distanceKm, Dur: $durationMin, Region: $currentRegion")
         isLoading = true
         viewModelScope.launch {
@@ -893,12 +936,13 @@ class CustomerMapViewModel(
         val eFare = estimatedFare
         
         if (pLat == null || pLng == null || eFare == null) {
-            // Should show error to user
+            Log.e("ConfirmOrder", "Validation failed: pLat=$pLat, pLng=$pLng, eFare=$eFare")
             return
         }
         isOrderPlacing = true
         viewModelScope.launch {
             val customerId = sessionManager.getCustomerId() ?: run {
+                Log.e("ConfirmOrder", "No customer ID found in session")
                 isOrderPlacing = false
                 return@launch
             }
@@ -909,6 +953,8 @@ class CustomerMapViewModel(
             
             val serviceType = if (activeServiceMode == ServiceType.PACKAGE_DELIVERY) 
                 ServiceType.PACKAGE_DELIVERY else ServiceType.RIDE_HAILING
+            
+            Log.d("ConfirmOrder", "Creating order: type=$serviceType, fare=$finalFare, recipient=$recipientName")
             
             orderRepository.createOrder(
                 OrderCreateRequest(
@@ -924,16 +970,25 @@ class CustomerMapViewModel(
                     durationMin = durationMin,
                     serviceType = serviceType,
                     requestedVehicleType = selectedVehicleType,
-                    scheduledTime = scheduledRideTime
+                    scheduledTime = scheduledRideTime,
+                    packageCategory = if (serviceType == ServiceType.PACKAGE_DELIVERY) packageCategory else null,
+                    packageWeightSize = if (serviceType == ServiceType.PACKAGE_DELIVERY) packageWeightSize else null,
+                    isFragile = if (serviceType == ServiceType.PACKAGE_DELIVERY) isFragile else false,
+                    recipientName = if (serviceType == ServiceType.PACKAGE_DELIVERY) recipientName else null,
+                    recipientPhone = if (serviceType == ServiceType.PACKAGE_DELIVERY) recipientPhone else null,
+                    packageNotes = if (serviceType == ServiceType.PACKAGE_DELIVERY) packageNotes else null
                 )
             ).onSuccess { newId ->
+                Log.d("ConfirmOrder", "Order created successfully: id=$newId")
                 orderStatusData = OrderStatusResponse(success = true, status = "PENDING")
                 currentOrderId = newId
                 sessionManager.setActiveOrderId(newId)
                 scheduledRideTime = null
                 isTimedOut = false
                 isOrderPlacing = false
+                showPackageDetailsSheet = false
             }.onFailure {
+                Log.e("ConfirmOrder", "Order creation failed", it)
                 isOrderPlacing = false
             }
         }
@@ -1078,7 +1133,7 @@ class CustomerMapViewModel(
                 
                 if (pickupLat != null && dropOffLat != null) {
                     isSearchMode = false
-                    currentScreen = CustomerScreen.MainMap
+                    navigateTo(CustomerScreen.MainMap)
                     calculateRoute()
                 }
                 isLoading = false
@@ -1111,7 +1166,7 @@ class CustomerMapViewModel(
                 
                 if (pickupLat != null && dropOffLat != null) {
                     isSearchMode = false
-                    currentScreen = CustomerScreen.MainMap
+                    navigateTo(CustomerScreen.MainMap)
                     calculateRoute()
                 }
                 isLoading = false
@@ -1125,17 +1180,13 @@ class CustomerMapViewModel(
             title = title,
             message = message,
             type = type,
-            createdAt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+            createdAt = SimpleDateFormat("HH:mm", Locale.getDefault()).format(java.util.Date())
         )
         notifications = (listOf(newNotif) + notifications).take(50)
     }
 
     fun deleteNotification(id: Int) {
         notifications = notifications.filter { it.id != id }
-    }
-
-    fun sendAudioData(data: ByteArray) {
-        repository.sendAudioData(data)
     }
 
     fun updateSavedPlace(id: String, label: String, suggestion: LocationSuggestion) {
@@ -1249,10 +1300,10 @@ class CustomerMapViewModel(
             pickupLng = null
             
             isFullscreenMap = true
-            currentScreen = CustomerScreen.MainMap
+            navigateTo(CustomerScreen.MainMap)
             isLoading = true
         } else {
-            currentScreen = CustomerScreen.MainMap
+            navigateTo(CustomerScreen.MainMap)
             isSearchMode = true
         }
     }
@@ -1267,22 +1318,6 @@ class CustomerMapViewModel(
             rentalRepository.updateRentalDestination(id, dropOffLocation, dLat, dLng, stopsStr).onSuccess {
                 isSearchMode = false
                 refreshActiveRental()
-            }
-        }
-    }
-
-    fun cancelRental(id: Int) {
-        viewModelScope.launch {
-            rentalRepository.cancelRental(id).onSuccess {
-                activeRental = null
-            }
-        }
-    }
-
-    fun endRental(id: Int) {
-        viewModelScope.launch {
-            rentalRepository.endRental(id).onSuccess {
-                activeRental = null
             }
         }
     }
