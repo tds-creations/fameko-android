@@ -52,6 +52,7 @@ data class OrderStatusResponse(
     val success: Boolean,
     val status: String,
     val orderId: Int? = null,
+    val customerId: Int? = null,
     val driverId: String? = null,
     val driverName: String? = null,
     val driverPhone: String? = null,

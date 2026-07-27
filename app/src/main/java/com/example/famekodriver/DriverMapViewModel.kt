@@ -76,6 +76,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     private var countdownJob: Job? = null
     private var routeJob: Job? = null
     private var lastRouteCalcLatLng: LatLng? = null
+    private var lastAcceptanceTime = 0L
 
     init {
         fetchDriverStatus()
@@ -180,7 +181,12 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
             }
             is FamekoEvent.IncomingCall -> incomingCall = event
             is FamekoEvent.CallAccepted -> {
-                ongoingCall = incomingCall ?: FamekoEvent.IncomingCall(event.callId, "Customer")
+                val currentPending = ongoingCall
+                ongoingCall = if (currentPending != null && currentPending.callId == "pending") {
+                    currentPending.copy(callId = event.callId)
+                } else {
+                    FamekoEvent.IncomingCall(event.callId, "Customer")
+                }
                 incomingCall = null
             }
             is FamekoEvent.CallEnded, is FamekoEvent.CallRejected -> {
@@ -308,6 +314,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 isAccepting = false
                 activeRequest = null
                 timerJob?.cancel()
+                lastAcceptanceTime = System.currentTimeMillis()
                 currentDelivery = delivery.copy(driverId = driverId, status = DeliveryStatus.ASSIGNED)
             }.onFailure {
                 isAccepting = false
@@ -411,9 +418,15 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     fun initiateCall() {
         val delivery = currentDelivery ?: return
         val driverName = sessionManager.getDriverName() ?: "Driver"
+        val customerName = delivery.customerName ?: "Customer"
+        
+        // Show immediate feedback
+        ongoingCall = FamekoEvent.IncomingCall("pending", customerName)
+        
         viewModelScope.launch {
+            val target = if (delivery.customerId != null) "CUSTOMER_${delivery.customerId}" else "CUSTOMER_UNKNOWN"
             repository.initiateCall(
-                targetId = "CUSTOMER_${delivery.id.split("_").getOrNull(0) ?: 0}", // Placeholder logic for customer ID
+                targetId = target,
                 callerName = driverName,
                 orderId = delivery.orderId
             )
@@ -482,10 +495,8 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
             // Off-route detection
             checkOffRoute(lat, lng)
             
-            // Arrival detection
-            if (checkArrival(lat, lng)) {
-                voiceNavManager.announceArrival()
-            }
+            // Arrival detection (Voice triggers inside checkArrival)
+            checkArrival(lat, lng)
 
             voiceNavManager.updateProgress(
                 lat, lng, 
@@ -533,16 +544,22 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
      */
     fun checkArrival(currentLat: Double, currentLng: Double): Boolean {
         val delivery = currentDelivery ?: return false
-        val destLat = if (delivery.status == DeliveryStatus.ASSIGNED) delivery.pickupLat else delivery.dropOffLat
-        val destLng = if (delivery.status == DeliveryStatus.ASSIGNED) delivery.pickupLng else delivery.dropOffLng
+        
+        // 2-second grace period after acceptance to avoid immediate "snap" to Arrived state
+        if (System.currentTimeMillis() - lastAcceptanceTime < 2000) return false
+
+        val isAtPickup = delivery.status == DeliveryStatus.ASSIGNED
+        val destLat = if (isAtPickup) delivery.pickupLat else delivery.dropOffLat
+        val destLng = if (isAtPickup) delivery.pickupLng else delivery.dropOffLng
         
         if (destLat == null || destLng == null || destLat == 0.0) return false
         
         val distToDest = LocationUtils.calculateDistance(currentLat, currentLng, destLat, destLng)
         
         if (distToDest < 30.0) { // Within 30 meters
-            if (delivery.status == DeliveryStatus.ASSIGNED) {
+            if (isAtPickup) {
                 // Arrived at pickup, auto-trigger "Arrived" state
+                voiceNavManager.announceArrivedAtPickup()
                 updateDeliveryStatus(DeliveryStatus.ARRIVED)
                 showPinDialog = true // Prompt for pickup PIN
                 
@@ -551,10 +568,11 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 instructions = emptyList()
                 currentInstruction = null
                 return true
-            } else if (delivery.status == DeliveryStatus.IN_TRANSIT || delivery.status == DeliveryStatus.ARRIVED) {
-                // Already arrived or on the way to destination.
-                // We keep navigation active until they manually click COMPLETE to avoid 
-                // losing the screen if they just drive past the point.
+            } else if (delivery.status == DeliveryStatus.IN_TRANSIT) {
+                // Arrived at final destination
+                voiceNavManager.announceArrival()
+                // We don't auto-complete the trip, just announce and let driver tap COMPLETE
+                return true
             }
         }
         return false

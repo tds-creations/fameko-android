@@ -8,6 +8,7 @@ import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.module.http.HttpRequestUtil
 import okhttp3.OkHttpClient
 import com.example.famekodriver.core.network.NetworkClient
+import com.example.famekodriver.core.utils.MapCacheManager
 
 class DriverApplication : Application() {
     override fun onCreate() {
@@ -15,6 +16,7 @@ class DriverApplication : Application() {
 
         // 1. Initialize MapLibre FIRST with required parameters for version 11.x
         MapLibre.getInstance(this, null, WellKnownTileServer.MapLibre)
+        MapCacheManager.initCache(this)
 
         // 2. Configure HTTP Client with User-Agent and Automatic TomTom Key Injection
         val client = OkHttpClient.Builder()

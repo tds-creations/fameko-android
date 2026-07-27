@@ -51,6 +51,10 @@ dependencies {
     api(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // Maps
+    api(libs.maplibre.android)
+    api(libs.maplibre.annotation)
+
     // WorkManager
     api(libs.androidx.work.runtime.ktx)
     

@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Matrix
 import android.media.RingtoneManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -47,6 +46,7 @@ import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
 import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.core.utils.LocationUtils
+import com.example.famekodriver.core.utils.MapCacheManager
 import com.example.famekodriver.core.utils.VoiceCallHandler
 import com.example.famekodriver.ui.theme.*
 import com.google.android.gms.location.LocationCallback
@@ -56,6 +56,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.PolygonOptions
@@ -163,32 +164,40 @@ fun MapScreen(
                     val location = result.lastLocation ?: return
                     if (location.latitude == 0.0 || location.longitude == 0.0) return
 
-                    viewModel.updateDriverLocation(location.latitude, location.longitude, location.bearing)
-
                     // Live Camera Following (Navigation Mode)
                     mapLibreMap?.let { map ->
-                        // Adaptive Zoom based on speed (m/s to km/h)
-                        val speedKmh = location.speed.toDouble() * 3.6
-                        val targetZoom = when {
-                            speedKmh > 80.0 -> 15.0
-                            speedKmh > 50.0 -> 16.0
-                            speedKmh > 20.0 -> 17.0
-                            else -> 18.0
-                        }
+                        val lastPos = viewModel.driverLatLng
+                        val lastBearing = viewModel.driverBearing
+                        
+                        val distanceMoved = if (lastPos != null) LocationUtils.calculateDistance(location.latitude, location.longitude, lastPos.latitude, lastPos.longitude) else 10.0
+                        val bearingDiff = abs(location.bearing - lastBearing)
 
-                        val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
-                            .target(LatLng(location.latitude, location.longitude))
-                            .zoom(targetZoom)
-                            .bearing(location.bearing.toDouble()) // Align map with movement
-                            .tilt(50.0) // 3D perspective for road view
-                            .build()
-                        
-                        // Apply padding to keep vehicle in lower third
-                        @Suppress("DEPRECATION")
-                        map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
-                        
-                        map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                        // Optimization: Only animate camera if movement is significant (> 2 meters or > 5 degrees)
+                        if (distanceMoved > 2.0 || bearingDiff > 5.0 || lastPos == null) {
+                            // Adaptive Zoom based on speed (m/s to km/h)
+                            val speedKmh = location.speed.toDouble() * 3.6
+                            val targetZoom = when {
+                                speedKmh > 80.0 -> 15.0
+                                speedKmh > 50.0 -> 16.0
+                                speedKmh > 20.0 -> 17.0
+                                else -> 18.0
+                            }
+
+                            val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                                .target(LatLng(location.latitude, location.longitude))
+                                .zoom(targetZoom)
+                                .bearing(location.bearing.toDouble()) // Align map with movement
+                                .tilt(50.0) // 3D perspective for road view
+                                .build()
+                            
+                            // Apply padding to keep vehicle in lower third
+                            @Suppress("DEPRECATION")
+                            map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
+                            
+                            map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                        }
                     }
+                    viewModel.updateDriverLocation(location.latitude, location.longitude, location.bearing)
                 }
             }
 
@@ -205,8 +214,12 @@ fun MapScreen(
             @SuppressLint("MissingPermission")
             fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
                 loc?.let { 
-                    viewModel.driverLatLng = LatLng(it.latitude, it.longitude)
-                    mapLibreMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
+                    val center = LatLng(it.latitude, it.longitude)
+                    viewModel.driverLatLng = center
+                    mapLibreMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(center, 15.0))
+                    
+                    // Performance: Pre-fetch current city tiles for offline speed
+                    MapCacheManager.prefetchArea(context, center, "DriverShiftArea")
                 }
             }
             
@@ -272,11 +285,11 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(viewModel.currentDelivery, viewModel.driverLatLng) {
-        val delivery = viewModel.currentDelivery
+    LaunchedEffect(viewModel.currentDelivery, viewModel.activeRequest, viewModel.driverLatLng) {
+        val delivery = viewModel.currentDelivery ?: viewModel.activeRequest
         val driverPos = viewModel.driverLatLng
         if (delivery != null && driverPos != null) {
-            val dest = if (delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.ARRIVED) {
+            val dest = if (delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.ARRIVED || delivery.status == DeliveryStatus.PENDING) {
                 LatLng(delivery.pickupLat ?: 0.0, delivery.pickupLng ?: 0.0)
             } else {
                 LatLng(delivery.dropOffLat ?: 0.0, delivery.dropOffLng ?: 0.0)
@@ -293,7 +306,6 @@ fun MapScreen(
         }
     }
 
-    val activeMarkers = remember { java.util.concurrent.ConcurrentHashMap<String, org.maplibre.android.annotations.Marker>() }
     val activePolylineRef = remember { object { var value: org.maplibre.android.annotations.Polyline? = null } }
     val activeRouteMarkers = remember { mutableListOf<org.maplibre.android.annotations.Marker>() }
 
@@ -308,37 +320,21 @@ fun MapScreen(
     LaunchedEffect(mapLibreMap, viewModel.driverLatLng, viewModel.driverBearing, vehicleBitmap) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val pos = viewModel.driverLatLng ?: return@LaunchedEffect
+        val bitmap = vehicleBitmap ?: return@LaunchedEffect
         
-        val id = "DRIVER_ME"
-        val marker = activeMarkers[id]
-
-        val baseBitmap = vehicleBitmap ?: run {
-            val type = vehicleType.lowercase()
-            if (type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor")) {
-                null
-            } else {
-                ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
+        map.getStyle { style ->
+            if (style.getImage("driver-icon") == null) {
+                style.addImage("driver-icon", bitmap)
             }
-        }
-
-        val carIcon = baseBitmap?.let { 
-            val matrix = Matrix()
-            matrix.postRotate(viewModel.driverBearing)
-            val scaled = if (it.width != 40) it.scale(40, 40) else it
-            val rotated = Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, matrix, true)
-            IconFactory.getInstance(context).fromBitmap(rotated) 
-        }
-
-        if (marker == null) {
-            @Suppress("DEPRECATION")
-            val newMarker = map.addMarker(MarkerOptions()
-                .position(pos)
-                .apply { if (carIcon != null) icon(carIcon) }
-            )
-            activeMarkers[id] = newMarker
-        } else {
-            marker.position = pos
-            if (carIcon != null) marker.icon = carIcon
+            
+            val source = style.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("driver-source")
+            if (source != null) {
+                val feature = org.maplibre.geojson.Feature.fromGeometry(
+                    org.maplibre.geojson.Point.fromLngLat(pos.longitude, pos.latitude)
+                )
+                feature.addNumberProperty("bearing", viewModel.driverBearing)
+                source.setGeoJson(org.maplibre.geojson.FeatureCollection.fromFeature(feature))
+            }
         }
     }
 
@@ -347,23 +343,29 @@ fun MapScreen(
     LaunchedEffect(mapLibreMap, viewModel.heatmapPoints) {
         val map = mapLibreMap ?: return@LaunchedEffect
         
+        // Offload point calculation to background thread to avoid UI jank
+        val polygons = withContext(kotlinx.coroutines.Dispatchers.Default) {
+            viewModel.heatmapPoints.map { point ->
+                val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude))
+                PolygonOptions()
+                    .addAll(circlePoints)
+                    .fillColor(Color(1f, 0f, 0f, (point.intensity * 0.5).toFloat()).toArgb())
+                    .strokeColor(Color.Transparent.toArgb())
+            }
+        }
+
         @Suppress("DEPRECATION")
         activeHeatmapPolygons.forEach { map.removePolygon(it) }
         activeHeatmapPolygons.clear()
 
-        viewModel.heatmapPoints.forEach { point ->
-            val circlePoints = createCirclePoints(LatLng(point.latitude, point.longitude))
+        polygons.forEach { options ->
             @Suppress("DEPRECATION")
-            val polygon = map.addPolygon(PolygonOptions()
-                .addAll(circlePoints)
-                .fillColor(Color(1f, 0f, 0f, (point.intensity * 0.5).toFloat()).toArgb())
-                .strokeColor(Color.Transparent.toArgb())
-            )
+            val polygon = map.addPolygon(options)
             activeHeatmapPolygons.add(polygon)
         }
     }
 
-    LaunchedEffect(mapLibreMap, viewModel.navigationPath, viewModel.currentDelivery?.status, pickupIcon, destinationIcon) {
+    LaunchedEffect(mapLibreMap, viewModel.navigationPath, viewModel.currentDelivery?.status, viewModel.activeRequest, pickupIcon, destinationIcon) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val path = viewModel.navigationPath
         
@@ -383,7 +385,9 @@ fun MapScreen(
             activePolylineRef.value = polyline
             
             @Suppress("DEPRECATION")
-            val isPickup = viewModel.currentDelivery?.status == DeliveryStatus.ASSIGNED
+            val currentStatus = viewModel.currentDelivery?.status ?: viewModel.activeRequest?.status
+            val isPickup = currentStatus == DeliveryStatus.ASSIGNED || currentStatus == DeliveryStatus.PENDING || currentStatus == DeliveryStatus.ARRIVED
+            
             val destMarker = map.addMarker(MarkerOptions()
                 .position(path.last())
                 .icon(if (isPickup) pickupIcon else destinationIcon)
@@ -459,7 +463,18 @@ fun MapScreen(
                         val styleUrl = "https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBAZFVDV2NzZ09mRGhEaU9MdDsVGbKlskhOMbwzZ3vdhit8?key=${NetworkClient.TOMTOM_API_KEY}"
                         getMapAsync { map ->
                             mapLibreMap = map
-                            map.setStyle(styleUrl)
+                            map.setStyle(styleUrl) { style ->
+                                // Initialize Data Source and Layers for GPU-accelerated rendering
+                                style.addSource(org.maplibre.android.style.sources.GeoJsonSource("driver-source"))
+                                val layer = org.maplibre.android.style.layers.SymbolLayer("driver-layer", "driver-source")
+                                layer.withProperties(
+                                    org.maplibre.android.style.layers.PropertyFactory.iconImage("driver-icon"),
+                                    org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
+                                    org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true),
+                                    org.maplibre.android.style.layers.PropertyFactory.iconRotate(org.maplibre.android.style.expressions.Expression.get("bearing"))
+                                )
+                                style.addLayer(layer)
+                            }
                             map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(5.6037, -0.1870), 12.0))
                         }
                     }
@@ -897,14 +912,15 @@ fun DeliveryControlSheet(
 
     Card(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(12.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(12.dp),
-        border = BorderStroke(1.dp, BoltLightGray)
+        border = BorderStroke(1.dp, BoltLightGray.copy(alpha = 0.5f))
     ) {
-        Column(modifier = Modifier.padding(24.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header: Profile, Name, Communication
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -912,7 +928,7 @@ fun DeliveryControlSheet(
                 Surface(
                     shape = CircleShape,
                     color = BoltLightGray,
-                    modifier = Modifier.size(64.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     if (!delivery.customerProfilePic.isNullOrEmpty()) {
                         AsyncImage(
@@ -922,11 +938,11 @@ fun DeliveryControlSheet(
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
                         )
                     } else {
-                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(16.dp), tint = Color.Gray)
+                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(12.dp), tint = Color.Gray)
                     }
                 }
                 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(12.dp))
                 
                 Column(modifier = Modifier.weight(1f)) {
                     val statusText = when (delivery.status) {
@@ -942,71 +958,72 @@ fun DeliveryControlSheet(
                             text = statusText,
                             fontWeight = FontWeight.Black,
                             color = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary,
-                            fontSize = 10.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            fontSize = 9.sp,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             letterSpacing = 1.sp
                         )
                     }
-                    Spacer(Modifier.height(4.dp))
                     Text(
                         text = delivery.customerName ?: "Customer",
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 24.sp,
+                        fontSize = 18.sp,
                         color = BoltDark,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconButton(
                         onClick = onCall,
-                        modifier = Modifier.size(48.dp).background(FamekoLightBlue, CircleShape)
+                        modifier = Modifier.size(40.dp).background(FamekoLightBlue, CircleShape)
                     ) {
-                        Icon(Icons.Default.Call, null, tint = FamekoPrimary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Call, null, tint = FamekoPrimary, modifier = Modifier.size(18.dp))
                     }
                     IconButton(
                         onClick = onChat,
-                        modifier = Modifier.size(48.dp).background(FamekoLightBlue, CircleShape)
+                        modifier = Modifier.size(40.dp).background(FamekoLightBlue, CircleShape)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Chat, null, tint = FamekoPrimary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.AutoMirrored.Filled.Chat, null, tint = FamekoPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
+            // Destination Info Bar
             Surface(
-                color = BoltLightGray,
-                shape = RoundedCornerShape(16.dp),
+                color = BoltLightGray.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val icon = if (delivery.status == DeliveryStatus.ASSIGNED) Icons.Default.MyLocation else Icons.Default.Navigation
                     val tint = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else BoltOrange
                     
                     Box(
-                        modifier = Modifier.size(36.dp).background(Color.White, CircleShape),
+                        modifier = Modifier.size(32.dp).background(Color.White, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+                        Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
                     }
                     
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     
                     Column {
                         Text(
                             text = if (delivery.status == DeliveryStatus.ASSIGNED) "PICKUP LOCATION" else "DESTINATION",
-                            fontSize = 10.sp,
+                            fontSize = 9.sp,
                             color = Color.Gray,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            letterSpacing = 0.5.sp
                         )
                         Text(
                             text = if (delivery.status == DeliveryStatus.ASSIGNED) delivery.pickupLocation else delivery.dropOffLocation,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = BoltDark,
                             maxLines = 1,
@@ -1016,27 +1033,29 @@ fun DeliveryControlSheet(
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Action Bar: Cancel, Navigate, Complete
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = onCancel,
-                    modifier = Modifier.weight(0.8f).height(60.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color.LightGray)
+                    modifier = Modifier.weight(0.7f).height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
                 ) {
-                    Text("Cancel", fontWeight = FontWeight.Bold, color = BoltDark)
+                    Text("Cancel", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
 
                 Button(
                     onClick = onNavigateClick,
-                    modifier = Modifier.weight(1f).height(60.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BoltDark)
                 ) {
-                    Icon(Icons.Default.Navigation, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("NAVIGATE", fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Navigation, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("NAV", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
                 
                 Button(
@@ -1044,14 +1063,18 @@ fun DeliveryControlSheet(
                         if (delivery.status == DeliveryStatus.ASSIGNED) onArrived()
                         else onStatusUpdate(DeliveryStatus.DELIVERED)
                     },
-                    modifier = Modifier.weight(1.2f).height(60.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary)
+                    modifier = Modifier.weight(1.3f).height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(4.dp)
                 ) {
                     Text(
                         text = if (delivery.status == DeliveryStatus.ASSIGNED) "I'VE ARRIVED" else "COMPLETE",
                         fontWeight = FontWeight.Black,
-                        fontSize = 14.sp
+                        fontSize = 13.sp,
+                        letterSpacing = 0.5.sp
                     )
                 }
             }

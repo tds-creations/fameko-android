@@ -39,6 +39,7 @@ sealed class Screen {
     data class Chat(val conversationId: Int, val customerName: String) : Screen()
     object SupportChat : Screen()
     object TermsAndConditions : Screen()
+    object PrivacyPolicy : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -63,6 +64,22 @@ class MainActivity : ComponentActivity() {
             val userRole = remember { sessionManager.getUserRole() }
             var currentStatus by rememberSaveable { mutableStateOf(sessionManager.getDriverStatus()) }
             var currentVehicleType by rememberSaveable { mutableStateOf(sessionManager.getVehicleType() ?: "") }
+            
+            var isTermsAccepted by remember { 
+                mutableStateOf(sessionManager.getAcceptedTermsVersion() == TermsConstants.CURRENT_DRIVER_TERMS_VERSION) 
+            }
+
+            if (!isTermsAccepted) {
+                TermsAndConditionsScreen(
+                    onBack = { finish() },
+                    onAccept = {
+                        sessionManager.setAcceptedTermsVersion(TermsConstants.CURRENT_DRIVER_TERMS_VERSION)
+                        isTermsAccepted = true
+                    }
+                )
+                return@setContent
+            }
+
             var currentScreen by remember { 
                 mutableStateOf<Screen>(if (userRole == "OWNER") Screen.FleetManagement else Screen.DriverMap) 
             }
@@ -84,7 +101,7 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(context, "Double tap back to exit", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    is Screen.Settings, is Screen.Earnings, is Screen.Rentals, is Screen.RideHistory, is Screen.VehicleRegistration, is Screen.Payment, is Screen.TermsAndConditions -> {
+                    is Screen.Settings, is Screen.Earnings, is Screen.Rentals, is Screen.RideHistory, is Screen.VehicleRegistration, is Screen.Payment, is Screen.TermsAndConditions, is Screen.PrivacyPolicy -> {
                         currentScreen = Screen.Menu
                     }
                     is Screen.AddRentalVehicle, is Screen.EditRentalVehicle -> {
@@ -175,6 +192,9 @@ class MainActivity : ComponentActivity() {
                         onNavigateToTerms = {
                             currentScreen = Screen.TermsAndConditions
                         },
+                        onNavigateToPrivacy = {
+                            currentScreen = Screen.PrivacyPolicy
+                        },
                         onLogout = {
                             sessionManager.logout()
                             val intent = Intent(this@MainActivity, DriverLoginActivity::class.java)
@@ -250,6 +270,9 @@ class MainActivity : ComponentActivity() {
                 }
                 is Screen.TermsAndConditions -> {
                     TermsAndConditionsScreen(onBack = { currentScreen = Screen.Settings })
+                }
+                is Screen.PrivacyPolicy -> {
+                    PrivacyPolicyScreen(onBack = { currentScreen = Screen.Settings })
                 }
             }
         }

@@ -822,11 +822,26 @@ class DriverRepository private constructor() {
             if (e is CancellationException) throw e
             Log.e("FamekoRepo", "TomTom Routing failed as well, falling back to backend", e)
             try {
-                // Priority 3: Go Routing Service as last resort
+                // Priority 3: Go/Python Routing Service as last resort
                 Log.d("FamekoRepo", "Falling back to Internal Routing Service")
                 val response = NetworkClient.routingApi.calculateRoute(request)
-                Log.d("FamekoRepo", "Internal route found. Points: ${response.routeCoords.size}")
-                Result.success(response)
+                
+                // Handle Python backend nesting (primary field)
+                val primary = response.primary
+                if (primary != null && primary.coordinates.isNotEmpty()) {
+                    Log.d("FamekoRepo", "Internal route found (primary). Points: ${primary.coordinates.size}")
+                    val flatResponse = response.copy(
+                        routeCoords = primary.coordinates,
+                        distanceM = primary.distanceM.toInt(),
+                        etaMin = primary.durationMin
+                    )
+                    Result.success(flatResponse)
+                } else if (response.routeCoords.isNotEmpty()) {
+                    Log.d("FamekoRepo", "Internal route found. Points: ${response.routeCoords.size}")
+                    Result.success(response)
+                } else {
+                    Result.failure(Exception("Internal routing returned empty coords"))
+                }
             } catch (e3: Exception) {
                 if (e3 is CancellationException) throw e3
                 Log.e("FamekoRepo", "All routing attempts failed", e3)

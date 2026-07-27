@@ -727,7 +727,7 @@ object DatabaseRepository {
             }
 
             val sql = """
-                SELECT d.*, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare,
+                SELECT d.*, c.id as customer_id, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare,
                 (6371 * acos(cos(radians(?)) * cos(radians(d.pickup_lat)) * cos(radians(d.pickup_lng) - radians(?)) + sin(radians(?)) * sin(radians(d.pickup_lat)))) AS distance
                 FROM deliveries d
                 JOIN orders o ON d.order_id = o.id
@@ -767,6 +767,7 @@ object DatabaseRepository {
                     status = DeliveryStatus.valueOf(rs.getString("status").uppercase()),
                     distanceKm = rs.getDouble("distance_km"),
                     estimatedEarnings = rs.getDouble("estimated_earnings"),
+                    customerId = rs.getInt("customer_id"),
                     pickupEtaMin = pickupEta,
                     customerName = rs.getString("customer_name"),
                     customerPhone = rs.getString("customer_phone"),
@@ -960,10 +961,12 @@ object DatabaseRepository {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = """
                 SELECT r.*, c.name as customer_name, c.profile_picture as customer_profile_pic,
+                       v.name as vehicle_name, v.image_urls as vehicle_image, v.model as vehicle_model,
                        dr.full_name as driver_name, dr.phone as driver_phone, dr.profile_picture as driver_profile_pic,
                        dr.vehicle_number as driver_plate, dr.vehicle_model as driver_model
                 FROM rentals r 
                 JOIN customers c ON r.customer_id = c.id
+                JOIN rental_vehicles v ON r.vehicle_id = v.id
                 LEFT JOIN drivers dr ON r.driver_id = dr.id
                 WHERE r.customer_id = ? AND r.status IN ('PENDING', 'ASSIGNED', 'ACTIVE', 'IN_PROGRESS') 
                 ORDER BY r.id DESC LIMIT 1
@@ -976,6 +979,9 @@ object DatabaseRepository {
                     "id" to rs.getInt("id"),
                     "customer_name" to rs.getString("customer_name"),
                     "customer_profile_pic" to (rs.getString("customer_profile_pic") ?: ""),
+                    "vehicle_name" to rs.getString("vehicle_name"),
+                    "vehicle_image" to (rs.getString("vehicle_image")?.split(",")?.firstOrNull() ?: ""),
+                    "vehicle_model" to (rs.getString("vehicle_model") ?: ""),
                     "driver_name" to (rs.getString("driver_name") ?: ""),
                     "driver_phone" to (rs.getString("driver_phone") ?: ""),
                     "driver_profile_pic" to (rs.getString("driver_profile_pic") ?: ""),
@@ -990,6 +996,9 @@ object DatabaseRepository {
                     "stops" to (rs.getString("stops") ?: ""),
                     "booking_code" to rs.getString("booking_code"),
                     "status" to rs.getString("status"),
+                    "total_price" to rs.getDouble("total_price"),
+                    "duration_hours" to rs.getInt("duration_hours"),
+                    "trip_notes" to (rs.getString("trip_notes") ?: ""),
                     "is_unlocked" to rs.getBoolean("is_unlocked"),
                     "is_self_drive" to rs.getBoolean("is_self_drive"),
                     "vehicle_id" to rs.getInt("vehicle_id"),
@@ -1259,7 +1268,7 @@ object DatabaseRepository {
         val list = mutableListOf<Delivery>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = """
-                SELECT d.*, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare
+                SELECT d.*, c.id as customer_id, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare
                 FROM deliveries d
                 JOIN orders o ON d.order_id = o.id
                 JOIN customers c ON o.customer_id = c.id
@@ -1282,6 +1291,7 @@ object DatabaseRepository {
                     status = DeliveryStatus.valueOf(rs.getString("status").uppercase()),
                     distanceKm = rs.getDouble("distance_km"),
                     estimatedEarnings = rs.getDouble("estimated_earnings"),
+                    customerId = rs.getInt("customer_id"),
                     pickupEtaMin = 5.0,
                     customerName = rs.getString("customer_name"),
                     customerPhone = rs.getString("customer_phone"),
@@ -2871,7 +2881,7 @@ object DatabaseRepository {
     fun getOrderStatusDetails(orderId: Int): OrderStatusResponse? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = """
-                SELECT o.status, o.verification_pin, o.total_amount, d.id as delivery_id, d.driver_id, dr.full_name, dr.phone, dr.vehicle_type, 
+                SELECT o.status, o.customer_id, o.verification_pin, o.total_amount, d.id as delivery_id, d.driver_id, dr.full_name, dr.phone, dr.vehicle_type, 
                        dr.vehicle_model, dr.vehicle_number, dr.profile_picture, dr.rating, 
                        ds.latitude, ds.longitude, ds.bearing
                 FROM orders o
@@ -2887,6 +2897,8 @@ object DatabaseRepository {
                 return OrderStatusResponse(
                     success = true,
                     status = rs.getString("status"),
+                    orderId = orderId,
+                    customerId = rs.getInt("customer_id"),
                     driverId = rs.getString("driver_id"),
                     driverName = rs.getString("full_name"),
                     driverPhone = rs.getString("phone"),

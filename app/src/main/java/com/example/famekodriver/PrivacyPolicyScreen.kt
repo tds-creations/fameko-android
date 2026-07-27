@@ -2,7 +2,6 @@ package com.example.famekodriver
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,19 +16,14 @@ import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TermsAndConditionsScreen(
-    onBack: () -> Unit,
-    onAccept: (() -> Unit)? = null
-) {
+fun PrivacyPolicyScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Terms and Conditions", fontWeight = FontWeight.Bold) },
+                title = { Text("Privacy Policy", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    if (onAccept == null) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -45,27 +39,12 @@ fun TermsAndConditionsScreen(
                 .padding(20.dp)
         ) {
             Text(
-                text = TermsConstants.FULL_TERMS_TEXT,
+                text = TermsConstants.PRIVACY_POLICY_TEXT,
                 fontSize = 14.sp,
                 color = Color.DarkGray,
                 lineHeight = 20.sp,
                 fontFamily = FontFamily.SansSerif
             )
-            
-            if (onAccept != null) {
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = onAccept,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004E89))
-                ) {
-                    Text("I Accept the Terms and Conditions", fontWeight = FontWeight.Bold)
-                }
-            }
-            
             Spacer(modifier = Modifier.height(24.dp))
         }
     }

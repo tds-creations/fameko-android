@@ -169,6 +169,8 @@ class CustomerMapViewModel(
     var searchRadiusKm by mutableDoubleStateOf(3.0)
     var searchMessage by mutableStateOf("Connecting you to the nearest available Fameko")
     var showCancelConfirmation by mutableStateOf(false)
+    
+    var isTermsAccepted by mutableStateOf(true)
 
     private var pollingJob: Job? = null
     private var rentalPollingJob: Job? = null
@@ -257,6 +259,13 @@ class CustomerMapViewModel(
             }
 
             fetchSavedPlaces()
+            
+            // Check terms acceptance
+            val acceptedVersion = sessionManager.getAcceptedTermsVersion()
+            if (acceptedVersion != TermsConstants.CURRENT_TERMS_VERSION) {
+                isTermsAccepted = false
+            }
+
             orderRepository.getPricingConfig().onSuccess { pricingConfig = it }
             orderRepository.getDiscountRate(customerId).onSuccess { discountRate = it }
             rentalRepository.getRentalRates().onSuccess { rentalRates = it }
@@ -353,7 +362,12 @@ class CustomerMapViewModel(
         when (event) {
             is FamekoEvent.IncomingCall -> incomingCall = event
             is FamekoEvent.CallAccepted -> {
-                ongoingCall = incomingCall ?: FamekoEvent.IncomingCall(event.callId, "Driver")
+                val currentPending = ongoingCall
+                ongoingCall = if (currentPending != null && currentPending.callId == "pending") {
+                    currentPending.copy(callId = event.callId)
+                } else {
+                    FamekoEvent.IncomingCall(event.callId, "Driver")
+                }
                 incomingCall = null
             }
             is FamekoEvent.CallEnded, is FamekoEvent.CallRejected -> {
@@ -427,7 +441,7 @@ class CustomerMapViewModel(
             }
             is FamekoEvent.NearbyDriversUpdate -> {
                 if (currentOrderId == null || orderStatusData?.status == "PENDING") {
-                    drivers = event.drivers
+                    drivers = event.drivers.distinctBy { it.id }
                 }
             }
             // Using a generic handle for extra data from backend
@@ -459,6 +473,14 @@ class CustomerMapViewModel(
         scheduledRideTime = null
         isTimedOut = false
         isOrderPlacing = false
+        
+        val status = orderStatusData?.status
+        if (status == "CANCELLED" || status == "DELIVERED") {
+            orderStatusData = null
+            currentOrderId = null
+            sessionManager.setActiveOrderId(null)
+        }
+
         packageCategory = "Document"
         packageWeightSize = "Small"
         isFragile = false
@@ -483,6 +505,14 @@ class CustomerMapViewModel(
         rentalPickupLat = null
         rentalPickupLng = null
         isOrderPlacing = false
+        
+        val status = orderStatusData?.status
+        if (status == "CANCELLED" || status == "DELIVERED") {
+            orderStatusData = null
+            currentOrderId = null
+            sessionManager.setActiveOrderId(null)
+        }
+
         packageCategory = "Document"
         packageWeightSize = "Small"
         isFragile = false
@@ -517,6 +547,12 @@ class CustomerMapViewModel(
         activeServiceMode = mode
         isServiceModeSelected = true
         sessionManager.setFirstLogin(false)
+        
+        // Reset route and pricing when switching modes
+        polylinePoints = emptyList()
+        estimatedFare = null
+        rideEstimates = emptyList()
+        
         if (mode == ServiceType.PACKAGE_DELIVERY) {
             selectedVehicleType = "Okada" // Valid default for delivery
         } else if (mode == ServiceType.RIDE_HAILING) {
@@ -1036,6 +1072,11 @@ class CustomerMapViewModel(
     fun initiateCall() {
         val data = orderStatusData ?: return
         val orderId = currentOrderId ?: return
+        val driverName = data.driverName ?: "Driver"
+        
+        // Show immediate feedback
+        ongoingCall = FamekoEvent.IncomingCall("pending", driverName)
+        
         viewModelScope.launch {
             val target = if (data.driverId != null) "DRIVER_${data.driverId}" else "DRIVER_UNKNOWN"
             repository.initiateCall(
@@ -1089,7 +1130,7 @@ class CustomerMapViewModel(
 
         viewModelScope.launch {
             orderRepository.getNearbyDrivers(lat, lng).onSuccess { list ->
-                drivers = list
+                drivers = list.distinctBy { it.id }
                 pickupEtaMin = list.minOfOrNull { it.pickupEtaMin ?: 99.0 }
             }
         }
@@ -1228,6 +1269,11 @@ class CustomerMapViewModel(
             estimatedFare = it.fare
             pickupEtaMin = it.pickupEtaMin.toDouble()
         }
+    }
+
+    fun acceptTerms() {
+        sessionManager.setAcceptedTermsVersion(TermsConstants.CURRENT_TERMS_VERSION)
+        isTermsAccepted = true
     }
 
     // --- New Rental Scratch Logic ---

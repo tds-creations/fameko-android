@@ -13,6 +13,7 @@ data class Delivery(
     val status: DeliveryStatus,
     val distanceKm: Double,
     val estimatedEarnings: Double,
+    val customerId: Int? = null,
     val customerName: String? = null,
     val customerPhone: String? = null,
     val customerAddress: String? = null,

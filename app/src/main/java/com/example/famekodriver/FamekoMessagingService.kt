@@ -1,5 +1,6 @@
 package com.example.famekodriver
 
+import android.content.Intent
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.utils.NotificationHelper
@@ -11,11 +12,15 @@ import kotlinx.coroutines.launch
 
 class FamekoMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        val intent = Intent(applicationContext, DriverSplashActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
         // Handle data messages even when app is in background/killed
         if (remoteMessage.data.isNotEmpty()) {
             val title = remoteMessage.data["title"] ?: "Fameko"
             val message = remoteMessage.data["message"] ?: ""
-            NotificationHelper.showNotification(applicationContext, title, message)
+            NotificationHelper.showNotification(applicationContext, title, message, intent)
         }
 
         // Handle notification messages
@@ -23,7 +28,8 @@ class FamekoMessagingService : FirebaseMessagingService() {
             NotificationHelper.showNotification(
                 applicationContext,
                 it.title ?: "Fameko",
-                it.body ?: ""
+                it.body ?: "",
+                intent
             )
         }
     }

@@ -1,5 +1,6 @@
 package com.example.famekodriver.customer
 
+import android.content.Intent
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.utils.NotificationHelper
@@ -11,17 +12,22 @@ import kotlinx.coroutines.launch
 
 class FamekoMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        val intent = Intent(applicationContext, CustomerSplashActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
         if (remoteMessage.data.isNotEmpty()) {
             val title = remoteMessage.data["title"] ?: "Fameko"
             val message = remoteMessage.data["message"] ?: ""
-            NotificationHelper.showNotification(applicationContext, title, message)
+            NotificationHelper.showNotification(applicationContext, title, message, intent)
         }
 
         remoteMessage.notification?.let {
             NotificationHelper.showNotification(
                 applicationContext,
                 it.title ?: "Fameko",
-                it.body ?: ""
+                it.body ?: "",
+                intent
             )
         }
     }

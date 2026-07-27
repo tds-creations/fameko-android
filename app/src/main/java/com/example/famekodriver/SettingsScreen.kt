@@ -28,7 +28,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToNotificationSettings: () -> Unit,
-    onNavigateToTerms: () -> Unit
+    onNavigateToTerms: () -> Unit,
+    onNavigateToPrivacy: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -67,9 +68,9 @@ fun SettingsScreen(
 
             SettingsItem(
                 icon = Icons.Default.Security,
-                title = "Privacy & Security",
-                subtitle = "Manage your data and password",
-                onClick = { /* Future: Privacy Screen */ }
+                title = "Privacy Policy",
+                subtitle = "How we protect your data",
+                onClick = onNavigateToPrivacy
             )
 
             SettingsItem(

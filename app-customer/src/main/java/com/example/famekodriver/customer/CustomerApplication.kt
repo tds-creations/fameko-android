@@ -6,6 +6,7 @@ import org.maplibre.android.MapLibre
 import org.maplibre.android.module.http.HttpRequestUtil
 import okhttp3.OkHttpClient
 import com.example.famekodriver.core.network.NetworkClient
+import com.example.famekodriver.core.utils.MapCacheManager
 
 class CustomerApplication : Application() {
     override fun onCreate() {
@@ -13,6 +14,7 @@ class CustomerApplication : Application() {
 
         // 1. Initialize MapLibre
         MapLibre.getInstance(this)
+        MapCacheManager.initCache(this)
 
         // 2. Configure HTTP Client with User-Agent and Automatic TomTom Key Injection
         val client = OkHttpClient.Builder()

@@ -44,6 +44,10 @@ class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
         speak("Starting navigation to $destination")
     }
 
+    fun announceArrivedAtPickup() {
+        speak("You have arrived at the pickup location.")
+    }
+
     fun announceArrival() {
         speak("You have arrived at your destination.")
     }

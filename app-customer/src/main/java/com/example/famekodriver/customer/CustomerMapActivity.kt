@@ -59,6 +59,8 @@ import com.example.famekodriver.core.data.repository.*
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
 import com.example.famekodriver.core.utils.ImageLinks
+import com.example.famekodriver.core.utils.LocationUtils
+import com.example.famekodriver.core.utils.MapCacheManager
 import com.example.famekodriver.core.utils.NotificationHelper
 import com.example.famekodriver.customer.ui.components.*
 import com.example.famekodriver.customer.ui.modes.*
@@ -139,6 +141,7 @@ sealed class CustomerScreen {
     object FamilyProfile : CustomerScreen()
     object WorkProfile : CustomerScreen()
     object TermsAndConditions : CustomerScreen()
+    object PrivacyPolicy : CustomerScreen()
 }
 
 class CustomerMapActivity : ComponentActivity() {
@@ -238,6 +241,14 @@ fun CustomerMapScreen() {
         factory = CustomerMapViewModelFactory(repository, orderRepository, rentalRepository, userRepository, sessionManager, savedPlaceRepository)
     )
 
+    if (!mapViewModel.isTermsAccepted) {
+        TermsAndConditionsScreen(
+            onBack = { (context as? Activity)?.finish() },
+            onAccept = { mapViewModel.acceptTerms() }
+        )
+        return
+    }
+
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
@@ -278,10 +289,14 @@ fun CustomerMapScreen() {
         val lastNotif = mapViewModel.notifications.firstOrNull()
         if (lastNotif != null && lastNotif.id != mapViewModel.lastTriggeredNotificationId) {
             mapViewModel.lastTriggeredNotificationId = lastNotif.id
+            val intent = Intent(context, CustomerMapActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
             NotificationHelper.showNotification(
                 context,
                 lastNotif.title,
-                lastNotif.message
+                lastNotif.message,
+                intent
             )
         }
     }
@@ -541,6 +556,9 @@ fun CustomerMapScreen() {
                 CustomerScreen.TermsAndConditions -> {
                     TermsAndConditionsScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
+                CustomerScreen.PrivacyPolicy -> {
+                    PrivacyPolicyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+                }
             }
 
             if (showDatePicker) { DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { showDatePicker = false; showTimePicker = true }) { Text("Next") } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState) } }
@@ -573,11 +591,17 @@ fun MainMapContent(
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasLocationPermission = it }
 
     var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var carBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
         val loader = context.imageLoader
-        val request = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
-        val result = (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
-        if (result != null) motorbikeBitmap = result.scale(40, 40, false)
+        
+        val motorRequest = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
+        val motorResult = (loader.execute(motorRequest) as? SuccessResult)?.drawable?.toBitmap()
+        if (motorResult != null) motorbikeBitmap = motorResult.scale(40, 40, false)
+
+        val carRequest = ImageRequest.Builder(context).data(ImageLinks.IC_CAR_SALOON).build()
+        val carResult = (loader.execute(carRequest) as? SuccessResult)?.drawable?.toBitmap()
+        if (carResult != null) carBitmap = carResult.scale(40, 40, false)
     }
 
     LaunchedEffect(Unit) { if (!hasLocationPermission) launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
@@ -595,6 +619,11 @@ fun MainMapContent(
                     val location = result.lastLocation ?: return
                     if (location.latitude == 0.0 || location.longitude == 0.0) return
 
+                    val lastPos = viewModel.currentLatLng
+                    val lastBearing = viewModel.currentLatLng?.let { 0.0 } ?: 0.0 // Placeholder if bearing not in VM
+
+                    val distanceMoved = if (lastPos != null) LocationUtils.calculateDistance(location.latitude, location.longitude, lastPos.latitude, lastPos.longitude) else 10.0
+                    
                     viewModel.currentLatLng = LatLng(location.latitude, location.longitude)
                     viewModel.updateNearbyDrivers(location.latitude, location.longitude)
                     viewModel.checkOffRoute(location.latitude, location.longitude)
@@ -612,24 +641,27 @@ fun MainMapContent(
                     }
 
                     mapLibreMap?.let { map ->
-                        val speedKmh = location.speed.toDouble() * 3.6
-                        val targetZoom = when {
-                            speedKmh > 80.0 -> 15.0
-                            speedKmh > 50.0 -> 16.0
-                            speedKmh > 20.0 -> 17.0
-                            else -> 18.0
-                        }
+                        // Optimization: Significant move check
+                        if (distanceMoved > 2.0 || lastPos == null) {
+                            val speedKmh = location.speed.toDouble() * 3.6
+                            val targetZoom = when {
+                                speedKmh > 80.0 -> 15.0
+                                speedKmh > 50.0 -> 16.0
+                                speedKmh > 20.0 -> 17.0
+                                else -> 18.0
+                            }
 
-                        val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
-                            .target(LatLng(location.latitude, location.longitude))
-                            .zoom(targetZoom)
-                            .bearing(location.bearing.toDouble()) 
-                            .tilt(50.0) 
-                            .build()
-                        
-                        @Suppress("DEPRECATION")
-                        map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
-                        map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                            val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                                .target(LatLng(location.latitude, location.longitude))
+                                .zoom(targetZoom)
+                                .bearing(location.bearing.toDouble()) 
+                                .tilt(50.0) 
+                                .build()
+                            
+                            @Suppress("DEPRECATION")
+                            map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
+                            map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                        }
                     }
                 }
             }
@@ -668,8 +700,12 @@ fun MainMapContent(
                                     }
 
                                     if (!hasCentredOnLocation && mapLibreMap != null) {
-                                        mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 15.0))
+                                        val center = LatLng(it.latitude, it.longitude)
+                                        mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(center, 15.0))
                                         hasCentredOnLocation = true
+                                        
+                                        // Performance: Pre-fetch current city tiles
+                                        MapCacheManager.prefetchArea(context, center, "CurrentCity")
                                     }
                                 }
                             }
@@ -685,10 +721,8 @@ fun MainMapContent(
         bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded, skipHiddenState = true)
     )
 
-    val activeMarkers = remember { ConcurrentHashMap<String, org.maplibre.android.annotations.Marker>() }
     val activePolylineRef = remember { object { var value: org.maplibre.android.annotations.Polyline? = null } }
     val activeRouteMarkers = remember { mutableListOf<org.maplibre.android.annotations.Marker>() }
-    val animatingMarkerIds = remember { mutableSetOf<String>() }
 
     val pickupIcon = remember(context) { createMarkerIcon(context, BoltGreen) }
     val dropoffIcon = remember(context) { createMarkerIcon(context, BoltOrange) }
@@ -696,23 +730,26 @@ fun MainMapContent(
     val currentSheetState = remember(viewModel.orderStatusData?.status, viewModel.estimatedFare, viewModel.currentOrderId, viewModel.isSearchMode, viewModel.pickupLocation, viewModel.dropOffLocation, viewModel.activeServiceMode, viewModel.pickupLat, viewModel.activeRental, viewModel.rentalPickupLat, viewModel.currentScreen, viewModel.isTimedOut, viewModel.polylinePoints, viewModel.showPackageDetailsSheet) {
         val status = viewModel.orderStatusData?.status
         val isTerminalStatus = status == "CANCELLED" || status == "DELIVERED"
-        val hasActiveOrder = viewModel.currentOrderId != null && viewModel.orderStatusData != null && !isTerminalStatus
+        val hasConfirmedOrder = viewModel.currentOrderId != null && viewModel.orderStatusData != null && !isTerminalStatus
 
         val state = when {
             viewModel.isTimedOut -> CustomerSheetState.TIMED_OUT
             status == "PENDING" -> CustomerSheetState.SEARCHING_FOR_DRIVER
             status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
-            hasActiveOrder -> CustomerSheetState.ON_TRIP
+            hasConfirmedOrder -> CustomerSheetState.ON_TRIP
             viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
             
+            // Priority: Picking/Typing State (Higher priority than selecting service to allow editing)
+            viewModel.isSearchMode -> CustomerSheetState.PICKING_ADDRESS
+            
             // Priority: Pricing Card (Only if we have a route and NOT actively searching/typing)
             (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
-                viewModel.polylinePoints.isNotEmpty() && !viewModel.isSearchMode -> CustomerSheetState.SELECTING_SERVICE
+                viewModel.polylinePoints.isNotEmpty() -> CustomerSheetState.SELECTING_SERVICE
             
-            // Picking/Typing State
-            viewModel.isSearchMode || viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty() -> CustomerSheetState.PICKING_ADDRESS
+            // Fallback Picking State
+            viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty() -> CustomerSheetState.PICKING_ADDRESS
             
             else -> CustomerSheetState.IDLE
         }
@@ -757,48 +794,43 @@ fun MainMapContent(
         voiceNavManager.setEnabled(viewModel.isFullscreenMap)
     }
 
-    // Update markers and drivers
-    LaunchedEffect(mapLibreMap, viewModel.drivers, viewModel.orderStatusData) {
+    // Update markers and drivers using SymbolLayer (GPU Accelerated)
+    LaunchedEffect(mapLibreMap, viewModel.drivers, viewModel.orderStatusData, motorbikeBitmap, carBitmap) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val currentStatus = viewModel.orderStatusData
-        val driversToShow = if (currentStatus?.status == "ASSIGNED" || currentStatus?.status == "IN_TRANSIT" || currentStatus?.status == "ARRIVED") {
+        val rawDrivers = if (currentStatus?.status == "ASSIGNED" || currentStatus?.status == "IN_TRANSIT" || currentStatus?.status == "ARRIVED") {
             val dLat = currentStatus.driverLat; val dLng = currentStatus.driverLng
             if (dLat != null && dLng != null) { listOf(DriverLocation(id = currentStatus.driverId ?: "0", latitude = dLat, longitude = dLng, bearing = currentStatus.driverBearing ?: 0f, vehicleType = currentStatus.driverVehicle)) } else emptyList()
         } else { viewModel.drivers }
 
-        @Suppress("DEPRECATION")
-        val currentDriverIds = driversToShow.map { it.id }.toSet()
-        val iterator = activeMarkers.entries.iterator()
-        while (iterator.hasNext()) { val entry = iterator.next(); if (entry.key !in currentDriverIds) { map.removeMarker(entry.value); iterator.remove() } }
+        // De-duplicate by ID
+        val driversToShow = rawDrivers.distinctBy { it.id }
 
-        driversToShow.forEach { driver ->
-            val id = driver.id; val marker = activeMarkers[id]; val endPos = LatLng(driver.latitude, driver.longitude)
-            val vehicleTypeStr = driver.vehicleType?.lowercase() ?: ""
-            val baseBitmap = if (vehicleTypeStr.contains("okada") || vehicleTypeStr.contains("bike") || vehicleTypeStr.contains("motorcycle") || vehicleTypeStr.contains("rider") || vehicleTypeStr.contains("motorbike") || vehicleTypeStr.contains("motor")) {
-                motorbikeBitmap ?: ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap()
-            } else { ContextCompat.getDrawable(context, R.drawable.ic_car_saloon)?.toBitmap() }
-            
-            val carIcon = baseBitmap?.let { 
-                val scaled = if (it.width != 40) it.scale(40, 40, false) else it
-                org.maplibre.android.annotations.IconFactory.getInstance(context).fromBitmap(scaled) 
-            }
+        map.getStyle { style ->
+            // Add Okada icon
+            motorbikeBitmap?.let { if (style.getImage("icon-okada") == null) style.addImage("icon-okada", it) }
+            // Add Car icon
+            carBitmap?.let { if (style.getImage("icon-car") == null) style.addImage("icon-car", it) }
+            // Fallback for older code referencing "driver-icon"
+            (carBitmap ?: motorbikeBitmap)?.let { if (style.getImage("driver-icon") == null) style.addImage("driver-icon", it) }
 
-            if (marker == null) {
-                @Suppress("DEPRECATION")
-                val newMarker = map.addMarker(org.maplibre.android.annotations.MarkerOptions().position(endPos).apply { if (carIcon != null) icon(carIcon) })
-                activeMarkers[id] = newMarker
-            } else {
-                if (carIcon != null) marker.icon = carIcon
-                if (!animatingMarkerIds.contains(id)) {
-                    val startPos = marker.position
-                    val dLat = startPos.latitude - endPos.latitude
-                    val dLng = startPos.longitude - endPos.longitude
-                    val distanceSq = dLat * dLat + dLng * dLng
-                    if (distanceSq > 0.00000001) { 
-                        animatingMarkerIds.add(id)
-                        animateMarker(marker, startPos, endPos) { animatingMarkerIds.remove(id) } 
+            val source = style.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("drivers-source")
+            if (source != null) {
+                val features = driversToShow.map { driver ->
+                    val feature = org.maplibre.geojson.Feature.fromGeometry(
+                        org.maplibre.geojson.Point.fromLngLat(driver.longitude, driver.latitude)
+                    )
+                    feature.addNumberProperty("bearing", driver.bearing)
+                    
+                    val vType = driver.vehicleType?.lowercase() ?: ""
+                    val iconId = when {
+                        vType.contains("okada") || vType.contains("bike") || vType.contains("motor") -> "icon-okada"
+                        else -> "icon-car"
                     }
+                    feature.addStringProperty("icon-id", iconId)
+                    feature
                 }
+                source.setGeoJson(org.maplibre.geojson.FeatureCollection.fromFeatures(features))
             }
         }
     }
@@ -941,6 +973,15 @@ fun MainMapContent(
                                         locationComponent.isLocationComponentEnabled = true
                                         locationComponent.renderMode = RenderMode.NORMAL
                                     }
+                                    
+                                    // GPU Optimization: Symbol Layers for nearby drivers
+                                    style.addSource(org.maplibre.android.style.sources.GeoJsonSource("drivers-source"))
+                                    style.addLayer(org.maplibre.android.style.layers.SymbolLayer("drivers-layer", "drivers-source").withProperties(
+                                        org.maplibre.android.style.layers.PropertyFactory.iconImage(org.maplibre.android.style.expressions.Expression.get("icon-id")),
+                                        org.maplibre.android.style.layers.PropertyFactory.iconRotate(org.maplibre.android.style.expressions.Expression.get("bearing")),
+                                        org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
+                                        org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true)
+                                    ))
                                 }
                                 map.addOnMapClickListener { focusManager.clearFocus(); false }
                             }
@@ -952,7 +993,11 @@ fun MainMapContent(
                     NavigationOverlay(instruction = viewModel.currentInstruction, currentLatLng = viewModel.currentLatLng, distanceKm = viewModel.distanceKm, durationMin = viewModel.durationMin, onExit = { viewModel.isFullscreenMap = false; viewModel.polylinePoints = emptyList() })
                 }
 
-                if (viewModel.currentOrderId == null && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
+                val status = viewModel.orderStatusData?.status
+                val isTerminalStatus = status == "CANCELLED" || status == "DELIVERED"
+                val hasActiveOrder = viewModel.currentOrderId != null && viewModel.orderStatusData != null && !isTerminalStatus
+
+                if (!hasActiveOrder && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 16.dp, end = 16.dp).statusBarsPadding()) {
                         Surface(modifier = Modifier.fillMaxWidth().height(64.dp).clickable { if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) viewModel.resetSearch() else viewModel.navigateTo(CustomerScreen.RouteSelection) }, shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 8.dp, border = BorderStroke(1.dp, BoltLightGray)) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {

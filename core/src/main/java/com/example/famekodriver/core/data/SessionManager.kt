@@ -18,7 +18,8 @@ class SessionManager(context: Context) {
         private const val KEY_USER_ROLE = "userRole"
         private const val KEY_COMPANY_NAME = "companyName"
         private const val KEY_VEHICLE_TYPE = "vehicleType"
-        private const val KEY_IS_FIRST_LOGIN = "isFirstLogin"
+        private const val KEY_IS_FIRST_LOGIN = "isLoginFirst"
+        private const val KEY_ACCEPTED_TERMS_VERSION = "acceptedTermsVersion"
 
         // Notification Settings
         private const val KEY_NOTIF_TRIP_UPDATES = "notif_trip_updates"
@@ -118,5 +119,11 @@ class SessionManager(context: Context) {
 
     fun setFirstLogin(isFirst: Boolean) {
         prefs.edit().putBoolean(KEY_IS_FIRST_LOGIN, isFirst).apply()
+    }
+
+    fun getAcceptedTermsVersion(): String? = prefs.getString(KEY_ACCEPTED_TERMS_VERSION, null)
+
+    fun setAcceptedTermsVersion(version: String) {
+        prefs.edit().putString(KEY_ACCEPTED_TERMS_VERSION, version).apply()
     }
 }

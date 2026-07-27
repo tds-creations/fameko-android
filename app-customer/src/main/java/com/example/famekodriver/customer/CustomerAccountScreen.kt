@@ -184,6 +184,13 @@ fun CustomerAccountScreen(
             subtitle = "Learn about our policies",
             onClick = { onNavigate(CustomerScreen.TermsAndConditions) }
         )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = BoltLightGray)
+        AccountMenuItem(
+            icon = Icons.Default.Security,
+            title = "Privacy Policy",
+            subtitle = "How we handle your data",
+            onClick = { onNavigate(CustomerScreen.PrivacyPolicy) }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
         
