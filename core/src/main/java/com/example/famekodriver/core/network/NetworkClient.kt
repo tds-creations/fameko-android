@@ -1,5 +1,6 @@
 package com.example.famekodriver.core.network
 
+import com.example.famekodriver.core.BuildConfig
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -28,7 +29,7 @@ object NetworkClient {
     // TOGGLE THIS: true = Local Backend, false = Production
     private const val USE_LOCAL_BACKEND = false
 
-    private const val PRODUCTION_URL = "https://fameko-backend-production.up.railway.app/"
+    private const val PRODUCTION_URL = "https://fameko-android-production.up.railway.app/"
     private const val PRODUCTION_ROUTING_URL = "https://fameko-routing-production.up.railway.app/"
 
     // 10.0.2.2 is ONLY for Emulators. 
@@ -85,8 +86,8 @@ object NetworkClient {
             .build()
     }
 
-    // TomTom API Key - Move to BuildConfig in production
-    const val TOMTOM_API_KEY = "hHWkdbEaHXN26BzptZvmEPwHFg6ymVTg"
+    // TomTom API Key - Accessed via Secrets Gradle Plugin
+    val TOMTOM_API_KEY = BuildConfig.TOMTOM_API_KEY
 
     val famekoApi: FamekoApiService by lazy {
         retrofit.create(FamekoApiService::class.java)
