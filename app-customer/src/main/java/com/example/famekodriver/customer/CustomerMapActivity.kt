@@ -803,7 +803,16 @@ fun MainMapContent(
                 if (viewModel.isFullscreenMap) { locationComponent.cameraMode = CameraMode.NONE; locationComponent.renderMode = RenderMode.GPS } 
                 else { locationComponent.cameraMode = CameraMode.NONE; locationComponent.renderMode = RenderMode.NORMAL }
             }
-        } else { map.locationComponent.isLocationComponentEnabled = false }
+        } else {
+            try {
+                val locationComponent = map.locationComponent
+                if (locationComponent.isLocationComponentActivated) {
+                    locationComponent.isLocationComponentEnabled = false
+                }
+            } catch (_: Exception) {
+                // Ignore if not initialized
+            }
+        }
     }
 
     LaunchedEffect(viewModel.isFullscreenMap) {
