@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.ktor) apply false
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.firebase.crashlytics) apply false
+    alias(libs.plugins.secrets.gradle.plugin) apply false
     alias(libs.plugins.ksp) apply false
 }
 

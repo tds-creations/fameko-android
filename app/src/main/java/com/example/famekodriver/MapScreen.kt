@@ -44,6 +44,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
+import com.example.famekodriver.core.ui.LocationDisclosureDialog
 import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.core.utils.LocationUtils
 import com.example.famekodriver.core.utils.MapCacheManager
@@ -111,6 +112,19 @@ fun MapScreen(
     ) { hasAudioPermission = it }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
+    var showLocationDisclosure by remember { mutableStateOf(!hasLocationPermission) }
+
+    if (showLocationDisclosure) {
+        LocationDisclosureDialog(
+            onConfirm = {
+                showLocationDisclosure = false
+                locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            },
+            onDismiss = {
+                showLocationDisclosure = false
+            }
+        )
+    }
 
     var vehicleType by remember(vehicleTypeFromSession) { mutableStateOf(vehicleTypeFromSession.lowercase()) }
 
@@ -142,7 +156,7 @@ fun MapScreen(
     }
 
     LaunchedEffect(Unit) {
-        if (!hasLocationPermission) locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        // Permission request is now handled by the disclosure dialog
     }
 
     LaunchedEffect(status) {

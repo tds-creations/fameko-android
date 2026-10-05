@@ -56,6 +56,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.*
+import com.example.famekodriver.core.ui.LocationDisclosureDialog
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.network.NetworkClient
 import com.example.famekodriver.core.utils.ImageLinks
@@ -590,6 +591,20 @@ fun MainMapContent(
     }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasLocationPermission = it }
 
+    var showLocationDisclosure by remember { mutableStateOf(!hasLocationPermission) }
+
+    if (showLocationDisclosure) {
+        LocationDisclosureDialog(
+            onConfirm = {
+                showLocationDisclosure = false
+                launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            },
+            onDismiss = {
+                showLocationDisclosure = false
+            }
+        )
+    }
+
     var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var carBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
@@ -604,7 +619,9 @@ fun MainMapContent(
         if (carResult != null) carBitmap = carResult.scale(40, 40, false)
     }
 
-    LaunchedEffect(Unit) { if (!hasLocationPermission) launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
+    LaunchedEffect(Unit) {
+        // Permission request is now handled by the disclosure dialog
+    }
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var hasCentredOnLocation by remember { mutableStateOf(false) }

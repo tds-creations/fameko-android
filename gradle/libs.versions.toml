@@ -45,6 +45,7 @@ playServicesAuth = "21.2.0"
 googleApiClient = "2.0.0"
 googleAuthLibrary = "1.19.0"
 firebaseCrashlytics = "3.0.2"
+secrets-gradle-plugin = "2.0.1"
 h3 = "4.4.0"
 jedis = "5.1.2"
 jakarta-mail = "2.0.1"
@@ -142,4 +143,5 @@ ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlytics" }
+secrets-gradle-plugin = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secrets-gradle-plugin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

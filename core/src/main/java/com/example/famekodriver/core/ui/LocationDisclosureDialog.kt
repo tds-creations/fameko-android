@@ -43,7 +43,7 @@ fun LocationDisclosureDialog(
                 
                 Text(
                     text = "Location Access for Better Service",
-                    style = MaterialTheme.colorScheme.headlineSmall,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
@@ -52,7 +52,7 @@ fun LocationDisclosureDialog(
                 
                 Text(
                     text = "Fameko collects location data to enable ride tracking, driver matching, and accurate ETA calculations even when the app is closed or not in use.",
-                    style = MaterialTheme.colorScheme.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )

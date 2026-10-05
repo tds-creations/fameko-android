@@ -6,6 +6,11 @@
 -keep class org.postgresql.** { *; }
 -keep class java.sql.** { *; }
 -dontwarn org.postgresql.**
+-dontwarn javax.naming.**
+-dontwarn javax.security.**
+-dontwarn javax.xml.stream.**
+-dontwarn javax.xml.transform.stax.**
+-dontwarn org.ietf.jgss.**
 
 # Gson specific rules
 -keepattributes Signature, *Annotation*, EnclosingMethod

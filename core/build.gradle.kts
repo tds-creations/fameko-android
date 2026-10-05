@@ -3,6 +3,8 @@ import org.gradle.api.JavaVersion
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.secrets.gradle.plugin)
     alias(libs.plugins.ksp)
 }
 
@@ -13,6 +15,11 @@ android {
     defaultConfig {
         minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -38,6 +45,14 @@ dependencies {
     api(libs.androidx.appcompat)
     api(libs.postgresql.android) // Downgraded for Android compatibility (ManagementFactory issue)
     api(libs.kotlinx.coroutines.android)
+
+    // Compose
+    api(platform(libs.androidx.compose.bom))
+    api(libs.androidx.compose.ui)
+    api(libs.androidx.compose.ui.graphics)
+    api(libs.androidx.compose.ui.tooling.preview)
+    api(libs.androidx.compose.material3)
+    api(libs.androidx.compose.material.icons.extended)
     
     // Networking
     api(libs.retrofit)
