@@ -218,7 +218,6 @@ object DatabaseInitializer {
                 destination_lat DOUBLE PRECISION,
                 destination_lng DOUBLE PRECISION,
                 stops TEXT,
-                duration_hours INTEGER NOT NULL,
                 total_price NUMERIC(12, 2) NOT NULL,
                 status TEXT DEFAULT 'PENDING',
                 booking_code TEXT UNIQUE,
