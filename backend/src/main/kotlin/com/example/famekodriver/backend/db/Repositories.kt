@@ -1303,6 +1303,46 @@ object DatabaseRepository {
         return list
     }
 
+    fun getDriverDeliveryHistory(driverId: Int): List<Delivery> {
+        val list = mutableListOf<Delivery>()
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val sql = """
+                SELECT d.*, c.id as customer_id, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare
+                FROM deliveries d
+                JOIN orders o ON d.order_id = o.id
+                JOIN customers c ON o.customer_id = c.id
+                WHERE d.driver_id = ? AND d.status IN ('DELIVERED', 'CANCELLED')
+                ORDER BY d.id DESC
+            """.trimIndent()
+            val stmt = conn.prepareStatement(sql)
+            stmt.setInt(1, driverId)
+            val rs = stmt.executeQuery()
+            while (rs.next()) {
+                list.add(Delivery(
+                    id = rs.getInt("id").toString(),
+                    orderId = rs.getInt("order_id"),
+                    driverId = rs.getInt("driver_id").toString(),
+                    pickupLocation = rs.getString("pickup_location"),
+                    dropOffLocation = rs.getString("dropoff_location"),
+                    pickupLat = rs.getDouble("pickup_lat"),
+                    pickupLng = rs.getDouble("pickup_lng"),
+                    dropOffLat = rs.getDouble("dropoff_lat"),
+                    dropOffLng = rs.getDouble("dropoff_lng"),
+                    status = DeliveryStatus.valueOf(rs.getString("status").uppercase()),
+                    distanceKm = rs.getDouble("distance_km"),
+                    estimatedEarnings = rs.getDouble("estimated_earnings"),
+                    customerId = rs.getInt("customer_id"),
+                    pickupEtaMin = 5.0,
+                    customerName = rs.getString("customer_name"),
+                    customerPhone = rs.getString("customer_phone"),
+                    customerProfilePic = rs.getString("customer_profile_pic"),
+                    totalFare = rs.getDouble("total_fare")
+                ))
+            }
+        }
+        return list
+    }
+
     fun getDriverRentals(driverId: Int): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->

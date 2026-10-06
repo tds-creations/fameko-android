@@ -672,6 +672,16 @@ class DriverRepository private constructor() {
         }
     }
 
+    suspend fun getDriverHistory(driverId: String): Result<List<Delivery>> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getDriverHistory(driverId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e("FamekoRepo", "API Get Driver History failed", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun acceptDelivery(driverId: String, deliveryId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.acceptDelivery(driverId, deliveryId)

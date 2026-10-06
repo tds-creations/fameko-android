@@ -96,6 +96,11 @@ interface FamekoApiService {
         @Path("id") driverId: String
     ): List<Delivery>
 
+    @GET("driver/my-history/{id}")
+    suspend fun getDriverHistory(
+        @Path("id") driverId: String
+    ): List<Delivery>
+
     @GET("driver/available-deliveries")
     suspend fun getAvailableDeliveries(
         @Query("lat") lat: Double,
