@@ -32,7 +32,11 @@ android {
     }
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            excludes += listOf(
+                "**/libimagepipeline.so",
+                "**/libnative-filters.so",
+                "**/libnative-imagetranscoder.so"
+            )
         }
     }
     compileOptions {
