@@ -38,12 +38,21 @@ fun RideHistoryScreen(onBack: () -> Unit) {
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        repository.getMyDeliveries(driverId).onSuccess { list ->
-            // Show only completed or cancelled for history
-            history = list.filter { (it.status == DeliveryStatus.DELIVERED) || (it.status == DeliveryStatus.CANCELLED) }
-                .sortedByDescending { it.id }
-        }
-        isLoading = false
+        repository.getMyDeliveries(driverId).fold(
+            onSuccess = { list ->
+                history = list.filter { 
+                    it.status == DeliveryStatus.DELIVERED || 
+                    it.status == DeliveryStatus.CANCELLED ||
+                    it.status.name.equals("COMPLETED", ignoreCase = true) ||
+                    it.status.name.equals("FINISHED", ignoreCase = true)
+                }.sortedByDescending { it.id }
+                isLoading = false
+            },
+            onFailure = {
+                history = emptyList()
+                isLoading = false
+            }
+        )
     }
 
     Scaffold(
