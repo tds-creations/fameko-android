@@ -492,7 +492,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
             driverBearing = bearing
         }
         
-        val delivery = currentDelivery
+        val delivery = currentDelivery ?: activeRequest
         if (delivery != null && navigationPath.isNotEmpty()) {
             // Update remaining distance and ETA dynamically along path
             updateRemainingDistance(lat, lng)
@@ -523,14 +523,14 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 closestIdx = i
             }
         }
-        var remDistMeters = 0.0
+        var remDistMeters = LocationUtils.calculateDistance(currentLat, currentLng, navigationPath[closestIdx].latitude, navigationPath[closestIdx].longitude)
         for (i in closestIdx until navigationPath.size - 1) {
             val p1 = navigationPath[i]
             val p2 = navigationPath[i + 1]
             remDistMeters += LocationUtils.calculateDistance(p1.latitude, p1.longitude, p2.latitude, p2.longitude)
         }
         distanceKm = remDistMeters / 1000.0
-        durationMin = (distanceKm / 30.0) * 60.0
+        durationMin = maxOf(1.0, (distanceKm / 30.0) * 60.0)
     }
 
     /**
