@@ -299,17 +299,16 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(viewModel.currentDelivery, viewModel.activeRequest, viewModel.driverLatLng) {
+    LaunchedEffect(viewModel.currentDelivery, viewModel.activeRequest) {
         val delivery = viewModel.currentDelivery ?: viewModel.activeRequest
-        val driverPos = viewModel.driverLatLng
-        if (delivery != null && driverPos != null) {
-            val dest = if (delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.ARRIVED || delivery.status == DeliveryStatus.PENDING) {
-                LatLng(delivery.pickupLat ?: 0.0, delivery.pickupLng ?: 0.0)
-            } else {
-                LatLng(delivery.dropOffLat ?: 0.0, delivery.dropOffLng ?: 0.0)
-            }
-            if (dest.latitude != 0.0) {
-                viewModel.calculateRoute(driverPos, dest)
+        if (delivery != null) {
+            val pLat = delivery.pickupLat ?: 0.0
+            val pLng = delivery.pickupLng ?: 0.0
+            val dLat = delivery.dropOffLat ?: 0.0
+            val dLng = delivery.dropOffLng ?: 0.0
+
+            if (pLat != 0.0 && pLng != 0.0 && dLat != 0.0 && dLng != 0.0) {
+                viewModel.calculateRoute(LatLng(pLat, pLng), LatLng(dLat, dLng))
             }
         }
     }
