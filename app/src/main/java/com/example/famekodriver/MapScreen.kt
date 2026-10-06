@@ -436,6 +436,7 @@ fun MapScreen(
     Scaffold(
         floatingActionButton = {
             Column(
+                modifier = Modifier.padding(bottom = 140.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.End
             ) {

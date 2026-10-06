@@ -186,39 +186,52 @@ object DatabaseRepository {
     fun getDriverStats(id: Int): DriverStats? {
         try {
             DatabaseInitializer.getDataSource().connection.use { conn ->
-                val sql = """
-                    SELECT 
-                        COALESCE(ds.is_online, d.is_online) as is_online,
-                        COALESCE(ds.total_deliveries, 0) as total_deliveries,
-                        COALESCE(ds.total_earnings, 0.0) as total_earnings,
-                        COALESCE(ds.earnings_today, 0.0) as earnings_today,
-                        COALESCE(ds.completed_today, 0) as completed_today,
-                        ds.updated_at,
-                        d.rating as avg_rating, 
-                        d.rating_count 
-                    FROM drivers d
-                    LEFT JOIN driver_stats ds ON d.id = ds.driver_id 
-                    WHERE d.id = ?
-                """.trimIndent()
-                val stmt = conn.prepareStatement(sql)
-                stmt.setInt(1, id)
-                val rs = stmt.executeQuery()
-                if (rs.next()) {
-                    val updatedAt = rs.getTimestamp("updated_at")
-                    val isToday = updatedAt != null && updatedAt.toLocalDateTime().toLocalDate() == LocalDate.now()
-                    
-                    return DriverStats(
-                        isOnline = rs.getBoolean("is_online"),
-                        activeDeliveries = 0,
-                        completedToday = if (isToday) rs.getInt("completed_today") else 0,
-                        earningsToday = if (isToday) rs.getDouble("earnings_today") else 0.0,
-                        rating = rs.getDouble("avg_rating"),
-                        ratingCount = rs.getInt("rating_count"),
-                        totalDeliveries = rs.getInt("total_deliveries"),
-                        completionRate = 100, 
-                        totalEarnings = rs.getDouble("total_earnings")
-                    )
+                val driverSql = "SELECT is_online, rating, rating_count FROM drivers WHERE id = ?"
+                val driverStmt = conn.prepareStatement(driverSql)
+                driverStmt.setInt(1, id)
+                val driverRs = driverStmt.executeQuery()
+                var isOnline = false
+                var rating = 5.0
+                var ratingCount = 0
+                if (driverRs.next()) {
+                    isOnline = driverRs.getBoolean("is_online")
+                    rating = driverRs.getDouble("rating")
+                    ratingCount = driverRs.getInt("rating_count")
                 }
+
+                val lifetimeSql = "SELECT COUNT(*), COALESCE(SUM(estimated_earnings), 0.0) FROM deliveries WHERE driver_id = ? AND status = 'DELIVERED'"
+                val lifetimeStmt = conn.prepareStatement(lifetimeSql)
+                lifetimeStmt.setInt(1, id)
+                val lifetimeRs = lifetimeStmt.executeQuery()
+                var totalDeliveries = 0
+                var totalEarnings = 0.0
+                if (lifetimeRs.next()) {
+                    totalDeliveries = lifetimeRs.getInt(1)
+                    totalEarnings = lifetimeRs.getDouble(2)
+                }
+
+                val todaySql = "SELECT COUNT(*), COALESCE(SUM(estimated_earnings), 0.0) FROM deliveries WHERE driver_id = ? AND status = 'DELIVERED' AND DATE(updated_at) = CURRENT_DATE"
+                val todayStmt = conn.prepareStatement(todaySql)
+                todayStmt.setInt(1, id)
+                val todayRs = todayStmt.executeQuery()
+                var completedToday = 0
+                var earningsToday = 0.0
+                if (todayRs.next()) {
+                    completedToday = todayRs.getInt(1)
+                    earningsToday = todayRs.getDouble(2)
+                }
+
+                return DriverStats(
+                    isOnline = isOnline,
+                    activeDeliveries = 0,
+                    completedToday = completedToday,
+                    earningsToday = earningsToday,
+                    rating = rating,
+                    ratingCount = ratingCount,
+                    totalDeliveries = totalDeliveries,
+                    completionRate = 100,
+                    totalEarnings = totalEarnings
+                )
             }
         } catch (e: Exception) {
             e.printStackTrace()
