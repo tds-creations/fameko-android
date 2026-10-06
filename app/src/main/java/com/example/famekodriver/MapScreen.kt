@@ -184,7 +184,19 @@ fun MapScreen(
                         val lastBearing = viewModel.driverBearing
                         
                         val distanceMoved = if (lastPos != null) LocationUtils.calculateDistance(location.latitude, location.longitude, lastPos.latitude, lastPos.longitude) else 10.0
-                        val bearingDiff = abs(location.bearing - lastBearing)
+                        
+                        val effectiveBearing = when {
+                            location.hasBearing() && location.speed > 0.5 -> location.bearing
+                            lastPos != null && distanceMoved > 1.0 -> {
+                                val results = FloatArray(2)
+                                android.location.Location.distanceBetween(lastPos.latitude, lastPos.longitude, location.latitude, location.longitude, results)
+                                val calc = results[1]
+                                if (calc != 0f) calc else lastBearing
+                            }
+                            else -> lastBearing
+                        }
+
+                        val bearingDiff = abs(effectiveBearing - lastBearing)
 
                         // Optimization: Only animate camera if movement is significant (> 2 meters or > 5 degrees)
                         if (distanceMoved > 2.0 || bearingDiff > 5.0 || lastPos == null) {
@@ -200,7 +212,7 @@ fun MapScreen(
                             val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
                                 .target(LatLng(location.latitude, location.longitude))
                                 .zoom(targetZoom)
-                                .bearing(location.bearing.toDouble()) // Align map with movement
+                                .bearing(effectiveBearing.toDouble()) // Align map with movement
                                 .tilt(50.0) // 3D perspective for road view
                                 .build()
                             
@@ -210,8 +222,8 @@ fun MapScreen(
                             
                             map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
                         }
+                        viewModel.updateDriverLocation(location.latitude, location.longitude, effectiveBearing)
                     }
-                    viewModel.updateDriverLocation(location.latitude, location.longitude, location.bearing)
                 }
             }
 
