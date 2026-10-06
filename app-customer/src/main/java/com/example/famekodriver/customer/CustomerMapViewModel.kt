@@ -777,7 +777,7 @@ class CustomerMapViewModel(
             calculateRoute()
         } else {
             isSearchMode = true
-            navigateTo(CustomerScreen.MainMap)
+            navigateTo(CustomerScreen.RouteSelection)
         }
     }
 
