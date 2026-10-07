@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -1242,186 +1244,285 @@ fun IncomingRequestSheet(
     onCancel: () -> Unit,
     isAccepting: Boolean
 ) {
+    val remainingSec = (timerProgress * 30).toInt().coerceIn(0, 30)
+
     Card(
         modifier = Modifier
             .padding(12.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(8.dp),
-        border = BorderStroke(1.dp, BoltLightGray.copy(alpha = 0.5f))
+        elevation = CardDefaults.cardElevation(16.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
         ) {
-            // Thinner Timer Progress Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-                    .background(BoltLightGray.copy(alpha = 0.3f))
+            // Top Row: Fare, Surge & Circular Timer
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(timerProgress)
-                        .fillMaxHeight()
-                        .background(BoltOrange)
-                )
-            }
-
-            Column(modifier = Modifier.padding(12.dp)) {
-                // Header Info (Compact)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = BoltLightGray,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        if (!request.customerProfilePic.isNullOrEmpty()) {
-                            AsyncImage(
-                                model = request.customerProfilePic,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "GH₵ ${String.format(Locale.getDefault(), "%.2f", request.estimatedEarnings)}",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(
+                            color = Color(0xFFFEF3C7),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                "⚡ 1.5x Surge",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFD97706),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
-                        } else {
-                            Icon(Icons.Default.Person, null, modifier = Modifier.padding(10.dp), tint = Color.Gray)
+                        }
+                        Surface(
+                            color = Color(0xFFECFDF5),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                "Cash Payment",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF059669),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
                         }
                     }
-                    
-                    Spacer(Modifier.width(10.dp))
-                    
+                }
+
+                // Circular Timer Indicator
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    CircularProgressIndicator(
+                        progress = { timerProgress },
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color(0xFFF97316),
+                        trackColor = Color(0xFFF1F5F9),
+                        strokeWidth = 5.dp,
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "$remainingSec",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                        Text(
+                            text = "SEC",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Passenger / Rider Info Card
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFFF8FAFC),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Avatar Box
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0F172A)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val initials = request.customerName?.split(" ")?.let { if (it.size > 1) "${it[0].first()}${it[1].first()}" else it[0].take(2) } ?: "AO"
+                        Text(
+                            text = initials.uppercase(),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
                     Column(Modifier.weight(1f)) {
                         Text(
-                            text = request.customerName ?: "Customer",
+                            text = request.customerName ?: "Ama Osei",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = BoltDark,
+                            color = Color(0xFF0F172A)
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
+                            Text("4.9 (128 trips) • Standard", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                        }
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "${String.format(Locale.US, "%.1f", request.distanceKm)} km",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color(0xFF0F172A)
+                        )
+                        Text(
+                            text = "~${(request.distanceKm * 2.5).toInt()} mins trip",
+                            fontSize = 11.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Route Timeline
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFF8FAFC), RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Pickup
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(Color(0xFF10B981), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "PICKUP SPOT (${request.pickupEtaMin?.toInt() ?: 3} MINS)",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF10B981)
+                        )
+                        Text(
+                            text = request.pickupLocation,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = "New ride request",
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Surface(
-                        color = FamekoLightBlue,
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Schedule, null, modifier = Modifier.size(12.dp), tint = FamekoPrimary)
-                            Spacer(Modifier.width(3.dp))
-                            Text(
-                                text = "${request.pickupEtaMin?.toInt() ?: 4} min",
-                                fontWeight = FontWeight.Bold,
-                                color = FamekoPrimary,
-                                fontSize = 12.sp
-                            )
-                        }
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
-                
-                // Condensed Route (Pickup & Dropoff)
-                Column(
+                // Divider line
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(BoltLightGray.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "PICKUP",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
-                            modifier = Modifier.width(55.dp)
-                        )
-                        Icon(Icons.Default.MyLocation, null, tint = BoltGreen, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = request.pickupLocation,
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = BoltDark,
-                            fontWeight = FontWeight.Medium
-                        )
+                        .padding(start = 5.dp)
+                        .width(2.dp)
+                        .height(16.dp)
+                        .background(Color(0xFFCBD5E1))
+                )
+
+                // Dropoff
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(Color(0xFFF97316), CircleShape)
+                    ) {
+                        Box(modifier = Modifier.size(4.dp).background(Color.White, CircleShape).align(Alignment.Center))
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
                         Text(
-                            text = "DROPOFF",
+                            text = "DROP-OFF DESTINATION",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Gray,
-                            modifier = Modifier.width(55.dp)
+                            color = Color(0xFFF97316)
                         )
-                        Icon(Icons.Default.Navigation, null, tint = BoltOrange, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = request.dropOffLocation,
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = BoltDark,
-                            fontWeight = FontWeight.Medium
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(18.dp))
 
-                // Slimmer Modern Action Bar (height 44.dp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier
+                        .weight(0.9f)
+                        .height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF475569))
                 ) {
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier
-                            .weight(0.8f)
-                            .height(44.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
-                    ) {
-                        Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("DECLINE", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    
-                    Button(
-                        onClick = onAccept,
-                        modifier = Modifier
-                            .weight(1.2f)
-                            .height(44.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
-                        enabled = !isAccepting,
-                        elevation = ButtonDefaults.buttonElevation(2.dp)
-                    ) {
-                        if (isAccepting) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
+                    Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Decline", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+
+                Button(
+                    onClick = onAccept,
+                    modifier = Modifier
+                        .weight(1.3f)
+                        .height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                    enabled = !isAccepting,
+                    elevation = ButtonDefaults.buttonElevation(4.dp)
+                ) {
+                    if (isAccepting) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Column(horizontalAlignment = Alignment.Start) {
                                 Text(
                                     text = "ACCEPT RIDE",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 13.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "GH₵ ${String.format(Locale.getDefault(), "%.2f", request.estimatedEarnings)}",
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
+                                    color = Color.White.copy(alpha = 0.9f)
                                 )
                             }
                         }
