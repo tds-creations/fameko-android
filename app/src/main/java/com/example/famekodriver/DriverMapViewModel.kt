@@ -494,8 +494,9 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         
         val delivery = currentDelivery ?: activeRequest
         if (delivery != null && navigationPath.isNotEmpty()) {
-            // Update remaining distance and ETA dynamically along path
+            // Update remaining distance, ETA, and turn instructions dynamically along path
             updateRemainingDistance(lat, lng)
+            updateCurrentInstruction(lat, lng)
 
             // Off-route detection
             checkOffRoute(lat, lng)
@@ -509,6 +510,27 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 durationMin,
                 distanceKm
             )
+        }
+    }
+
+    private fun updateCurrentInstruction(currentLat: Double, currentLng: Double) {
+        if (instructions.isEmpty()) return
+        
+        val currentIndex = instructions.indexOf(currentInstruction)
+        if (currentIndex == -1) {
+            currentInstruction = instructions.first()
+            return
+        }
+
+        currentInstruction?.point?.let { pt ->
+            if (pt.size >= 2) {
+                val instrLng = pt[0]
+                val instrLat = pt[1]
+                val dist = LocationUtils.calculateDistance(currentLat, currentLng, instrLat, instrLng)
+                if (dist < 35.0 && currentIndex < instructions.size - 1) {
+                    currentInstruction = instructions[currentIndex + 1]
+                }
+            }
         }
     }
 
