@@ -1,7 +1,10 @@
 package com.example.famekodriver.customer
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -94,6 +97,99 @@ fun CustomerLandingScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Modern Floating Search Capsule Card
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clickable(enabled = !isRentalActive) { onSearchClick() },
+            shape = RoundedCornerShape(16.dp),
+            color = if (isRentalActive) BoltLightGray.copy(alpha = 0.5f) else Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(Color(0xFF10B981), CircleShape)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = if (isRentalActive) "Complete rental to book rides" else "Where to?",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isRentalActive) Color.Gray else BoltDark,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if (!isRentalActive) {
+                    Surface(
+                        onClick = onScheduleClick,
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.White,
+                        modifier = Modifier.height(36.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        ) {
+                            Icon(Icons.Default.Schedule, null, tint = BoltDark, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Now", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Quick Destination Shortcuts Grid (Home, Work, Recent, Saved)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            ShortcutGridItem(
+                title = "Home",
+                subtitle = "Temple St",
+                icon = Icons.Default.Home,
+                containerColor = Color(0xFFECFDF5),
+                contentColor = Color(0xFF059669),
+                onClick = onSearchClick
+            )
+            ShortcutGridItem(
+                title = "Work",
+                subtitle = "Airport City",
+                icon = Icons.Default.Work,
+                containerColor = Color(0xFFEFF6FF),
+                contentColor = Color(0xFF2563EB),
+                onClick = onSearchClick
+            )
+            ShortcutGridItem(
+                title = "Recent",
+                subtitle = "Achimota",
+                icon = Icons.Default.History,
+                containerColor = Color(0xFFF1F5F9),
+                contentColor = Color(0xFF475569),
+                onClick = onSearchClick
+            )
+            ShortcutGridItem(
+                title = "Saved",
+                subtitle = "4 spots",
+                icon = Icons.Default.Star,
+                containerColor = Color(0xFFFEF3C7),
+                contentColor = Color(0xFFD97706),
+                onClick = onSearchClick
+            )
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
         // Service Grid - Row 1
         Row(modifier = Modifier.fillMaxWidth()) {
             ServiceGridItem(
@@ -137,49 +233,41 @@ fun CustomerLandingScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        // Search Bar with "Later" button
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .clickable(enabled = !isRentalActive) { onSearchClick() },
-            shape = RoundedCornerShape(12.dp),
-            color = if (isRentalActive) BoltLightGray.copy(alpha = 0.5f) else BoltLightGray
+        // Around You Fleet Tier Preview Carousel
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 16.dp)
+            Text("Around You", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Gray, letterSpacing = 1.sp)
+            Surface(
+                color = Color(0xFFECFDF5),
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Icon(Icons.Default.Search, null, tint = if (isRentalActive) Color.Gray else BoltDark, modifier = Modifier.size(24.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = if (isRentalActive) "Complete rental to book rides" else "Where to?",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isRentalActive) Color.Gray else BoltDark,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                if (!isRentalActive) {
-                    Surface(
-                        onClick = onScheduleClick,
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White,
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp)
-                        ) {
-                            Icon(Icons.Default.Schedule, null, tint = BoltDark, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Later", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                    }
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Fastest pickup 2 min", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
                 }
             }
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FleetTierCard("Standard", "2m away", "$8.40", Color(0xFFF8FAFC), Color(0xFF0F172A))
+            FleetTierCard("Eco Electric", "4m away", "$8.90", Color(0xFFECFDF5), Color(0xFF065F46))
+            FleetTierCard("Comfort XL", "6m away", "$14.20", Color(0xFFF8FAFC), Color(0xFF0F172A))
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -199,6 +287,61 @@ fun CustomerLandingScreen(
 }
 
 @Composable
+fun ShortcutGridItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = containerColor,
+            modifier = Modifier.size(56.dp),
+            border = BorderStroke(1.dp, contentColor.copy(alpha = 0.2f))
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = contentColor, modifier = Modifier.size(24.dp))
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = BoltDark)
+        Text(subtitle, fontSize = 10.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+fun FleetTierCard(title: String, eta: String, price: String, bgColor: Color, textColor: Color) {
+    Surface(
+        modifier = Modifier
+            .width(140.dp)
+            .height(90.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = bgColor,
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = textColor)
+                Text(eta, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.DirectionsCar, null, tint = textColor, modifier = Modifier.size(24.dp))
+                Text(price, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = textColor)
+            }
+        }
+    }
+}
+
+@Composable
 fun ServiceGridItem(
     title: String,
     description: String,
@@ -210,7 +353,7 @@ fun ServiceGridItem(
 ) {
     Surface(
         modifier = modifier
-            .height(140.dp)
+            .height(130.dp)
             .clickable(enabled = enabled) { onClick() },
         shape = RoundedCornerShape(16.dp),
         color = if (enabled) BoltLightGray else BoltLightGray.copy(alpha = 0.5f)
@@ -224,7 +367,7 @@ fun ServiceGridItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier.size(56.dp),
                     tint = BoltDark
                 )
             } else if (imageUrl != null) {
@@ -232,21 +375,21 @@ fun ServiceGridItem(
                     model = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(64.dp)
                         .clip(RoundedCornerShape(12.dp)),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = title,
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 color = BoltDark
             )
             Text(
                 text = description,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 color = Color.Gray
             )
         }
@@ -281,14 +424,14 @@ fun RecentPlaceItem(
             Text(
                 text = suggestion.name ?: suggestion.displayName.split(",")[0],
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 color = if (enabled) BoltDark else Color.Gray,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = suggestion.displayName,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 color = Color.Gray,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
