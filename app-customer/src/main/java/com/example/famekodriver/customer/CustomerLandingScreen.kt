@@ -27,11 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.famekodriver.core.domain.model.LocationSuggestion
+import com.example.famekodriver.core.domain.model.RideEstimateResponse
 import com.example.famekodriver.core.domain.model.ServiceType
 import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
 import com.example.famekodriver.customer.ui.theme.FamekoBlue
+import java.util.Locale
 
 @Composable
 fun CustomerLandingScreen(
@@ -40,6 +42,7 @@ fun CustomerLandingScreen(
     onServiceSelected: (ServiceType) -> Unit,
     onScheduleClick: () -> Unit = {},
     recentPlaces: List<LocationSuggestion> = emptyList(),
+    rideEstimates: List<RideEstimateResponse> = emptyList(),
     onSearchClick: () -> Unit = {},
     onPlaceClick: (LocationSuggestion) -> Unit = {}
 ) {
@@ -70,7 +73,7 @@ fun CustomerLandingScreen(
                     .clickable { onViewRental(rental) },
                 colors = CardDefaults.cardColors(containerColor = FamekoBlue.copy(alpha = 0.05f)),
                 shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, FamekoBlue.copy(alpha = 0.2f))
+                border = BorderStroke(1.dp, FamekoBlue.copy(alpha = 0.2f))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -91,58 +94,6 @@ fun CustomerLandingScreen(
                         Text(rental["vehicle_name"]?.toString() ?: rental["name"]?.toString() ?: "Ongoing Trip", fontWeight = FontWeight.ExtraBold, color = BoltDark, fontSize = 16.sp)
                     }
                     Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = FamekoBlue, modifier = Modifier.size(16.dp))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Modern Floating Search Capsule Card
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .clickable(enabled = !isRentalActive) { onSearchClick() },
-            shape = RoundedCornerShape(16.dp),
-            color = if (isRentalActive) BoltLightGray.copy(alpha = 0.5f) else Color(0xFFF8FAFC),
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(Color(0xFF10B981), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = if (isRentalActive) "Complete rental to book rides" else "Where to?",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isRentalActive) Color.Gray else BoltDark,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                if (!isRentalActive) {
-                    Surface(
-                        onClick = onScheduleClick,
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White,
-                        modifier = Modifier.height(36.dp),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp)
-                        ) {
-                            Icon(Icons.Default.Schedule, null, tint = BoltDark, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Now", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                        }
-                    }
                 }
             }
         }
@@ -235,7 +186,7 @@ fun CustomerLandingScreen(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Around You Fleet Tier Preview Carousel
+        // Around You Fleet Tier Preview Carousel (Dynamically fetched with Cedis ₵)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -265,9 +216,21 @@ fun CustomerLandingScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            FleetTierCard("Standard", "2m away", "$8.40", Color(0xFFF8FAFC), Color(0xFF0F172A))
-            FleetTierCard("Eco Electric", "4m away", "$8.90", Color(0xFFECFDF5), Color(0xFF065F46))
-            FleetTierCard("Comfort XL", "6m away", "$14.20", Color(0xFFF8FAFC), Color(0xFF0F172A))
+            if (rideEstimates.isNotEmpty()) {
+                rideEstimates.forEach { estimate ->
+                    FleetTierCard(
+                        title = estimate.name,
+                        eta = "${estimate.pickupEtaMin}m away",
+                        price = "₵${String.format(Locale.getDefault(), "%.2f", estimate.fare)}",
+                        bgColor = Color(0xFFF8FAFC),
+                        textColor = Color(0xFF0F172A)
+                    )
+                }
+            } else {
+                FleetTierCard("Economy", "2m away", "₵8.40", Color(0xFFF8FAFC), Color(0xFF0F172A))
+                FleetTierCard("Comfort", "4m away", "₵12.50", Color(0xFFECFDF5), Color(0xFF065F46))
+                FleetTierCard("Pragya", "3m away", "₵6.00", Color(0xFFF8FAFC), Color(0xFF0F172A))
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
