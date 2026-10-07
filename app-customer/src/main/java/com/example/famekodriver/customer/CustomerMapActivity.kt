@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -324,43 +325,63 @@ fun CustomerMapScreen() {
                     && mapViewModel.polylinePoints.isEmpty() && (mapViewModel.currentOrderId == null || mapViewModel.orderStatusData == null)
             
             if (showBottomBar) {
-                NavigationBar(
-                    containerColor = Color.White,
-                    tonalElevation = 8.dp
+                Surface(
+                    color = Color.White,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Home, null) },
-                        label = { Text("Home") },
-                        selected = mapViewModel.currentScreen == CustomerScreen.Landing,
-                        onClick = { mapViewModel.navigateTo(CustomerScreen.Landing) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = FamekoBlue,
-                            selectedTextColor = FamekoBlue,
-                            indicatorColor = FamekoGold.copy(alpha = 0.3f)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 40.dp, vertical = 10.dp)
+                            .navigationBarsPadding(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 1. Explore (Home)
+                        BottomNavItem(
+                            icon = Icons.Default.Explore,
+                            label = "Explore",
+                            selected = mapViewModel.currentScreen == CustomerScreen.Landing,
+                            onClick = { mapViewModel.navigateTo(CustomerScreen.Landing) }
                         )
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.DirectionsCar, null) },
-                        label = { Text("Rides") },
-                        selected = mapViewModel.currentScreen == CustomerScreen.MainMap,
-                        onClick = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = FamekoBlue,
-                            selectedTextColor = FamekoBlue,
-                            indicatorColor = FamekoGold.copy(alpha = 0.3f)
+
+                        // 2. Rides (Featured Emerald Pill when selected)
+                        val isRidesSelected = mapViewModel.currentScreen == CustomerScreen.MainMap
+                        if (isRidesSelected) {
+                            Surface(
+                                onClick = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
+                                shape = RoundedCornerShape(50.dp),
+                                color = Color(0xFF059669),
+                                shadowElevation = 4.dp
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.DirectionsCar, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Text("Rides", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        } else {
+                            BottomNavItem(
+                                icon = Icons.Default.DirectionsCar,
+                                label = "Rides",
+                                selected = false,
+                                onClick = { mapViewModel.navigateTo(CustomerScreen.MainMap) }
+                            )
+                        }
+
+                        // 3. Account
+                        BottomNavItem(
+                            icon = Icons.Default.Person,
+                            label = "Account",
+                            selected = mapViewModel.currentScreen == CustomerScreen.Account,
+                            onClick = { mapViewModel.navigateTo(CustomerScreen.Account) }
                         )
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Person, null) },
-                        label = { Text("Account") },
-                        selected = mapViewModel.currentScreen == CustomerScreen.Account,
-                        onClick = { mapViewModel.navigateTo(CustomerScreen.Account) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = FamekoBlue,
-                            selectedTextColor = FamekoBlue,
-                            indicatorColor = FamekoGold.copy(alpha = 0.3f)
-                        )
-                    )
+                    }
                 }
             }
         }
@@ -1061,3 +1082,32 @@ fun MainMapContent(
             }
         }
     }
+
+@Composable
+fun BottomNavItem(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (selected) Color(0xFF059669) else Color.Gray,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) Color(0xFF059669) else Color.Gray
+        )
+    }
+}
