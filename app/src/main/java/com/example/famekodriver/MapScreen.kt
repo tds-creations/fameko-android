@@ -454,9 +454,10 @@ fun MapScreen(
                     FloatingActionButton(
                         onClick = { viewModel.showSOSDialog = true },
                         containerColor = Color.Red,
-                        contentColor = Color.White
+                        contentColor = Color.White,
+                        modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(Icons.Default.Warning, stringResource(R.string.sos))
+                        Icon(Icons.Default.Warning, stringResource(R.string.sos), modifier = Modifier.size(20.dp))
                     }
                 }
                 if (hasLocationPermission && viewModel.activeRequest == null) {
@@ -468,7 +469,8 @@ fun MapScreen(
                     ) {
                         Icon(
                             if (viewModel.isVoiceEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                            null
+                            null,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
@@ -484,9 +486,10 @@ fun MapScreen(
                             }
                         },
                         containerColor = Color.White,
-                        contentColor = Color(0xFFFF6B35)
+                        contentColor = Color(0xFFFF6B35),
+                        modifier = Modifier.size(48.dp)
                     ) {
-                        Icon(Icons.Default.MyLocation, stringResource(R.string.my_location))
+                        Icon(Icons.Default.MyLocation, stringResource(R.string.my_location), modifier = Modifier.size(20.dp))
                     }
                 }
             }
