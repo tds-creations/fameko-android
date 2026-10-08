@@ -45,6 +45,7 @@ fun MenuScreen(
     
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
     val driverId = sessionManager.getDriverId() ?: ""
+    val userRole = sessionManager.getUserRole()
     var cashTripsAccepted by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -104,7 +105,7 @@ fun MenuScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .background(Color(0xFFF8FAFC)),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Hero Profile Card
@@ -381,11 +382,46 @@ fun MenuScreen(
                             iconColor = Color(0xFF0284C7),
                             onClick = onNavigateToVehicleReg
                         )
+                        if (userRole == "OWNER" || userRole == "BOTH") {
+                            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                            MenuRowItem(
+                                title = "Fleet Management",
+                                subtitle = "Manage your vehicles and drivers",
+                                icon = Icons.Default.DirectionsCar,
+                                iconColor = Color(0xFF9333EA),
+                                onClick = onNavigateToFleet
+                            )
+                        }
+                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                        MenuRowItem(
+                            title = "Fameko Support",
+                            subtitle = "Chat with our support team",
+                            icon = Icons.Default.SupportAgent,
+                            iconColor = Color(0xFF10B981),
+                            onClick = onNavigateToSupport
+                        )
+                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                        MenuRowItem(
+                            title = "App Settings",
+                            subtitle = "Notifications and preferences",
+                            icon = Icons.Default.Settings,
+                            iconColor = Color(0xFF64748B),
+                            onClick = onNavigateToSettings
+                        )
                     }
                 }
             }
             
             item {
+                Spacer(Modifier.height(32.dp))
+                Text(
+                    "Fameko for Drivers v1.2.0",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
                 Spacer(Modifier.height(32.dp))
             }
         }
