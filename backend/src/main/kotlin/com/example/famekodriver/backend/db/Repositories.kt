@@ -1270,10 +1270,20 @@ object DatabaseRepository {
 
     fun submitRating(driverId: Int, rating: Float): Boolean {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "UPDATE drivers SET rating = (rating + ?) / 2.0 WHERE id = ?"
+            val sql = """
+                UPDATE drivers SET 
+                    rating = CASE 
+                        WHEN rating_count = 0 OR rating_count IS NULL THEN ?
+                        ELSE ((rating * rating_count) + ?) / (rating_count + 1)
+                    END,
+                    rating_count = COALESCE(rating_count, 0) + 1
+                WHERE id = ?
+            """.trimIndent()
             val stmt = conn.prepareStatement(sql)
-            stmt.setDouble(1, rating.toDouble())
-            stmt.setInt(2, driverId)
+            val rVal = rating.toDouble().coerceIn(1.0, 5.0)
+            stmt.setDouble(1, rVal)
+            stmt.setDouble(2, rVal)
+            stmt.setInt(3, driverId)
             return stmt.executeUpdate() > 0
         }
     }
