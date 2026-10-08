@@ -197,7 +197,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 if ((currentDelivery?.orderId == event.orderId) || (activeRequest?.orderId == event.orderId)) {
                     currentDelivery = null
                     activeRequest = null
-                    navigationPath = emptyList()
+                    clearRouteAndNavigation()
                     timerJob?.cancel()
                 }
             }
@@ -281,6 +281,9 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repository.getMyDeliveries(driverId).onSuccess { list ->
                 currentDelivery = list.firstOrNull { it.status != DeliveryStatus.DELIVERED && it.status != DeliveryStatus.CANCELLED }
+                if (currentDelivery == null && activeRequest == null) {
+                    clearRouteAndNavigation()
+                }
             }
             if (isOnline && currentDelivery == null) {
                 repository.getAvailableDeliveries(
@@ -296,6 +299,14 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
         }
+    }
+
+    fun clearRouteAndNavigation() {
+        navigationPath = emptyList()
+        instructions = emptyList()
+        currentInstruction = null
+        isFullscreenMap = false
+        routeJob?.cancel()
     }
 
     private fun refreshHeatmap() {
@@ -324,6 +335,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun rejectDelivery() {
         activeRequest = null
+        clearRouteAndNavigation()
         timerJob?.cancel()
     }
 
@@ -332,7 +344,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repository.updateDeliveryStatus(delivery.id, DeliveryStatus.CANCELLED).onSuccess {
                 currentDelivery = null
-                navigationPath = emptyList()
+                clearRouteAndNavigation()
             }
         }
     }

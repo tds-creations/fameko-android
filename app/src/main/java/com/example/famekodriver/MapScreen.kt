@@ -315,7 +315,7 @@ fun MapScreen(
 
     LaunchedEffect(viewModel.currentDelivery, viewModel.activeRequest) {
         val delivery = viewModel.currentDelivery ?: viewModel.activeRequest
-        if (delivery != null) {
+        if (delivery != null && delivery.status != DeliveryStatus.CANCELLED && delivery.status != DeliveryStatus.DELIVERED) {
             val pLat = delivery.pickupLat ?: 0.0
             val pLng = delivery.pickupLng ?: 0.0
             val dLat = delivery.dropOffLat ?: 0.0
@@ -324,6 +324,8 @@ fun MapScreen(
             if (pLat != 0.0 && pLng != 0.0 && dLat != 0.0 && dLng != 0.0) {
                 viewModel.calculateRoute(LatLng(pLat, pLng), LatLng(dLat, dLng))
             }
+        } else {
+            viewModel.clearRouteAndNavigation()
         }
     }
 
