@@ -1,7 +1,9 @@
 package com.example.famekodriver
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +29,8 @@ import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.Delivery
 import com.example.famekodriver.core.domain.model.DeliveryStatus
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +44,9 @@ fun RideHistoryScreen(onBack: () -> Unit) {
     var history by remember { mutableStateOf<List<Delivery>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedFilter by remember { mutableStateOf("All Trips") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var selectedDateText by remember { mutableStateOf("Today, 24 Oct") }
+    var selectedDeliveryForDetails by remember { mutableStateOf<Delivery?>(null) }
 
     LaunchedEffect(Unit) {
         repository.getDriverHistory(driverId).fold(
@@ -70,6 +77,49 @@ fun RideHistoryScreen(onBack: () -> Unit) {
         if (delivered.isNotEmpty()) totalEarnings / delivered.size else 0.0
     }
 
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDatePicker = false
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val formatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                        selectedDateText = formatter.format(Date(millis))
+                        Toast.makeText(context, "Sorted history by: $selectedDateText", Toast.LENGTH_SHORT).show()
+                    }
+                }) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    selectedDeliveryForDetails?.let { delivery ->
+        AlertDialog(
+            onDismissRequest = { selectedDeliveryForDetails = null },
+            title = { Text("Order #${delivery.orderId} Details", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Status: ${delivery.status.name}", fontWeight = FontWeight.Bold, color = if (delivery.status == DeliveryStatus.DELIVERED) Color(0xFF059669) else Color.Red)
+                    Text("Pickup: ${delivery.pickupLocation}")
+                    Text("Dropoff: ${delivery.dropOffLocation}")
+                    Text("Distance: ${String.format(Locale.US, "%.1f", delivery.distanceKm)} km")
+                    Text("Earnings: GH₵ ${String.format(Locale.US, "%.2f", delivery.estimatedEarnings)}", fontWeight = FontWeight.Black, color = Color(0xFF10B981))
+                    Text("Customer: ${delivery.customerName ?: "Customer"} (${delivery.customerPhone ?: "No phone"})")
+                }
+            },
+            confirmButton = {
+                Button(onClick = { selectedDeliveryForDetails = null }) { Text("Close") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -90,6 +140,7 @@ fun RideHistoryScreen(onBack: () -> Unit) {
                 },
                 actions = {
                     Surface(
+                        onClick = { showDatePicker = true },
                         shape = RoundedCornerShape(20.dp),
                         color = Color.White,
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
@@ -101,7 +152,7 @@ fun RideHistoryScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(Icons.Default.CalendarToday, null, tint = Color(0xFF0F172A), modifier = Modifier.size(14.dp))
-                            Text("Today, 24 Oct", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF0F172A))
+                            Text(selectedDateText, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF0F172A))
                             Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
                         }
                     }
@@ -208,7 +259,10 @@ fun RideHistoryScreen(onBack: () -> Unit) {
                             val baseName = filterText.substringBefore(" (")
                             val isSelected = selectedFilter.startsWith(baseName)
                             Surface(
-                                onClick = { selectedFilter = baseName },
+                                onClick = { 
+                                    selectedFilter = baseName
+                                    Toast.makeText(context, "Filtered by: $baseName", Toast.LENGTH_SHORT).show()
+                                },
                                 shape = RoundedCornerShape(20.dp),
                                 color = if (isSelected) Color(0xFF0F172A) else Color.White,
                                 border = BorderStroke(1.dp, if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0))
@@ -234,7 +288,7 @@ fun RideHistoryScreen(onBack: () -> Unit) {
                     }
                 } else {
                     items(filteredHistory) { delivery ->
-                        RideHistoryItem(delivery)
+                        RideHistoryItem(delivery, onClick = { selectedDeliveryForDetails = delivery })
                     }
                 }
             }
@@ -243,9 +297,11 @@ fun RideHistoryScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun RideHistoryItem(delivery: Delivery) {
+fun RideHistoryItem(delivery: Delivery, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(2.dp),
