@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -72,7 +73,6 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                         isLoading = false
                         Toast.makeText(context, "Upload successful!", Toast.LENGTH_SHORT).show()
                         
-                        // Refresh status to update checkmarks
                         repository.getDriverStatus(driverId).onSuccess { resp ->
                             missingDocs = resp.missingDocs
                             status = resp.status
@@ -118,7 +118,6 @@ fun DriverProfileScreen(onBack: () -> Unit) {
             if (profilePicUrl == null) profilePicUrl = resp.profilePicture
         }
 
-        // Polling for approval if pending
         while (status != "APPROVED") {
             delay(10000)
             repository.getDriverStatus(driverId).onSuccess { resp ->
@@ -137,51 +136,71 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Profile", color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                title = { 
+                    Column {
+                        Text("My Profile", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                        Text("Manage license, permit & account info", fontSize = 12.sp, color = Color.Gray)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF004E89))
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA))
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF8FAFC)),
+                contentPadding = PaddingValues(bottom = 48.dp)
             ) {
                 item {
                     ProfileHeader(driverName, status, profilePicUrl)
                 }
 
                 item {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Personal Details",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        "PERSONAL DETAILS",
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        letterSpacing = 1.sp
                     )
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(modifier = Modifier.padding(20.dp)) {
                             ProfileField(label = "Full Name", value = driverName)
-                            ProfileField(label = "Email", value = driverEmail)
-                            ProfileField(label = "Phone", value = driverPhone)
-                            ProfileField(label = "Region", value = driverRegion)
+                            ProfileField(label = "Email", value = driverEmail.ifEmpty { "Not specified" })
+                            ProfileField(label = "Phone", value = driverPhone.ifEmpty { "+233..." })
+                            ProfileField(label = "Region", value = driverRegion.ifEmpty { "Greater Accra" })
                         }
                     }
                 }
 
                 item {
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Verification Documents",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        "VERIFICATION DOCUMENTS",
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        letterSpacing = 1.sp
                     )
                 }
 
@@ -278,14 +297,15 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                 }
 
                 item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        "Safety & Emergency",
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
                     Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "SAFETY & EMERGENCY",
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        letterSpacing = 1.sp
+                    )
                 }
 
                 item {
@@ -300,14 +320,14 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                     isLoading = true
                                     repository.updateEmergencyContacts(driverId, emergency1, emergency2).onSuccess {
                                         isLoading = false
-                                        Toast.makeText(context, "Contacts updated!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Emergency contacts updated!", Toast.LENGTH_SHORT).show()
                                     }.onFailure {
                                         isLoading = false
                                         Toast.makeText(context, "Update failed", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             } else {
-                                Toast.makeText(context, "Please fill both contacts", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Please fill both contact numbers", Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -331,9 +351,9 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             modifier = Modifier.padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            CircularProgressIndicator(color = Color(0xFF004E89))
+                            CircularProgressIndicator(color = Color(0xFF0F172A))
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Processing...", fontWeight = FontWeight.Medium)
+                            Text("Processing...", fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
                     }
                 }
@@ -344,10 +364,11 @@ fun DriverProfileScreen(onBack: () -> Unit) {
 
 @Composable
 fun ProfileField(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(text = label, fontSize = 12.sp, color = Color.Gray)
-        Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.Black)
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp, color = Color.LightGray)
+    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+        Text(text = label, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(2.dp))
+        Text(text = value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+        HorizontalDivider(modifier = Modifier.padding(top = 10.dp), thickness = 1.dp, color = Color(0xFFF1F5F9))
     }
 }
 
@@ -356,24 +377,20 @@ fun ProfileHeader(name: String, status: String, profilePicUrl: String?) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF004E89), Color(0xFF00355E))
-                )
-            ),
+            .background(Color(0xFF0A192F))
+            .padding(vertical = 32.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
-                    .size(90.dp)
+                    .size(96.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
-                    .border(3.dp, Color.White.copy(alpha = 0.5f), CircleShape),
+                    .background(Color.White.copy(alpha = 0.15f))
+                    .border(3.dp, Color.White.copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (profilePicUrl != null) {
+                if (!profilePicUrl.isNullOrEmpty()) {
                     AsyncImage(
                         model = profilePicUrl,
                         contentDescription = null,
@@ -381,29 +398,35 @@ fun ProfileHeader(name: String, status: String, profilePicUrl: String?) {
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(50.dp), tint = Color.Gray)
+                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.White)
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
             
             Spacer(modifier = Modifier.height(8.dp))
             Surface(
                 color = when (status) {
-                    "APPROVED" -> Color(0xFF28A745)
-                    "REJECTED" -> Color.Red
-                    else -> Color(0xFFF39C12)
+                    "APPROVED" -> Color(0xFF065F46)
+                    "REJECTED" -> Color(0xFFDC2626)
+                    else -> Color(0xFFD97706)
                 },
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    status,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(modifier = Modifier.size(6.dp).background(if (status == "APPROVED") Color(0xFF34D399) else Color.White, CircleShape))
+                    Text(
+                        status,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -416,48 +439,54 @@ fun DocumentItem(title: String, isUploaded: Boolean, icon: ImageVector, onUpload
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(44.dp),
-                shape = CircleShape,
-                color = Color(0xFF004E89).copy(alpha = 0.1f)
+                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF2563EB).copy(alpha = 0.1f)
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.padding(10.dp),
-                    tint = Color(0xFF004E89)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = Color(0xFF2563EB),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    if (isUploaded) "Uploaded" else "Required",
-                    color = if (isUploaded) Color(0xFF28A745) else Color.Red,
-                    fontSize = 12.sp
+                    if (isUploaded) "Uploaded & Verified" else "Required document missing",
+                    color = if (isUploaded) Color(0xFF059669) else Color(0xFFDC2626),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
             Button(
                 onClick = onUpload,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isUploaded) Color(0xFFE9ECEF) else Color(0xFF004E89),
-                    contentColor = if (isUploaded) Color.Black else Color.White
+                    containerColor = if (isUploaded) Color(0xFFF1F5F9) else Color(0xFF0F172A),
+                    contentColor = if (isUploaded) Color(0xFF0F172A) else Color.White
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.height(36.dp)
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.height(38.dp),
+                elevation = ButtonDefaults.buttonElevation(0.dp)
             ) {
-                Text(if (isUploaded) "Update" else "Upload", fontSize = 12.sp)
+                Text(if (isUploaded) "Update" else "Upload", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -475,41 +504,52 @@ fun EmergencyContactSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(12.dp)
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF)),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             OutlinedTextField(
                 value = contact1,
                 onValueChange = onContact1Change,
                 label = { Text("Emergency Contact 1") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Phone, null) },
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                leadingIcon = { Icon(Icons.Default.Phone, null, tint = Color(0xFF0F172A)) },
+                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF0F172A),
+                    unfocusedBorderColor = Color(0xFFCBD5E1)
+                )
             )
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
             
             OutlinedTextField(
                 value = contact2,
                 onValueChange = onContact2Change,
                 label = { Text("Emergency Contact 2") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Phone, null) },
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                leadingIcon = { Icon(Icons.Default.Phone, null, tint = Color(0xFF0F172A)) },
+                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF0F172A),
+                    unfocusedBorderColor = Color(0xFFCBD5E1)
+                )
             )
             
             Spacer(modifier = Modifier.height(20.dp))
             
             Button(
                 onClick = onSave,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004E89))
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                elevation = ButtonDefaults.buttonElevation(2.dp)
             ) {
-                Text("Save Emergency Settings", fontWeight = FontWeight.Bold)
+                Text("Save Emergency Settings", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
             }
         }
     }
