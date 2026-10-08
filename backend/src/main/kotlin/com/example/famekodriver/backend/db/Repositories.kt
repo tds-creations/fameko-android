@@ -220,26 +220,10 @@ object DatabaseRepository {
                     totalEarnings += rentalLifetimeRs.getDouble(2)
                 }
 
-                // 2. Today's Earnings and Completed Trips directly from driver_stats table
-                val statsSql = "SELECT earnings_today, completed_today FROM driver_stats WHERE driver_id = ?"
-                val statsStmt = conn.prepareStatement(statsSql)
-                statsStmt.setInt(1, id)
-                val statsRs = statsStmt.executeQuery()
-                var earningsToday = 0.0
-                var completedToday = 0
-                if (statsRs.next()) {
-                    earningsToday = statsRs.getDouble("earnings_today")
-                    completedToday = statsRs.getInt("completed_today")
-                } else {
-                    val todaySql = "SELECT COUNT(*), COALESCE(SUM(estimated_earnings), 0.0) FROM deliveries WHERE driver_id = ? AND status = 'DELIVERED' AND DATE(updated_at) = CURRENT_DATE"
-                    val todayStmt = conn.prepareStatement(todaySql)
-                    todayStmt.setInt(1, id)
-                    val todayRs = todayStmt.executeQuery()
-                    if (todayRs.next()) {
-                        completedToday = todayRs.getInt(1)
-                        earningsToday = todayRs.getDouble(2)
-                    }
-                }
+                // 2. Today's Earnings and Completed Trips strictly fetched from Redis (temporary 24h daily)
+                val redisToday = RedisManager.getDriverEarningsToday(id.toString())
+                val earningsToday = redisToday?.first ?: 0.0
+                val completedToday = redisToday?.second ?: 0
 
                 // 3. Completion Rate calculation
                 val totalAcceptedSql = "SELECT COUNT(*) FROM deliveries WHERE driver_id = ?"
