@@ -1,5 +1,6 @@
 package com.example.famekodriver
 
+import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,7 +48,6 @@ fun MenuScreen(
     
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
     val driverId = sessionManager.getDriverId() ?: ""
-    val userRole = sessionManager.getUserRole()
     var cashTripsAccepted by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -56,7 +58,7 @@ fun MenuScreen(
 
     val driverName = sessionManager.getDriverName() ?: "Nii Odartei"
     val driverStatus = sessionManager.getDriverStatus().ifEmpty { "APPROVED" }
-    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz • Saloon" }
+    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz • Roadworthiness valid" }
 
     Scaffold(
         topBar = {
@@ -105,7 +107,7 @@ fun MenuScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .background(Color(0xFFF8FAFC)),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Hero Profile Card
@@ -300,7 +302,7 @@ fun MenuScreen(
                 }
             }
 
-            // Section Header
+            // Section Header: ACCOUNT & ACTIVITIES
             item {
                 Row(
                     modifier = Modifier
@@ -325,7 +327,7 @@ fun MenuScreen(
                 }
             }
 
-            // Menu Cards List
+            // Menu Cards List 1 (Account & Activities)
             item {
                 Card(
                     shape = RoundedCornerShape(24.dp),
@@ -382,28 +384,52 @@ fun MenuScreen(
                             iconColor = Color(0xFF0284C7),
                             onClick = onNavigateToVehicleReg
                         )
-                        if (userRole == "OWNER" || userRole == "BOTH") {
-                            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                            MenuRowItem(
-                                title = "Fleet Management",
-                                subtitle = "Manage your vehicles and drivers",
-                                icon = Icons.Default.DirectionsCar,
-                                iconColor = Color(0xFF9333EA),
-                                onClick = onNavigateToFleet
-                            )
-                        }
-                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+                }
+            }
+
+            // Section Header: SUPPORT & PREFERENCES
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "SUPPORT & PREFERENCES",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+
+            // Menu Cards List 2 (Support & Preferences)
+            item {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Column {
                         MenuRowItem(
                             title = "Fameko Support",
-                            subtitle = "Chat with our support team",
+                            subtitle = "Chat with driver priority support team",
                             icon = Icons.Default.SupportAgent,
                             iconColor = Color(0xFF10B981),
+                            badge = "24/7 Live",
+                            badgeColor = Color(0xFFECFDF5),
+                            badgeTextColor = Color(0xFF059669),
                             onClick = onNavigateToSupport
                         )
                         HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                         MenuRowItem(
                             title = "App Settings",
-                            subtitle = "Notifications and preferences",
+                            subtitle = "Google Maps, sound, dark mode & alerts",
                             icon = Icons.Default.Settings,
                             iconColor = Color(0xFF64748B),
                             onClick = onNavigateToSettings
@@ -411,17 +437,63 @@ fun MenuScreen(
                     }
                 }
             }
-            
+
+            // Sign Out Button
             item {
-                Spacer(Modifier.height(32.dp))
-                Text(
-                    "Fameko for Drivers v1.2.0",
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        sessionManager.logout()
+                        val intent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEF2F2)),
+                    elevation = ButtonDefaults.buttonElevation(0.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Color(0xFFDC2626), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Sign Out",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = Color(0xFFDC2626)
+                        )
+                    }
+                }
+            }
+
+            // Version Footer
+            item {
+                Spacer(Modifier.height(16.dp))
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Fameko for Drivers v1.2.0 (Build 248)",
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "Accra, Ghana • Licensed Transport Network",
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray.copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    )
+                }
                 Spacer(Modifier.height(32.dp))
             }
         }
