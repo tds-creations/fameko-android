@@ -312,4 +312,46 @@ object RedisManager {
             println("Redis Chat TTL Error: ${e.message}")
         }
     }
+
+    /**
+     * Record driver earnings and trip count in Redis for today
+     */
+    fun recordDriverEarningsToday(driverId: String, earnings: Double) {
+        try {
+            val todayDate = java.time.LocalDate.now().toString()
+            val earningsKey = "driver_today_earnings:$driverId:$todayDate"
+            val tripsKey = "driver_today_trips:$driverId:$todayDate"
+            pool.resource.use { jedis ->
+                jedis.incrByFloat(earningsKey, earnings)
+                jedis.expire(earningsKey, 172800) // 48 hours TTL
+                jedis.incr(tripsKey)
+                jedis.expire(tripsKey, 172800) // 48 hours TTL
+            }
+        } catch (e: Exception) {
+            println("Redis Record Driver Earnings Error: ${e.message}")
+        }
+    }
+
+    /**
+     * Get driver earnings and completed trips for today from Redis
+     */
+    fun getDriverEarningsToday(driverId: String): Pair<Double, Int>? {
+        return try {
+            val todayDate = java.time.LocalDate.now().toString()
+            val earningsKey = "driver_today_earnings:$driverId:$todayDate"
+            val tripsKey = "driver_today_trips:$driverId:$todayDate"
+            pool.resource.use { jedis ->
+                val earningsStr = jedis.get(earningsKey)
+                val tripsStr = jedis.get(tripsKey)
+                if (earningsStr != null || tripsStr != null) {
+                    val earnings = earningsStr?.toDoubleOrNull() ?: 0.0
+                    val trips = tripsStr?.toIntOrNull() ?: 0
+                    Pair(earnings, trips)
+                } else null
+            }
+        } catch (e: Exception) {
+            println("Redis Get Driver Earnings Error: ${e.message}")
+            null
+        }
+    }
 }
