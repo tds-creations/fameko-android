@@ -1,9 +1,11 @@
 package com.example.famekodriver
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,7 +32,7 @@ fun TermsAndConditionsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(Color(0xFFF8FAFC))
     ) {
         // Watermark Logo Background
         Image(
@@ -40,22 +42,31 @@ fun TermsAndConditionsScreen(
                 .fillMaxSize()
                 .wrapContentSize(Alignment.Center)
                 .size(280.dp)
-                .alpha(0.08f),
+                .alpha(0.04f),
             contentScale = ContentScale.Fit
         )
 
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Terms and Conditions", fontWeight = FontWeight.Bold) },
+                    title = { 
+                        Column {
+                            Text("Terms and Conditions", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                            Text("Driver partner contract & fee schedules", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    },
                     navigationIcon = {
                         if (onAccept == null) {
                             IconButton(onClick = onBack) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
+                                    }
+                                }
                             }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
                 )
             },
             containerColor = Color.Transparent
@@ -66,31 +77,42 @@ fun TermsAndConditionsScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
-                    .padding(20.dp)
+                    .padding(16.dp)
             ) {
-                Text(
-                    text = TermsConstants.FULL_TERMS_TEXT,
-                    fontSize = 14.sp,
-                    color = Color.DarkGray,
-                    lineHeight = 20.sp,
-                    fontFamily = FontFamily.SansSerif
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = TermsConstants.FULL_TERMS_TEXT,
+                            fontSize = 14.sp,
+                            color = Color(0xFF334155),
+                            lineHeight = 22.sp,
+                            fontFamily = FontFamily.SansSerif
+                        )
+                    }
+                }
                 
                 if (onAccept != null) {
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = onAccept,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004E89))
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        elevation = ButtonDefaults.buttonElevation(4.dp)
                     ) {
-                        Text("I Accept the Terms and Conditions", fontWeight = FontWeight.Bold)
+                        Text("I Accept the Terms and Conditions", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color.White)
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
