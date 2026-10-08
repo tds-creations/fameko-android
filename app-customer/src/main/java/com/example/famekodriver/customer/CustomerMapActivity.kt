@@ -944,6 +944,7 @@ fun MainMapContent(
                                 },
                                 onScheduleClick = onScheduleClick,
                                 recentPlaces = viewModel.recentPlaces,
+                                rideEstimates = viewModel.rideEstimates,
                                 onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
                                 onPlaceClick = { 
                                     viewModel.setServiceMode(ServiceType.RIDE_HAILING)
@@ -1046,12 +1047,67 @@ fun MainMapContent(
 
                 if (!hasActiveOrder && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 16.dp, end = 16.dp).statusBarsPadding()) {
-                        Surface(modifier = Modifier.fillMaxWidth().height(64.dp).clickable { if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) viewModel.resetSearch() else viewModel.navigateTo(CustomerScreen.RouteSelection) }, shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 8.dp, border = BorderStroke(1.dp, BoltLightGray)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {
-                                IconButton(onClick = { if (viewModel.activeRental != null) { if (viewModel.dropOffLocation.isNotEmpty()) viewModel.clearDestination() else viewModel.navigateTo(CustomerScreen.Landing) } else { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) } }) { Icon(Icons.Default.Close, null, tint = BoltDark, modifier = Modifier.size(24.dp)) }
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clickable { 
+                                    if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) viewModel.resetSearch() 
+                                    else viewModel.navigateTo(CustomerScreen.RouteSelection) 
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            shadowElevation = 8.dp,
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            ) {
+                                IconButton(onClick = { viewModel.navigateTo(CustomerScreen.Account) }) {
+                                    Icon(Icons.Default.Menu, null, tint = Color.DarkGray, modifier = Modifier.size(22.dp))
+                                }
+                                
+                                Spacer(modifier = Modifier.width(4.dp))
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(Color(0xFF10B981), CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                
                                 val startLabel = if (viewModel.activeServiceMode == ServiceType.RENTAL) viewModel.rentalPickupLocation.ifEmpty { viewModel.pickupLocation } else viewModel.pickupLocation
-                                Text(text = if (viewModel.dropOffLocation.isNotEmpty() && startLabel.isNotEmpty()) { "${startLabel.split(",").first()} → ${viewModel.dropOffLocation.split(",").first()}" } else if (startLabel.isNotEmpty()) { "From ${startLabel.split(",").first()}" } else "Where to?", style = MaterialTheme.typography.titleMedium, color = if (viewModel.dropOffLocation.isNotEmpty() || startLabel.isNotEmpty()) FamekoBlue else Color.Gray, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                IconButton(onClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) }) { Icon(Icons.Default.Add, null, tint = BoltDark, modifier = Modifier.size(24.dp)) }
+                                Text(
+                                    text = if (viewModel.dropOffLocation.isNotEmpty() && startLabel.isNotEmpty()) {
+                                        "${startLabel.split(",").first()} → ${viewModel.dropOffLocation.split(",").first()}"
+                                    } else {
+                                        "Where to?"
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color(0xFF0F172A),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Surface(
+                                    onClick = onScheduleClick,
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = Color(0xFFF1F5F9),
+                                    modifier = Modifier.height(34.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 10.dp)
+                                    ) {
+                                        Icon(Icons.Default.Schedule, null, tint = Color.DarkGray, modifier = Modifier.size(13.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Now", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF0F172A))
+                                        Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                                    }
+                                }
                             }
                         }
                     }
