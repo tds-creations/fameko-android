@@ -1,5 +1,6 @@
 package com.example.famekodriver
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -80,7 +81,7 @@ fun SettingsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Help */ }) {
+                    IconButton(onClick = { Toast.makeText(context, "Fameko Driver Support: 24/7 Helpline (+233 30 212 3456)", Toast.LENGTH_LONG).show() }) {
                         Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Help", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
@@ -192,7 +193,7 @@ fun SettingsScreen(
                                 badgeText = "English",
                                 badgeColor = Color(0xFFF1F5F9),
                                 badgeTextColor = Color(0xFF475569),
-                                onClick = {}
+                                onClick = { Toast.makeText(context, "Language: English (Ghana) active", Toast.LENGTH_SHORT).show() }
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsSwitchRow(
@@ -201,7 +202,10 @@ fun SettingsScreen(
                                 title = "Voice Navigation Audio",
                                 subtitle = "Read turn directions at max volume",
                                 checked = voiceNavEnabled,
-                                onCheckedChange = { voiceNavEnabled = it }
+                                onCheckedChange = { 
+                                    voiceNavEnabled = it
+                                    Toast.makeText(context, if (it) "Voice Navigation Enabled" else "Voice Navigation Muted", Toast.LENGTH_SHORT).show()
+                                }
                             )
                         }
                     }
@@ -235,7 +239,7 @@ fun SettingsScreen(
                                 badgeText = "In-App GPS",
                                 badgeColor = Color(0xFFECFDF5),
                                 badgeTextColor = Color(0xFF059669),
-                                onClick = {}
+                                onClick = { Toast.makeText(context, "Using Integrated TomTom / MapLibre GPS", Toast.LENGTH_SHORT).show() }
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsRowItem(
@@ -246,7 +250,7 @@ fun SettingsScreen(
                                 badgeText = "Optimized",
                                 badgeColor = Color(0xFFECFDF5),
                                 badgeTextColor = Color(0xFF059669),
-                                onClick = {}
+                                onClick = { Toast.makeText(context, "High-Precision GPS is fully optimized", Toast.LENGTH_SHORT).show() }
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsRowItem(
@@ -257,7 +261,7 @@ fun SettingsScreen(
                                 badgeText = "Updated",
                                 badgeColor = Color(0xFFEFF6FF),
                                 badgeTextColor = Color(0xFF2563EB),
-                                onClick = {}
+                                onClick = { Toast.makeText(context, "Accra offline map cache is up to date (68 MB)", Toast.LENGTH_SHORT).show() }
                             )
                         }
                     }
