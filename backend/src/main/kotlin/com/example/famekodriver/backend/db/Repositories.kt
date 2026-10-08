@@ -186,85 +186,79 @@ object DatabaseRepository {
     fun getDriverStats(id: Int): DriverStats? {
         try {
             DatabaseInitializer.getDataSource().connection.use { conn ->
-                val driverSql = "SELECT is_online, rating, rating_count FROM drivers WHERE id = ?"
-                val driverStmt = conn.prepareStatement(driverSql)
-                driverStmt.setInt(1, id)
-                val driverRs = driverStmt.executeQuery()
-                var isOnline = false
-                var rating = 5.0
-                var ratingCount = 0
-                if (driverRs.next()) {
-                    isOnline = driverRs.getBoolean("is_online")
-                    rating = driverRs.getDouble("rating")
-                    ratingCount = driverRs.getInt("rating_count")
-                }
+                val sql = """
+                    SELECT 
+                        COALESCE(ds.is_online, d.is_online, false) as is_online,
+                        COALESCE(ds.total_deliveries, 0) as ds_total_deliveries,
+                        COALESCE(ds.total_earnings, 0.0) as ds_total_earnings,
+                        COALESCE(ds.earnings_today, 0.0) as ds_earnings_today,
+                        COALESCE(ds.completed_today, 0) as ds_completed_today,
+                        COALESCE(d.rating, 5.0) as avg_rating, 
+                        COALESCE(d.rating_count, 0) as rating_count 
+                    FROM drivers d
+                    LEFT JOIN driver_stats ds ON d.id = ds.driver_id 
+                    WHERE d.id = ?
+                """.trimIndent()
+                val stmt = conn.prepareStatement(sql)
+                stmt.setInt(1, id)
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    val isOnline = rs.getBoolean("is_online")
+                    val dsTotalDeliveries = rs.getInt("ds_total_deliveries")
+                    val dsTotalEarnings = rs.getDouble("ds_total_earnings")
+                    val dsEarningsToday = rs.getDouble("ds_earnings_today")
+                    val dsCompletedToday = rs.getInt("ds_completed_today")
+                    val rating = rs.getDouble("avg_rating")
+                    val ratingCount = rs.getInt("rating_count")
 
-                // 1. Delivery Lifetime Stats
-                val lifetimeSql = "SELECT COUNT(*), COALESCE(SUM(estimated_earnings), 0.0) FROM deliveries WHERE driver_id = ? AND status = 'DELIVERED'"
-                val lifetimeStmt = conn.prepareStatement(lifetimeSql)
-                lifetimeStmt.setInt(1, id)
-                val lifetimeRs = lifetimeStmt.executeQuery()
-                var totalDeliveries = 0
-                var totalEarnings = 0.0
-                if (lifetimeRs.next()) {
-                    totalDeliveries = lifetimeRs.getInt(1)
-                    totalEarnings = lifetimeRs.getDouble(2)
-                }
+                    // Also query deliveries table for completed/cancelled count & earnings fallback
+                    val compSql = """
+                        SELECT 
+                            COUNT(*) FILTER (WHERE status = 'DELIVERED') as completed_count,
+                            COUNT(*) FILTER (WHERE status = 'CANCELLED') as cancelled_count,
+                            COUNT(*) as total_count
+                        FROM deliveries WHERE driver_id = ?
+                    """.trimIndent()
+                    val compStmt = conn.prepareStatement(compSql)
+                    compStmt.setInt(1, id)
+                    val compRs = compStmt.executeQuery()
+                    
+                    var completedFromDeliv = 0
+                    var totalFromDeliv = 0
+                    if (compRs.next()) {
+                        completedFromDeliv = compRs.getInt("completed_count")
+                        totalFromDeliv = compRs.getInt("total_count")
+                    }
 
-                // 2. Delivery Today Stats
-                val todaySql = "SELECT COUNT(*), COALESCE(SUM(estimated_earnings), 0.0) FROM deliveries WHERE driver_id = ? AND status = 'DELIVERED' AND DATE(updated_at) = CURRENT_DATE"
-                val todayStmt = conn.prepareStatement(todaySql)
-                todayStmt.setInt(1, id)
-                val todayRs = todayStmt.executeQuery()
-                var completedToday = 0
-                var earningsToday = 0.0
-                if (todayRs.next()) {
-                    completedToday = todayRs.getInt(1)
-                    earningsToday = todayRs.getDouble(2)
-                }
+                    val earningsDelivSql = "SELECT COALESCE(SUM(estimated_earnings), 0.0) FROM deliveries WHERE driver_id = ? AND status = 'DELIVERED'"
+                    val eStmt = conn.prepareStatement(earningsDelivSql)
+                    eStmt.setInt(1, id)
+                    val eRs = eStmt.executeQuery()
+                    var totalEarningsFromDeliv = 0.0
+                    if (eRs.next()) {
+                        totalEarningsFromDeliv = eRs.getDouble(1)
+                    }
 
-                // 3. Rental Lifetime Stats
-                val rentalLifetimeSql = "SELECT COUNT(*), COALESCE(SUM(COALESCE(owner_earnings, total_price)), 0.0) FROM rentals WHERE driver_id = ? AND status IN ('COMPLETED', 'DELIVERED', 'FINISHED')"
-                val rentalLifetimeStmt = conn.prepareStatement(rentalLifetimeSql)
-                rentalLifetimeStmt.setInt(1, id)
-                val rentalLifetimeRs = rentalLifetimeStmt.executeQuery()
-                if (rentalLifetimeRs.next()) {
-                    totalDeliveries += rentalLifetimeRs.getInt(1)
-                    totalEarnings += rentalLifetimeRs.getDouble(2)
-                }
+                    val finalTotalDeliveries = maxOf(dsTotalDeliveries, completedFromDeliv)
+                    val finalCompletedToday = if (dsCompletedToday > 0) dsCompletedToday else finalTotalDeliveries
+                    val finalTotalEarnings = maxOf(dsTotalEarnings, totalEarningsFromDeliv)
+                    val finalEarningsToday = if (dsEarningsToday > 0.0) dsEarningsToday else finalTotalEarnings
 
-                // 4. Rental Today Stats
-                val rentalTodaySql = "SELECT COUNT(*), COALESCE(SUM(COALESCE(owner_earnings, total_price)), 0.0) FROM rentals WHERE driver_id = ? AND status IN ('COMPLETED', 'DELIVERED', 'FINISHED') AND DATE(created_at) = CURRENT_DATE"
-                val rentalTodayStmt = conn.prepareStatement(rentalTodaySql)
-                rentalTodayStmt.setInt(1, id)
-                val rentalTodayRs = rentalTodayStmt.executeQuery()
-                if (rentalTodayRs.next()) {
-                    completedToday += rentalTodayRs.getInt(1)
-                    earningsToday += rentalTodayRs.getDouble(2)
-                }
+                    // Completion rate calculation: (completed / total_assigned_trips) * 100
+                    val completionRate = if (totalFromDeliv > 0) ((completedFromDeliv * 100) / totalFromDeliv).coerceIn(0, 100) else 100
 
-                // 5. Total Accepted Trips for Acceptance / Completion Rate calculation
-                val totalAcceptedSql = "SELECT COUNT(*) FROM deliveries WHERE driver_id = ?"
-                val totalAcceptedStmt = conn.prepareStatement(totalAcceptedSql)
-                totalAcceptedStmt.setInt(1, id)
-                val totalAcceptedRs = totalAcceptedStmt.executeQuery()
-                var totalAccepted = 0
-                if (totalAcceptedRs.next()) {
-                    totalAccepted = totalAcceptedRs.getInt(1)
+                    return DriverStats(
+                        isOnline = isOnline,
+                        activeDeliveries = 0,
+                        completedToday = finalCompletedToday,
+                        earningsToday = finalEarningsToday,
+                        rating = if (rating > 0.0) rating else 5.0,
+                        ratingCount = ratingCount,
+                        totalDeliveries = finalTotalDeliveries,
+                        completionRate = completionRate,
+                        totalEarnings = finalTotalEarnings
+                    )
                 }
-                val completionRate = if (totalAccepted > 0) ((totalDeliveries * 100) / totalAccepted).coerceIn(0, 100) else 100
-
-                return DriverStats(
-                    isOnline = isOnline,
-                    activeDeliveries = 0,
-                    completedToday = completedToday,
-                    earningsToday = earningsToday,
-                    rating = rating,
-                    ratingCount = ratingCount,
-                    totalDeliveries = totalDeliveries,
-                    completionRate = completionRate,
-                    totalEarnings = totalEarnings
-                )
             }
         } catch (e: Exception) {
             e.printStackTrace()

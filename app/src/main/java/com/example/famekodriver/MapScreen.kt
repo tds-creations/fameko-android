@@ -91,6 +91,10 @@ fun MapScreen(
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val voiceCallHandler = remember { VoiceCallHandler { data -> viewModel.sendAudioData(data) } }
 
+    LaunchedEffect(Unit) {
+        viewModel.fetchDriverStatus()
+    }
+
     var hasLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -710,8 +714,8 @@ fun MapScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            DriverStatItem("Acceptance", "${if (viewModel.driverStats.completionRate > 0) viewModel.driverStats.completionRate else 100}%", Modifier.weight(1f))
-                            DriverStatItem("Driver Rating", "${String.format(Locale.US, "%.1f", if (viewModel.driverStats.rating > 0) viewModel.driverStats.rating else 5.0)} ★", Modifier.weight(1f))
+                            DriverStatItem("Acceptance", "${viewModel.driverStats.completionRate}%", Modifier.weight(1f))
+                            DriverStatItem("Driver Rating", "${String.format(Locale.US, "%.2f", if (viewModel.driverStats.rating > 0) viewModel.driverStats.rating else 5.0)} ★", Modifier.weight(1f))
                             DriverStatItem("Trips Completed", "${viewModel.driverStats.completedToday}", Modifier.weight(1f))
                         }
 
