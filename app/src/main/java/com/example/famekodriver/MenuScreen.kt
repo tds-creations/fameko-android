@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import java.util.Locale
@@ -47,12 +49,18 @@ fun MenuScreen(
     val repository = remember { DriverRepository.getInstance() }
     
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
+    var profilePicUrl by remember { mutableStateOf<String?>(null) }
     val driverId = sessionManager.getDriverId() ?: ""
     var cashTripsAccepted by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         if (driverId.isNotEmpty()) {
             repository.getDriverStats(driverId).onSuccess { stats -> driverStats = stats }
+            repository.getDriverProfile(driverId).onSuccess { profile ->
+                if (profile["success"] == true) {
+                    profilePicUrl = profile["profile_picture"]?.toString()
+                }
+            }
         }
     }
 
@@ -131,15 +139,26 @@ fun MenuScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                modifier = Modifier.size(64.dp)
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = Color.White.copy(alpha = 0.15f),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                                if (!profilePicUrl.isNullOrEmpty()) {
+                                    AsyncImage(
+                                        model = profilePicUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                } else {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color.White.copy(alpha = 0.15f),
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                                        }
                                     }
                                 }
                                 Surface(
