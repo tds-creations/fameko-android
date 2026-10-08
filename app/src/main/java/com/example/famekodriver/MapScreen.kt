@@ -555,7 +555,7 @@ fun MapScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Icon(Icons.Default.DirectionsCar, null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
-                            Text("Comfort", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                            Text((viewModel.vehicleCategory ?: "").ifEmpty { vehicleTypeFromSession.ifEmpty { "Saloon" } }, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
                         }
 
                         Surface(
@@ -586,40 +586,39 @@ fun MapScreen(
             }
 
             // Surge / High Demand Floating Banner
-            if (viewModel.currentDelivery == null && viewModel.activeRequest == null) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 80.dp, start = 16.dp, end = 16.dp)
-                        .statusBarsPadding()
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF0F172A),
-                    shadowElevation = 8.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            viewModel.currentSurge?.let { surge ->
+                if (surge.isActive && viewModel.currentDelivery == null && viewModel.activeRequest == null) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 80.dp, start = 16.dp, end = 16.dp)
+                            .statusBarsPadding()
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF0F172A),
+                        shadowElevation = 8.dp
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(Color(0xFFF97316), CircleShape),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.FlashOn, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("⚡ 1.5x Surge in Accra Central", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
-                                Surface(color = Color(0xFFD97706), shape = RoundedCornerShape(4.dp)) {
-                                    Text("+GH₵ 14 avg", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
-                                }
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color(0xFFF97316), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.FlashOn, null, tint = Color.White, modifier = Modifier.size(20.dp))
                             }
-                            Text("High ride volume near Airport & Osu Oxford St", fontSize = 11.sp, color = Color.LightGray)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("⚡ ${surge.multiplier}x Surge in ${surge.region ?: "Accra"}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                                }
+                                Text(surge.reason ?: "High ride demand in area", fontSize = 11.sp, color = Color.LightGray)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
                         }
-                        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
                     }
                 }
             }
@@ -711,8 +710,8 @@ fun MapScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            DriverStatItem("Acceptance", "98%", Modifier.weight(1f))
-                            DriverStatItem("Driver Rating", "${String.format(Locale.US, "%.2f", if (viewModel.driverStats.rating > 0) viewModel.driverStats.rating else 4.95)} ★", Modifier.weight(1f))
+                            DriverStatItem("Acceptance", "${if (viewModel.driverStats.completionRate > 0) viewModel.driverStats.completionRate else 100}%", Modifier.weight(1f))
+                            DriverStatItem("Driver Rating", "${String.format(Locale.US, "%.1f", if (viewModel.driverStats.rating > 0) viewModel.driverStats.rating else 5.0)} ★", Modifier.weight(1f))
                             DriverStatItem("Trips Completed", "${viewModel.driverStats.completedToday}", Modifier.weight(1f))
                         }
 
