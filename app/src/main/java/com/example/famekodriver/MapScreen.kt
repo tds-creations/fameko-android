@@ -477,11 +477,32 @@ fun MapScreen(
                     FloatingActionButton(
                         onClick = {
                             @SuppressLint("MissingPermission")
-                            fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-                                loc?.let {
-                                    val pos = LatLng(it.latitude, it.longitude)
-                                    viewModel.driverLatLng = pos
-                                    mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLng(pos))
+                            val currentPos = viewModel.driverLatLng
+                            if (currentPos != null) {
+                                mapLibreMap?.animateCamera(
+                                    org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
+                                        org.maplibre.android.camera.CameraPosition.Builder()
+                                            .target(currentPos)
+                                            .zoom(16.0)
+                                            .build()
+                                    ),
+                                    1000
+                                )
+                            } else {
+                                fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { loc ->
+                                    loc?.let {
+                                        val pos = LatLng(it.latitude, it.longitude)
+                                        viewModel.driverLatLng = pos
+                                        mapLibreMap?.animateCamera(
+                                            org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
+                                                org.maplibre.android.camera.CameraPosition.Builder()
+                                                    .target(pos)
+                                                    .zoom(16.0)
+                                                    .build()
+                                            ),
+                                            1000
+                                        )
+                                    } ?: Toast.makeText(context, "Acquiring GPS location...", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
