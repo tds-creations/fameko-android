@@ -13,6 +13,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -83,6 +84,7 @@ fun MapScreen(
     onNavigateToMenu: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToChat: (Int, String) -> Unit,
+    onNavigateToEarnings: () -> Unit = {},
     viewModel: DriverMapViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -516,37 +518,109 @@ fun MapScreen(
                 }
             )
 
-            // Floating Menu Button
-            FloatingActionButton(
-                onClick = onNavigateToMenu,
+            // Top Bar Header Overlay
+            Row(
                 modifier = Modifier
-                    .padding(16.dp)
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding(),
-                containerColor = Color.White,
-                contentColor = Color.DarkGray,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .statusBarsPadding()
+                    .align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Menu, stringResource(R.string.menu))
+                // Left Menu FAB Button
+                Surface(
+                    onClick = onNavigateToMenu,
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 6.dp,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Menu, stringResource(R.string.menu), tint = Color(0xFF0F172A), modifier = Modifier.size(22.dp))
+                    }
+                }
+
+                // Right Category & Status Capsule
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.White,
+                    shadowElevation = 6.dp,
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.DirectionsCar, null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
+                            Text("Comfort", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                        }
+
+                        Surface(
+                            color = if (viewModel.isOnline) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, if (viewModel.isOnline) Color(0xFF10B981) else Color(0xFFEF4444))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(if (viewModel.isOnline) Color(0xFF10B981) else Color(0xFFEF4444), CircleShape)
+                                )
+                                Text(
+                                    text = if (viewModel.isOnline) "Online" else "Offline",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = if (viewModel.isOnline) Color(0xFF059669) else Color(0xFFDC2626)
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
-            // Overlays
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(16.dp)
-                    .statusBarsPadding()
-                    .fillMaxWidth(0.9f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                viewModel.currentSurge?.let { 
-                    if (it.isActive) SurgeIndicator(multiplier = it.multiplier) 
-                }
-                val delivery = viewModel.currentDelivery
-                if (viewModel.navigationPath.isNotEmpty() && delivery != null && !viewModel.isFullscreenMap) {
-                    NavigationHUD(delivery = delivery)
+            // Surge / High Demand Floating Banner
+            if (viewModel.currentDelivery == null && viewModel.activeRequest == null) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 80.dp, start = 16.dp, end = 16.dp)
+                        .statusBarsPadding()
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF0F172A),
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color(0xFFF97316), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.FlashOn, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("⚡ 1.5x Surge in Accra Central", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                                Surface(color = Color(0xFFD97706), shape = RoundedCornerShape(4.dp)) {
+                                    Text("+GH₵ 14 avg", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                }
+                            }
+                            Text("High ride volume near Airport & Osu Oxford St", fontSize = 11.sp, color = Color.LightGray)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
+                    }
                 }
             }
 
@@ -585,47 +659,99 @@ fun MapScreen(
             }
 
             if (viewModel.currentDelivery == null && viewModel.activeRequest == null) {
-                Column(
+                Card(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(
-                            Color.White, 
-                            RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-                        )
-                        .padding(horizontal = 24.dp, vertical = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(16.dp)
                 ) {
-                    if (status != "APPROVED") {
-                        RegistrationNotice(
-                            status = status,
-                            onGoToProfile = onNavigateToProfile
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (status != "APPROVED") {
+                            RegistrationNotice(
+                                status = status,
+                                onGoToProfile = onNavigateToProfile
+                            )
+                        }
+
+                        // Row 1: Today's Earnings & Active Countdown
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.clickable { onNavigateToEarnings() }) {
+                                Text("TODAY'S EARNINGS", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                Spacer(Modifier.height(2.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("GH₵ ${String.format(Locale.US, "%.2f", viewModel.driverStats.earningsToday)}", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                                }
+                            }
+                            
+                            Column(horizontalAlignment = Alignment.End) {
+                                if (viewModel.isDailyFeePaid && viewModel.dailyFeeRemainingSeconds > 0) {
+                                    DailyFeeCountdown(secondsRemaining = viewModel.dailyFeeRemainingSeconds)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("Daily fee valid until 11:59 PM", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+
+                        // Row 2: 3 Driver Stats Grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            DriverStatItem("Acceptance", "98%", Modifier.weight(1f))
+                            DriverStatItem("Driver Rating", "${String.format(Locale.US, "%.2f", if (viewModel.driverStats.rating > 0) viewModel.driverStats.rating else 4.95)} ★", Modifier.weight(1f))
+                            DriverStatItem("Trips Completed", "${viewModel.driverStats.completedToday}", Modifier.weight(1f))
+                        }
+
+                        // Row 3: Go Online / Go Offline Button
+                        Button(
+                            onClick = { viewModel.checkAndGoOnline(status) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (viewModel.isOnline) Color(0xFFDC2626) else Color(0xFF10B981)
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.Default.PowerSettingsNew, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = if (viewModel.isOnline) "GO OFFLINE" else "GO ONLINE",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 18.sp,
+                                    color = Color.White,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = if (viewModel.isOnline) "You are currently ONLINE. Ready to receive requests." 
+                                   else "You are currently OFFLINE. Tap above to start receiving ride requests in Accra.",
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
                         )
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Today's Earnings", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-                            Text("GH₵${viewModel.finalFare.toInt()}", fontSize = 24.sp, fontWeight = FontWeight.Black, color = BoltDark)
-                        }
-                        
-                        if (viewModel.isDailyFeePaid && viewModel.dailyFeeRemainingSeconds > 0) {
-                            DailyFeeCountdown(secondsRemaining = viewModel.dailyFeeRemainingSeconds)
-                        }
-                    }
-
-                    OnlineToggleButton(
-                        isOnline = viewModel.isOnline,
-                        isApproved = status == "APPROVED",
-                        onClick = { viewModel.checkAndGoOnline(status) }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
@@ -1543,35 +1669,47 @@ fun DailyFeeCountdown(secondsRemaining: Long) {
     
     val timeText = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
     
-    val backgroundColor = when {
-        secondsRemaining < 3600 -> Color.Red // Less than 1 hour
-        secondsRemaining < 7200 -> Color(0xFFFFA500) // Less than 2 hours (Orange)
-        else -> Color(0xFF28A745) // More than 2 hours (Green)
-    }
-    
     Surface(
-        color = backgroundColor.copy(alpha = 0.9f),
+        color = Color(0xFFECFDF5),
         shape = RoundedCornerShape(20.dp),
-        tonalElevation = 4.dp,
-        shadowElevation = 4.dp
+        border = BorderStroke(1.dp, Color(0xFFA7F3D0))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
-                Icons.Default.Timer,
+                Icons.Default.Schedule,
                 contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
+                tint = Color(0xFF059669),
+                modifier = Modifier.size(14.dp)
             )
             Text(
                 text = "Active for: $timeText",
-                color = Color.White,
+                color = Color(0xFF059669),
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                fontSize = 12.sp
             )
+        }
+    }
+}
+
+@Composable
+fun DriverStatItem(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFF8FAFC),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(label, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(4.dp))
+            Text(value, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0F172A))
         }
     }
 }

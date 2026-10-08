@@ -38,6 +38,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
 
     var activeRequest by mutableStateOf<Delivery?>(null)
     var currentDelivery by mutableStateOf<Delivery?>(null)
+    var driverStats by mutableStateOf(DriverStats())
     var incomingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
     var ongoingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
     var isAccepting by mutableStateOf(false)
@@ -87,6 +88,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     fun fetchDriverStatus() {
         val driverId = sessionManager.getDriverId() ?: return
         viewModelScope.launch {
+            repository.getDriverStats(driverId).onSuccess { driverStats = it }
             repository.getDriverStatus(driverId).onSuccess { resp ->
                 isDailyFeePaid = resp.isDailyFeePaid
                 dailyFeeAmount = resp.dailyFeeAmount

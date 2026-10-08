@@ -147,6 +147,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToChat = { convId, name ->
                                 currentScreen = Screen.Chat(convId, name)
+                            },
+                            onNavigateToEarnings = {
+                                currentScreen = Screen.Earnings
                             }
                         )
                     }
