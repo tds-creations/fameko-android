@@ -687,17 +687,17 @@ fun MapScreen(
                             )
                         }
 
-                        // Row 1: Life Earnings & Active Countdown
+                        // Row 1: Today's Earnings & Active Countdown
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.clickable { onNavigateToEarnings() }) {
-                                Text("LIFE EARNINGS", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                Text("TODAY'S EARNINGS", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                                 Spacer(Modifier.height(2.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("GH₵ ${String.format(Locale.US, "%.2f", viewModel.driverStats.totalEarnings)}", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                                    Text("GH₵ ${String.format(Locale.US, "%.2f", viewModel.driverStats.earningsToday)}", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
                                     Spacer(Modifier.width(4.dp))
                                     Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
                                 }
