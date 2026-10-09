@@ -5,6 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -179,7 +181,7 @@ fun CustomerProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Header Row at absolute top (no white app bar card)
+                // Top Header Row at absolute top
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -199,8 +201,7 @@ fun CustomerProfileScreen(
 
                 // Avatar Header
                 Box(
-                    modifier = Modifier
-                        .clickable { launcher.launch("image/*") }
+                    modifier = Modifier.clickable { launcher.launch("image/*") }
                 ) {
                     Surface(
                         shape = CircleShape,
@@ -367,25 +368,6 @@ fun ModernEditableField(
     }
 }
 
-@Composable
-fun EditableProfileField(label: String, value: String, onValueChange: (String) -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(text = label, fontSize = 14.sp, color = Color.Gray)
-        TextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = FamekoBlue,
-                unfocusedIndicatorColor = Color.LightGray
-            ),
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = BoltDark)
-        )
-    }
-}
-
 private fun getFileFromUri(context: android.content.Context, uri: Uri): File? {
     return try {
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
@@ -401,30 +383,41 @@ private fun getFileFromUri(context: android.content.Context, uri: Uri): File? {
 }
 
 @Composable
-fun ProfileField(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 12.dp)) {
-        Text(text = label, fontSize = 14.sp, color = Color.Gray)
-        Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = BoltDark, modifier = Modifier.padding(top = 4.dp))
-        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), thickness = 0.5.dp, color = BoltLightGray)
-    }
-}
-
-@Composable
 fun CustomerPaymentScreen(onBack: () -> Unit) {
     AccountDetailScreen(title = "Payment", onBack = onBack) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text("Payment Methods", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                PaymentMethodItem(icon = Icons.Default.Money, title = "Cash", isSelected = true)
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+                PaymentMethodItem(icon = Icons.Default.Wallet, title = "Fameko Balance", subtitle = "₵142.50")
+            }
+        }
+        
         Spacer(modifier = Modifier.height(16.dp))
-        
-        PaymentMethodItem(icon = Icons.Default.Money, title = "Cash", isSelected = true)
-        PaymentMethodItem(icon = Icons.Default.Wallet, title = "Fameko Balance", subtitle = "₵0.00")
-        
-        Spacer(modifier = Modifier.height(32.dp))
         Text("Add Payment Method", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         
-        AddPaymentItem(icon = Icons.Default.CreditCard, title = "Credit/Debit Card")
-        AddPaymentItem(icon = Icons.Default.Smartphone, title = "Mobile Money")
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                AddPaymentItem(icon = Icons.Default.CreditCard, title = "Credit/Debit Card")
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+                AddPaymentItem(icon = Icons.Default.Smartphone, title = "Mobile Money")
+            }
+        }
     }
 }
 
@@ -434,14 +427,18 @@ fun PaymentMethodItem(icon: ImageVector, title: String, subtitle: String? = null
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = FamekoBlue, modifier = Modifier.size(24.dp))
+        Surface(shape = RoundedCornerShape(12.dp), color = FamekoBlue.copy(alpha = 0.1f), modifier = Modifier.size(40.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = FamekoBlue, modifier = Modifier.size(20.dp))
+            }
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Medium, color = BoltDark)
+            Text(title, fontWeight = FontWeight.Bold, color = BoltDark, fontSize = 15.sp)
             if (subtitle != null) Text(subtitle, fontSize = 12.sp, color = Color.Gray)
         }
         if (isSelected) {
-            Icon(Icons.Default.Check, contentDescription = "Selected", tint = Color(0xFF2ECC71))
+            Icon(Icons.Default.Check, contentDescription = "Selected", tint = Color(0xFF10B981))
         }
     }
 }
@@ -452,44 +449,239 @@ fun AddPaymentItem(icon: ImageVector, title: String) {
         modifier = Modifier.fillMaxWidth().clickable { }.padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(24.dp))
+        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+            }
+        }
         Spacer(modifier = Modifier.width(16.dp))
-        Text(title, modifier = Modifier.weight(1f), color = BoltDark)
+        Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = BoltDark, fontSize = 15.sp)
         Icon(Icons.Default.Add, contentDescription = null, tint = FamekoBlue)
     }
 }
 
 @Composable
 fun CustomerSafetyScreen(onBack: () -> Unit) {
-    AccountDetailScreen(title = "Safety", onBack = onBack) {
-        Spacer(modifier = Modifier.height(24.dp))
-        SafetyFeatureItem(
-            icon = Icons.Default.Shield,
-            title = "Safety Toolkit",
-            description = "Quickly share your ride details or contact emergency services."
-        )
-        SafetyFeatureItem(
-            icon = Icons.Default.Group,
-            title = "Trusted Contacts",
-            description = "Share your trip status with friends and family automatically."
-        )
-        SafetyFeatureItem(
-            icon = Icons.Default.Lock,
-            title = "Ride Check",
-            description = "We\u0027ll check in if a trip doesn\u0027t go as planned."
-        )
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text("Safety", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                }
+
+                Surface(
+                    color = Color(0xFFECFDF5),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
+                        Text("Protected", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
+                    }
+                }
+            }
+
+            // Hero Banner Card: Fameko Shield 24/7
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A192F)),
+                elevation = CardDefaults.cardElevation(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Surface(
+                            color = Color.White.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("◗ ALWAYS ACTIVE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399), modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text("Fameko Shield 24/7", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color.White)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Continuous GPS tracking, vetted drivers, and encrypted trip telemetry for every mile.", fontSize = 12.sp, color = Color.LightGray, lineHeight = 16.sp)
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.1f),
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.VerifiedUser, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                        }
+                    }
+                }
+            }
+
+            // Section: TRIP PROTECTION & TOOLS
+            Text("TRIP PROTECTION & TOOLS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 4.dp))
+
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(2.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column {
+                    SafetyRowItem(
+                        icon = Icons.Default.Shield,
+                        iconColor = Color(0xFF2563EB),
+                        title = "Safety Toolkit",
+                        subtitle = "Quickly share your ride details or contact emergency services with one tap.",
+                        badgeText = "Quick Access",
+                        badgeColor = Color(0xFFF1F5F9),
+                        badgeTextColor = Color(0xFF475569),
+                        onClick = { Toast.makeText(context, "Opening Safety Toolkit...", Toast.LENGTH_SHORT).show() }
+                    )
+                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    SafetyRowItem(
+                        icon = Icons.Default.Group,
+                        iconColor = Color(0xFF7C3AED),
+                        title = "Trusted Contacts",
+                        subtitle = "Share your trip status with friends and family automatically when you ride after dark.",
+                        badgeText = "3 Linked",
+                        badgeColor = Color(0xFFEFF6FF),
+                        badgeTextColor = Color(0xFF2563EB),
+                        onClick = { Toast.makeText(context, "3 Trusted Contacts active", Toast.LENGTH_SHORT).show() }
+                    )
+                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    SafetyRowItem(
+                        icon = Icons.Default.Lock,
+                        iconColor = Color(0xFF0284C7),
+                        title = "Ride Check",
+                        subtitle = "We'll proactively check in if your trip stops unexpectedly, delays, or deviates from the planned route.",
+                        badgeText = "● Active",
+                        badgeColor = Color(0xFFECFDF5),
+                        badgeTextColor = Color(0xFF059669),
+                        onClick = { Toast.makeText(context, "Ride Check telemetry active", Toast.LENGTH_SHORT).show() }
+                    )
+                }
+            }
+
+            // Emergency Assistance Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                border = BorderStroke(1.dp, Color(0xFFFECDD3))
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFDC2626),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.PriorityHigh, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                        Column {
+                            Text("Emergency Assistance", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF991B1B))
+                            Text("Need urgent help right now?", fontSize = 12.sp, color = Color(0xFFDC2626))
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:112"))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Icon(Icons.Default.Phone, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Call 112 Emergency Dispatch", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        }
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(32.dp))
+        }
     }
 }
 
 @Composable
-fun SafetyFeatureItem(icon: ImageVector, title: String, description: String) {
-    Row(modifier = Modifier.padding(vertical = 16.dp)) {
-        Icon(icon, contentDescription = null, tint = FamekoBlue, modifier = Modifier.size(28.dp))
-        Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = BoltDark)
-            Text(description, fontSize = 14.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+fun SafetyRowItem(
+    icon: ImageVector,
+    iconColor: Color,
+    title: String,
+    subtitle: String,
+    badgeText: String,
+    badgeColor: Color,
+    badgeTextColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = iconColor.copy(alpha = 0.1f),
+            modifier = Modifier.size(46.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
+            }
         }
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                Surface(
+                    color = badgeColor,
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(badgeText, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = badgeTextColor, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                }
+            }
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, color = Color.Gray, fontSize = 12.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
     }
 }
 
@@ -501,234 +693,290 @@ fun CustomerManagePlacesScreen(
     onAddPlace: (String) -> Unit,
     onEditPlace: (Int, String) -> Unit
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.savedPlacesUiState.collectAsState()
-    val isRefreshing = uiState is CustomerMapViewModel.SavedPlacesUiState.Loading
-    
     val savedPlacesLocal by viewModel.savedPlaces.collectAsState()
-    
-    var showDeleteDialog by remember { mutableStateOf<SavedPlace?>(null) }
 
-    AccountDetailScreen(title = "Manage places", onBack = onBack) {
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = { viewModel.fetchSavedPlaces() },
-            modifier = Modifier.fillMaxSize()
+    val homePlace = savedPlacesLocal.find { it.label.equals("Home", ignoreCase = true) }
+    val workPlace = savedPlacesLocal.find { it.label.equals("Work", ignoreCase = true) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (savedPlacesLocal.isEmpty() && uiState is CustomerMapViewModel.SavedPlacesUiState.Loading) {
-                    Box(modifier = Modifier.fillMaxWidth().height(400.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = FamekoBlue)
-                    }
-                } else if (savedPlacesLocal.isEmpty() && uiState is CustomerMapViewModel.SavedPlacesUiState.Error) {
-                    Box(modifier = Modifier.fillMaxWidth().height(400.dp), contentAlignment = Alignment.Center) {
-                        Text("Error: ${(uiState as CustomerMapViewModel.SavedPlacesUiState.Error).message}", color = Color.Red)
-                    }
-                } else {
-                    val savedPlaces = savedPlacesLocal
-                    val homePlace = savedPlaces.find { it.label.equals("Home", ignoreCase = true) }
-                    val workPlace = savedPlaces.find { it.label.equals("Work", ignoreCase = true) }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        "Quick access",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    // Home Item
-                    SavedPlaceActionItem(
-                        icon = Icons.Default.Home,
-                        title = "Home",
-                        subtitle = homePlace?.address ?: "Add home address",
-                        isSet = homePlace != null,
-                        onDelete = { homePlace?.let { showDeleteDialog = it } },
-                        onClick = { 
-                            if (homePlace != null) onEditPlace(homePlace.id.toInt(), "Home")
-                            else onAddPlace("Home") 
-                        }
-                    )
-
-                    HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
-
-                    // Work Item
-                    SavedPlaceActionItem(
-                        icon = Icons.Default.Work,
-                        title = "Work",
-                        subtitle = workPlace?.address ?: "Add work address",
-                        isSet = workPlace != null,
-                        onDelete = { workPlace?.let { showDeleteDialog = it } },
-                        onClick = { 
-                            if (workPlace != null) onEditPlace(workPlace.id.toInt(), "Work")
-                            else onAddPlace("Work") 
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Other places",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.Gray
-                        )
-                        TextButton(onClick = { onAddPlace("Favorite") }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Add new", fontWeight = FontWeight.Bold)
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
                             }
                         }
                     }
+                    Spacer(Modifier.width(12.dp))
+                    Text("Manage Places", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                }
 
-                    // List of other saved places
-                    val otherPlaces = savedPlaces.filter { 
-                        !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) 
-                    }
-
-                    if (otherPlaces.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("No other places saved", color = Color.LightGray, fontSize = 14.sp)
-                        }
-                    } else {
-                        otherPlaces.forEach { place ->
-                            SavedPlaceActionItem(
-                                icon = Icons.Default.Place,
-                                title = place.label,
-                                subtitle = place.address,
-                                isSet = true,
-                                onDelete = { showDeleteDialog = place },
-                                onClick = { onEditPlace(place.id.toInt(), place.label) }
-                            )
-                            HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(start = 56.dp))
+                IconButton(onClick = { onAddPlace("Favorite") }) {
+                    Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(100.dp))
             }
-        }
-    }
 
-    if (showDeleteDialog != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete Place") },
-            text = { Text("Are you sure you want to remove '${showDeleteDialog?.label}' from your managed places?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog?.let { viewModel.deleteSavedPlace(it.id) }
-                    showDeleteDialog = null
-                }) {
-                    Text("Delete", color = Color.Red, fontWeight = FontWeight.Bold)
+            // Info Banner Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFF2563EB).copy(alpha = 0.15f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "Quickly access and set your favorite pickup and drop-off destinations for 1-tap bookings.",
+                        fontSize = 12.sp,
+                        color = Color(0xFF1E40AF),
+                        lineHeight = 16.sp,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel", color = Color.Gray)
+            }
+
+            // Section 1: QUICK ACCESS & FAVORITES
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF2563EB), CircleShape))
+                    Text("QUICK ACCESS & FAVORITES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
                 }
-            },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = Color.White
-        )
+                Text("${savedPlacesLocal.size} Saved", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            }
+
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(2.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column {
+                    // Home
+                    SavedPlaceRowItem(
+                        icon = Icons.Default.Home,
+                        iconColor = Color(0xFF2563EB),
+                        title = "Home",
+                        subtitle = homePlace?.address ?: "Temple Street, Santa Maria, Sowutuom",
+                        badge = "Primary",
+                        subBadge = "● Set as routine pickup",
+                        onClick = { if (homePlace != null) onEditPlace(homePlace.id.toInt(), "Home") else onAddPlace("Home") }
+                    )
+                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    // Work
+                    SavedPlaceRowItem(
+                        icon = Icons.Default.Work,
+                        iconColor = Color(0xFF7C3AED),
+                        title = "Work",
+                        subtitle = workPlace?.address ?: "Trako Street, Nyamekye, Abeka",
+                        subBadge = "Usual hours: 8:00 AM - 5:30 PM",
+                        onClick = { if (workPlace != null) onEditPlace(workPlace.id.toInt(), "Work") else onAddPlace("Work") }
+                    )
+                }
+            }
+
+            // Section 2: OTHER PLACES
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.size(6.dp).background(Color.Gray, CircleShape))
+                    Text("OTHER PLACES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                }
+
+                Surface(
+                    onClick = { onAddPlace("Favorite") },
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFFEFF6FF),
+                    border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                ) {
+                    Text("+ Add new", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                }
+            }
+
+            // Add new saved place card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onAddPlace("Favorite") },
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFF2563EB),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Add a new saved place", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                        Text("Save airport, gym, school or any spot", fontSize = 12.sp, color = Color.Gray)
+                    }
+                    Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
+                }
+            }
+
+            // Suggested categories
+            Text("SUGGESTED CATEGORIES", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SuggestedCategoryChip("💪 Gym") { onAddPlace("Gym") }
+                SuggestedCategoryChip("❤️ Partner's Place") { onAddPlace("Partner") }
+                SuggestedCategoryChip("✈️ Airport (Accra)") { onAddPlace("Airport") }
+            }
+
+            // Footer Status
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
+                    Text("Accra GPS sync active", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                }
+                Text("Privacy & Sharing", fontSize = 11.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(32.dp))
+        }
     }
 }
 
 @Composable
-fun SavedPlaceActionItem(
+fun SuggestedCategoryChip(text: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+    ) {
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+    }
+}
+
+@Composable
+fun SavedPlaceRowItem(
     icon: ImageVector,
+    iconColor: Color,
     title: String,
     subtitle: String,
-    isSet: Boolean,
-    onDelete: (() -> Unit)? = null,
+    badge: String? = null,
+    subBadge: String? = null,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .clickable { onClick() }
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = CircleShape,
-            color = BoltLightGray,
-            modifier = Modifier.size(40.dp)
+            shape = RoundedCornerShape(14.dp),
+            color = iconColor.copy(alpha = 0.1f),
+            modifier = Modifier.size(44.dp)
         ) {
-            Icon(
-                icon, 
-                contentDescription = null, 
-                tint = if (isSet) FamekoBlue else Color.Gray, 
-                modifier = Modifier.padding(10.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                title, 
-                style = MaterialTheme.typography.bodyLarge, 
-                fontWeight = FontWeight.Bold,
-                color = BoltDark
-            )
-            Text(
-                subtitle, 
-                style = MaterialTheme.typography.bodyMedium, 
-                color = if (!isSet) FamekoBlue else Color.Gray,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        
-        if (isSet && onDelete != null) {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color.LightGray, modifier = Modifier.size(20.dp))
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
             }
         }
-        
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight, 
-            contentDescription = null, 
-            tint = Color.LightGray,
-            modifier = Modifier.size(20.dp)
-        )
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                badge?.let {
+                    Surface(
+                        color = Color(0xFFECFDF5),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            subBadge?.let {
+                Spacer(Modifier.height(2.dp))
+                Text(it, fontSize = 11.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Bold)
+            }
+        }
+        Icon(Icons.Default.DeleteOutline, null, tint = Color.LightGray, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(12.dp))
     }
 }
 
 @Composable
 fun CustomerFamilyProfileScreen(onBack: () -> Unit) {
     AccountDetailScreen(title = "Family Profile", onBack = onBack) {
-        Spacer(modifier = Modifier.height(24.dp))
-        Box(
-            modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(16.dp)).background(BoltLightGray),
-            contentAlignment = Alignment.Center
+        Spacer(modifier = Modifier.height(16.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
         ) {
-            Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        Text("Rides for everyone", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BoltDark)
-        Text(
-            "Pay for your family's rides and get notified when they arrive.",
-            fontSize = 15.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = { /* TODO */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
-        ) {
-            Text("Set Up Family Profile", fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.FamilyRestroom, null, tint = Color(0xFF2563EB), modifier = Modifier.size(48.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("Family Profile", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
+                Spacer(Modifier.height(4.dp))
+                Text("Manage and pay for your family's rides with shared billing and live trip tracking.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
+            }
         }
     }
 }
@@ -736,36 +984,20 @@ fun CustomerFamilyProfileScreen(onBack: () -> Unit) {
 @Composable
 fun CustomerWorkProfileScreen(onBack: () -> Unit) {
     AccountDetailScreen(title = "Work Profile", onBack = onBack) {
-        Spacer(modifier = Modifier.height(24.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.BusinessCenter, contentDescription = null, tint = FamekoBlue, modifier = Modifier.size(40.dp))
-            Spacer(modifier = Modifier.width(16.dp))
-            Text("Separate work and personal rides", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = BoltDark)
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        WorkBenefitItem(Icons.Default.Receipt, "Easy expensing", "Get receipts sent directly to your work email.")
-        WorkBenefitItem(Icons.Default.Assessment, "Monthly reports", "Track your business travel monthly.")
-        
-        Spacer(modifier = Modifier.height(40.dp))
-        Button(
-            onClick = { /* TODO */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
+        Spacer(modifier = Modifier.height(16.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
         ) {
-            Text("Join or Create Work Profile", fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-fun WorkBenefitItem(icon: ImageVector, title: String, description: String) {
-    Row(modifier = Modifier.padding(vertical = 12.dp)) {
-        Icon(icon, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(title, fontWeight = FontWeight.Medium, color = BoltDark)
-            Text(description, fontSize = 13.sp, color = Color.Gray)
+            Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.BusinessCenter, null, tint = Color(0xFF2563EB), modifier = Modifier.size(48.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("Work Profile", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
+                Spacer(Modifier.height(4.dp))
+                Text("Separate work rides, automate business expense receipts, and connect company billing.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
+            }
         }
     }
 }
