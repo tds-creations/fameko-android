@@ -401,17 +401,19 @@ fun CustomerMapScreen() {
                     // Handled by BottomSheet in MainMapContent
                 }
                 CustomerScreen.Account -> {
-                    CustomerAccountScreen(
-                        sessionManager = sessionManager,
-                        onNavigate = { mapViewModel.navigateTo(it) },
-                        onLogout = {
-                            sessionManager.logout()
-                            val intent = Intent(context, CustomerLoginActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            context.startActivity(intent)
-                            (context as? Activity)?.finish()
-                        }
-                    )
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8FAFC))) {
+                        CustomerAccountScreen(
+                            sessionManager = sessionManager,
+                            onNavigate = { mapViewModel.navigateTo(it) },
+                            onLogout = {
+                                sessionManager.logout()
+                                val intent = Intent(context, CustomerLoginActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                context.startActivity(intent)
+                                (context as? Activity)?.finish()
+                            }
+                        )
+                    }
                 }
                 is CustomerScreen.Chat -> {
                     CustomerChatScreen(
