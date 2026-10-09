@@ -16,17 +16,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.SessionManager
+import com.example.famekodriver.core.data.repository.UserRepository
 import com.example.famekodriver.customer.ui.theme.BoltDark
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerAccountScreen(
     sessionManager: SessionManager,
@@ -34,25 +40,49 @@ fun CustomerAccountScreen(
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
-    val userName = sessionManager.getDriverName() ?: "Joel Asare"
-    val userRating = "4.90"
+    val userRepository = remember { UserRepository() }
+    val customerId = sessionManager.getCustomerId() ?: sessionManager.getDriverId() ?: "1"
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
-    ) {
+    var userName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Joel Asare") }
+    var userRating by remember { mutableStateOf("4.90") }
+    var ridesCount by remember { mutableStateOf("64") }
+    var profilePicUrl by remember { mutableStateOf<String?>(null) }
+    var famekoPayBalance by remember { mutableStateOf("142.50") }
+    var rewardsPoints by remember { mutableStateOf("350 Pts") }
+
+    LaunchedEffect(Unit) {
+        userRepository.getCustomerProfile(customerId).onSuccess { profile ->
+            if (profile.isNotEmpty()) {
+                userName = profile["name"]?.toString() ?: profile["username"]?.toString() ?: userName
+                userRating = profile["rating"]?.toString() ?: userRating
+                ridesCount = profile["rides_count"]?.toString() ?: profile["total_rides"]?.toString() ?: ridesCount
+                profilePicUrl = profile["profile_picture"]?.toString()
+                profile["wallet_balance"]?.let { famekoPayBalance = String.format(Locale.US, "%.2f", it.toString().toDoubleOrNull() ?: 142.50) }
+                profile["rewards_points"]?.let { rewardsPoints = "$it Pts" }
+            }
+        }.onFailure {
+            // Fallback to session
+        }
+    }
+
+    val initials = userName.split(" ").let { if (it.size > 1) "${it[0].first()}${it[1].first()}" else it[0].take(2) }
+
+    Scaffold(
+        containerColor = Color(0xFFF8FAFC)
+    ) { padding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header Section (Name & Avatar) starting at absolute top
+            // Header Section (Name & Avatar) starting at top
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 0.dp),
+                        .padding(top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -82,7 +112,7 @@ fun CustomerAccountScreen(
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Text(
-                                    text = "$userRating • 64 rides",
+                                    text = "$userRating • $ridesCount rides",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
                                     color = BoltDark
@@ -106,8 +136,17 @@ fun CustomerAccountScreen(
                                 .fillMaxSize()
                                 .border(2.dp, Color(0xFF10B981), CircleShape)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("JA", color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
+                            if (!profilePicUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = profilePicUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(initials.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
+                                }
                             }
                         }
                         Surface(
@@ -164,7 +203,7 @@ fun CustomerAccountScreen(
                             Column {
                                 Text("FAMEKO PAY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
                                 Spacer(Modifier.height(2.dp))
-                                Text("GH₵ 142.50", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
+                                Text("GH₵ $famekoPayBalance", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
                             }
                         }
                     }
@@ -173,7 +212,7 @@ fun CustomerAccountScreen(
                     Card(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { Toast.makeText(context, "350 Rewards Points available", Toast.LENGTH_SHORT).show() },
+                            .clickable { Toast.makeText(context, "$rewardsPoints available", Toast.LENGTH_SHORT).show() },
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
                         elevation = CardDefaults.cardElevation(2.dp),
@@ -196,7 +235,7 @@ fun CustomerAccountScreen(
                             Column {
                                 Text("REWARDS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
                                 Spacer(Modifier.height(2.dp))
-                                Text("350 Pts", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
+                                Text(rewardsPoints, fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
                             }
                         }
                     }
@@ -365,7 +404,7 @@ fun CustomerAccountScreen(
 
             // Version Footer
             item {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
                     "Fameko Rider v4.26.1 (Build 2024.9)",
                     modifier = Modifier.fillMaxWidth(),
@@ -373,7 +412,7 @@ fun CustomerAccountScreen(
                     color = Color.Gray,
                     fontSize = 11.sp
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(48.dp))
             }
         }
     }
