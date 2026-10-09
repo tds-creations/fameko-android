@@ -83,7 +83,7 @@ class DriverRepository private constructor() {
                         "CALL_INCOMING", "call_incoming", "driver_call_incoming" -> {
                             val data = gson.fromJson(wsMessage.payload, Map::class.java)
                             val callId = data["call_id"]?.toString() ?: ""
-                            val name = data["customer_name"]?.toString() ?: data["driver_name"]?.toString() ?: "Someone"
+                            val name = data["caller_name"]?.toString() ?: data["customer_name"]?.toString() ?: data["driver_name"]?.toString() ?: "Someone"
                             _events.tryEmit(FamekoEvent.IncomingCall(callId, name))
                         }
                         "CALL_ACCEPTED", "call_accepted" -> {
