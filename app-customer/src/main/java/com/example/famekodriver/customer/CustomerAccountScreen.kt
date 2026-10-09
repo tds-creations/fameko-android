@@ -20,11 +20,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.famekodriver.core.data.SessionManager
+import com.example.famekodriver.core.data.repository.OrderRepository
+import com.example.famekodriver.core.data.repository.RentalRepository
 import com.example.famekodriver.core.data.repository.UserRepository
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import java.util.Locale
@@ -37,6 +38,9 @@ fun CustomerAccountScreen(
 ) {
     val context = LocalContext.current
     val userRepository = remember { UserRepository() }
+    val rentalRepository = remember { RentalRepository() }
+    val orderRepository = remember { OrderRepository() }
+
     val customerId = sessionManager.getCustomerId() ?: sessionManager.getDriverId() ?: "1"
 
     var userName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Joel Asare") }
@@ -45,8 +49,11 @@ fun CustomerAccountScreen(
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
     var famekoPayBalance by remember { mutableStateOf("142.50") }
     var rewardsPoints by remember { mutableStateOf("350 Pts") }
+    var activeRentalsText by remember { mutableStateOf("None active") }
+    var promosText by remember { mutableStateOf("2 Available") }
 
     LaunchedEffect(Unit) {
+        // 1. Fetch Profile
         userRepository.getCustomerProfile(customerId).onSuccess { profile ->
             if (profile.isNotEmpty()) {
                 userName = profile["name"]?.toString() ?: profile["username"]?.toString() ?: userName
@@ -56,8 +63,18 @@ fun CustomerAccountScreen(
                 profile["wallet_balance"]?.let { famekoPayBalance = String.format(Locale.US, "%.2f", it.toString().toDoubleOrNull() ?: 142.50) }
                 profile["rewards_points"]?.let { rewardsPoints = "$it Pts" }
             }
-        }.onFailure {
-            // Fallback to session
+        }
+
+        // 2. Fetch Active Rentals Count
+        rentalRepository.getCustomerRentals(customerId).onSuccess { rentals ->
+            val activeCount = rentals.count { it["status"]?.toString()?.uppercase() in listOf("ACTIVE", "PENDING", "ONGOING") }
+            activeRentalsText = if (activeCount > 0) "$activeCount active" else "None active"
+        }
+
+        // 3. Fetch Promotions Count
+        orderRepository.getPromotions().onSuccess { promos ->
+            val promoCount = promos.size
+            promosText = if (promoCount > 0) "$promoCount Available" else "No promotions"
         }
     }
 
@@ -125,7 +142,7 @@ fun CustomerAccountScreen(
                     }
 
                     // Profile Picture Avatar with camera badge
-                    Box(modifier = Modifier.size(60.dp)) {
+                    Box(modifier = Modifier.size(72.dp)) {
                         Surface(
                             shape = CircleShape,
                             color = Color(0xFF0A192F),
@@ -141,7 +158,7 @@ fun CustomerAccountScreen(
                             shape = CircleShape,
                             color = Color.White,
                             modifier = Modifier
-                                .size(20.dp)
+                                .size(24.dp)
                                 .align(Alignment.BottomEnd),
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
@@ -150,7 +167,7 @@ fun CustomerAccountScreen(
                                     imageVector = Icons.Default.CameraAlt,
                                     contentDescription = "Upload Photo",
                                     tint = BoltDark,
-                                    modifier = Modifier.size(10.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                         }
@@ -251,7 +268,7 @@ fun CustomerAccountScreen(
                 }
             }
 
-            // Account Management Card Container (Flush)
+            // Account Management Card Container
             item {
                 Surface(
                     color = Color.White,
@@ -334,7 +351,7 @@ fun CustomerAccountScreen(
                 }
             }
 
-            // Services & Perks Card Container (Flush)
+            // Services & Perks Card Container
             item {
                 Surface(
                     color = Color.White,
@@ -357,7 +374,7 @@ fun CustomerAccountScreen(
                             iconColor = Color(0xFF7C3AED),
                             title = "My Rentals",
                             subtitle = "View your active and past rentals",
-                            badgeText = "None active",
+                            badgeText = activeRentalsText,
                             badgeColor = Color(0xFFF1F5F9),
                             badgeTextColor = Color(0xFF64748B),
                             onClick = { onNavigate(CustomerScreen.Rentals) }
@@ -368,7 +385,7 @@ fun CustomerAccountScreen(
                             iconColor = Color(0xFFD97706),
                             title = "Promotions",
                             subtitle = "Promo codes, offers, and savings",
-                            badgeText = "2 Available",
+                            badgeText = promosText,
                             badgeColor = Color(0xFFFEF3C7),
                             badgeTextColor = Color(0xFFD97706),
                             onClick = { onNavigate(CustomerScreen.Promotions) }
@@ -447,18 +464,18 @@ fun AccountManagementRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             color = iconColor.copy(alpha = 0.1f),
-            modifier = Modifier.size(42.dp)
+            modifier = Modifier.size(46.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
             }
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
                 badgeText?.let {
                     Surface(
                         color = badgeColor,
@@ -478,7 +495,7 @@ fun AccountManagementRow(
                 }
             }
             Spacer(Modifier.height(2.dp))
-            Text(subtitle, color = Color.Gray, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(12.dp))
     }
