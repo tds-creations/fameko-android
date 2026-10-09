@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,7 +27,6 @@ import androidx.compose.ui.unit.sp
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.customer.ui.theme.BoltDark
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerAccountScreen(
     sessionManager: SessionManager,
@@ -40,57 +38,21 @@ fun CustomerAccountScreen(
     val userRating = "4.90"
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF10B981),
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("F", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            }
-                        }
-                        Text("Fameko", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
-                    }
-                },
-                actions = {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFECFDF5),
-                        border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
-                        modifier = Modifier.padding(end = 16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
-                            Text("Active Rider", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
         containerColor = Color(0xFFF8FAFC)
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header Section (Name & Avatar)
+            // Header Section (Name & Avatar) starting at top
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -283,7 +245,7 @@ fun CustomerAccountScreen(
                         )
                         HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                         AccountManagementRow(
-                            icon = Icons.AutoMirrored.Filled.HelpOutline,
+                            icon = Icons.Default.SupportAgent,
                             iconColor = Color(0xFF7C3AED),
                             title = "Support",
                             subtitle = "Help center, trips inquiry & live chat",
