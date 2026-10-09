@@ -37,22 +37,22 @@ fun CustomerAccountScreen(
     val userName = sessionManager.getDriverName() ?: "Joel Asare"
     val userRating = "4.90"
 
-    Scaffold(
-        containerColor = Color(0xFFF8FAFC)
-    ) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 48.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header Section (Name & Avatar) starting at top
+            // Header Section (Name & Avatar) starting at absolute top
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
+                        .padding(top = 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -365,7 +365,7 @@ fun CustomerAccountScreen(
 
             // Version Footer
             item {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     "Fameko Rider v4.26.1 (Build 2024.9)",
                     modifier = Modifier.fillMaxWidth(),
@@ -373,7 +373,7 @@ fun CustomerAccountScreen(
                     color = Color.Gray,
                     fontSize = 11.sp
                 )
-                Spacer(Modifier.height(48.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
