@@ -1,5 +1,6 @@
 package com.example.famekodriver.customer.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,6 +74,7 @@ fun AccountDetailScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerProfileScreen(
     viewModel: CustomerMapViewModel,
@@ -94,84 +98,217 @@ fun CustomerProfileScreen(
         selectedImageUri = uri
     }
 
-    AccountDetailScreen(title = "Profile", onBack = onBack) {
-        if (profile == null) {
-            Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = FamekoBlue)
-            }
-        } else {
-            Spacer(modifier = Modifier.height(20.dp))
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .clickable { launcher.launch("image/*") }
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = BoltLightGray,
-                    modifier = Modifier.size(100.dp)
-                ) {
-                    if (selectedImageUri != null) {
-                        AsyncImage(
-                            model = selectedImageUri,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                    } else if (profilePicUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = profilePicUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                    } else {
-                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.padding(20.dp), tint = Color.Gray)
-                    }
-                }
-                Surface(
-                    shape = CircleShape,
-                    color = FamekoBlue,
-                    modifier = Modifier.size(32.dp).align(Alignment.BottomEnd).offset(x = (-4).dp, y = (-4).dp),
-                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.padding(6.dp))
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            EditableProfileField(label = "Full Name", value = name, onValueChange = { name = it })
-            EditableProfileField(label = "Phone Number", value = phone, onValueChange = { phone = it })
-            EditableProfileField(label = "Email", value = email, onValueChange = { email = it })
-            EditableProfileField(label = "Address", value = address, onValueChange = { address = it })
-            EditableProfileField(label = "Region", value = region, onValueChange = { region = it })
-            
-            Spacer(modifier = Modifier.height(40.dp))
-            Button(
-                onClick = {
-                    isSaving = true
-                    val file = selectedImageUri?.let { getFileFromUri(context, it) }
-                    viewModel.updateProfile(name, email, phone, address, region, file) { success, message ->
-                        isSaving = false
-                        if (success) {
-                            Toast.makeText(context, message ?: "Profile updated successfully", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, message ?: "Failed to update profile", Toast.LENGTH_SHORT).show()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Edit Profile", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = !isSaving,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
+                actions = {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFFEFF6FF),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                        modifier = Modifier.padding(end = 16.dp)
+                    ) {
+                        Text(
+                            "Rider",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2563EB)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
+        },
+        containerColor = Color(0xFFF8FAFC)
+    ) { padding ->
+        if (profile == null) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = FamekoBlue)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (isSaving) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                } else {
-                    Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                // Avatar Header
+                Box(
+                    modifier = Modifier
+                        .clickable { launcher.launch("image/*") }
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = BoltLightGray,
+                        modifier = Modifier.size(96.dp),
+                        border = BorderStroke(2.dp, Color(0xFFE2E8F0))
+                    ) {
+                        if (selectedImageUri != null) {
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else if (profilePicUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = profilePicUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(48.dp), tint = Color.Gray)
+                            }
+                        }
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = FamekoBlue,
+                        modifier = Modifier.size(32.dp).align(Alignment.BottomEnd),
+                        border = BorderStroke(2.dp, Color.White)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+
+                Text("Tap photo to change", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Card Input Fields
+                ModernEditableField(label = "FULL NAME", value = name, onValueChange = { name = it }, icon = Icons.Default.Person)
+                ModernEditableField(label = "PHONE NUMBER", value = phone, onValueChange = { phone = it }, icon = Icons.Default.Phone, showVerified = true)
+                ModernEditableField(label = "EMAIL ADDRESS", value = email, onValueChange = { email = it }, icon = Icons.Default.Email, showVerified = true)
+                ModernEditableField(label = "STREET ADDRESS / HOME LOCATION", value = address, onValueChange = { address = it }, icon = Icons.Default.LocationOn)
+                ModernEditableField(label = "REGION", value = region, onValueChange = { region = it }, icon = Icons.Default.Public, showDropdown = true)
+
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = { Toast.makeText(context, "Delete Account requested", Toast.LENGTH_SHORT).show() }) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Default.DeleteForever, null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
+                        Text("Delete Account", fontWeight = FontWeight.Bold, color = Color(0xFFDC2626), fontSize = 14.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        isSaving = true
+                        val file = selectedImageUri?.let { getFileFromUri(context, it) }
+                        viewModel.updateProfile(name, email, phone, address, region, file) { success, message ->
+                            isSaving = false
+                            if (success) {
+                                Toast.makeText(context, message ?: "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, message ?: "Failed to update profile", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    enabled = !isSaving,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
+                    elevation = ButtonDefaults.buttonElevation(4.dp)
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Text("Save Changes", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernEditableField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    icon: ImageVector,
+    showVerified: Boolean = false,
+    showDropdown: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(1.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                if (showVerified) {
+                    Surface(
+                        color = Color(0xFFECFDF5),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            "✓ Verified",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF059669),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(icon, null, tint = Color(0xFF64748B), modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                TextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = BoltDark)
+                )
+                if (showDropdown) {
+                    Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.Gray, modifier = Modifier.size(20.dp))
+                }
+            }
         }
     }
 }
