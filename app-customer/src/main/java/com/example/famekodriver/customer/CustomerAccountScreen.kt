@@ -16,23 +16,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.UserRepository
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerAccountScreen(
     sessionManager: SessionManager,
@@ -67,22 +63,23 @@ fun CustomerAccountScreen(
 
     val initials = userName.split(" ").let { if (it.size > 1) "${it[0].first()}${it[1].first()}" else it[0].take(2) }
 
-    Scaffold(
-        containerColor = Color(0xFFF8FAFC)
-    ) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 48.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(0.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // Header Section (Name & Avatar) starting at top
+            // Header Section (Name & Avatar) at absolute top with zero padding
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -92,16 +89,16 @@ fun CustomerAccountScreen(
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Black,
                             color = BoltDark,
-                            fontSize = 26.sp
+                            fontSize = 24.sp
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = Color(0xFFF1F5F9),
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -109,26 +106,26 @@ fun CustomerAccountScreen(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = null,
                                     tint = Color(0xFFFFC107),
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                                 Text(
                                     text = "$userRating • $ridesCount rides",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     color = BoltDark
                                 )
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
                                     tint = Color.Gray,
-                                    modifier = Modifier.size(12.dp)
+                                    modifier = Modifier.size(10.dp)
                                 )
                             }
                         }
                     }
 
                     // Profile Picture Avatar with camera badge
-                    Box(modifier = Modifier.size(72.dp)) {
+                    Box(modifier = Modifier.size(60.dp)) {
                         Surface(
                             shape = CircleShape,
                             color = Color(0xFF0A192F),
@@ -136,24 +133,15 @@ fun CustomerAccountScreen(
                                 .fillMaxSize()
                                 .border(2.dp, Color(0xFF10B981), CircleShape)
                         ) {
-                            if (!profilePicUrl.isNullOrEmpty()) {
-                                AsyncImage(
-                                    model = profilePicUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(initials.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
-                                }
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(initials.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
                             }
                         }
                         Surface(
                             shape = CircleShape,
                             color = Color.White,
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(20.dp)
                                 .align(Alignment.BottomEnd),
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
@@ -162,7 +150,7 @@ fun CustomerAccountScreen(
                                     imageVector = Icons.Default.CameraAlt,
                                     contentDescription = "Upload Photo",
                                     tint = BoltDark,
-                                    modifier = Modifier.size(12.dp)
+                                    modifier = Modifier.size(10.dp)
                                 )
                             }
                         }
@@ -173,37 +161,40 @@ fun CustomerAccountScreen(
             // Quick Action Cards (Fameko Pay & Rewards)
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     // Fameko Pay Card
                     Card(
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onNavigate(CustomerScreen.Payment) },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(2.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        elevation = CardDefaults.cardElevation(0.dp),
                         border = BorderStroke(1.dp, Color(0xFFA7F3D0))
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(10.dp),
                                 color = Color(0xFF10B981),
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(36.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(18.dp))
                                 }
                             }
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(10.dp))
                             Column {
-                                Text("FAMEKO PAY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
-                                Spacer(Modifier.height(2.dp))
-                                Text("GH₵ $famekoPayBalance", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
+                                Text("FAMEKO PAY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
+                                Spacer(Modifier.height(1.dp))
+                                Text("GH₵ $famekoPayBalance", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF0F172A))
                             }
                         }
                     }
@@ -213,29 +204,29 @@ fun CustomerAccountScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clickable { Toast.makeText(context, "$rewardsPoints available", Toast.LENGTH_SHORT).show() },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(2.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        elevation = CardDefaults.cardElevation(0.dp),
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(10.dp),
                                 color = Color(0xFF0A192F),
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.size(36.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.CardGiftcard, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.CardGiftcard, null, tint = Color.White, modifier = Modifier.size(18.dp))
                                 }
                             }
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(10.dp))
                             Column {
-                                Text("REWARDS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
-                                Spacer(Modifier.height(2.dp))
-                                Text(rewardsPoints, fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
+                                Text("REWARDS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
+                                Spacer(Modifier.height(1.dp))
+                                Text(rewardsPoints, fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF0F172A))
                             }
                         }
                     }
@@ -244,23 +235,27 @@ fun CustomerAccountScreen(
 
             // Section Header 1: ACCOUNT MANAGEMENT
             item {
-                Text(
-                    "ACCOUNT MANAGEMENT",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF8FAFC))
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "ACCOUNT MANAGEMENT",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        letterSpacing = 1.sp
+                    )
+                }
             }
 
-            // Account Management Card Container
+            // Account Management Card Container (Flush)
             item {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                Surface(
+                    color = Color.White,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column {
                         AccountManagementRow(
@@ -323,23 +318,27 @@ fun CustomerAccountScreen(
 
             // Section Header 2: FAMEKO SERVICES & PERKS
             item {
-                Text(
-                    "FAMEKO SERVICES & PERKS",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF8FAFC))
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "FAMEKO SERVICES & PERKS",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        letterSpacing = 1.sp
+                    )
+                }
             }
 
-            // Services & Perks Card Container
+            // Services & Perks Card Container (Flush)
             item {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                Surface(
+                    color = Color.White,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column {
                         AccountManagementRow(
@@ -388,31 +387,41 @@ fun CustomerAccountScreen(
 
             // Log Out Button
             item {
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onLogout,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
+                        .background(Color.White)
+                        .padding(16.dp)
                 ) {
-                    Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    OutlinedButton(
+                        onClick = onLogout,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
+                    ) {
+                        Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
                 }
             }
 
             // Version Footer
             item {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Fameko Rider v4.26.1 (Build 2024.9)",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    color = Color.Gray,
-                    fontSize = 11.sp
-                )
-                Spacer(Modifier.height(48.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                        .padding(bottom = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Fameko Rider v4.26.1 (Build 2024.9)",
+                        color = Color.Gray,
+                        fontSize = 11.sp
+                    )
+                }
             }
         }
     }
@@ -434,22 +443,22 @@ fun AccountManagementRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(12.dp),
             color = iconColor.copy(alpha = 0.1f),
-            modifier = Modifier.size(46.dp)
+            modifier = Modifier.size(42.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
             }
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
                 badgeText?.let {
                     Surface(
                         color = badgeColor,
@@ -469,8 +478,8 @@ fun AccountManagementRow(
                 }
             }
             Spacer(Modifier.height(2.dp))
-            Text(subtitle, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, color = Color.Gray, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
+        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(12.dp))
     }
 }
