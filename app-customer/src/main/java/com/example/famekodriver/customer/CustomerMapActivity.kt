@@ -543,13 +543,11 @@ fun CustomerMapScreen() {
                     )
                 }
                 CustomerScreen.Profile -> {
-                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8FAFC))) {
-                        CustomerProfileScreen(
-                            viewModel = mapViewModel,
-                            profile = mapViewModel.customerProfile,
-                            onBack = { mapViewModel.navigateTo(CustomerScreen.Account) }
-                        )
-                    }
+                    CustomerProfileScreen(
+                        viewModel = mapViewModel,
+                        profile = mapViewModel.customerProfile,
+                        onBack = { mapViewModel.navigateTo(CustomerScreen.Account) }
+                    )
                 }
                 CustomerScreen.Payment -> {
                     CustomerPaymentScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })

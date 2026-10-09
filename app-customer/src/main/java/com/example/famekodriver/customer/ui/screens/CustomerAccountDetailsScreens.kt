@@ -42,34 +42,43 @@ import com.example.famekodriver.customer.ui.theme.BoltLightGray
 import com.example.famekodriver.customer.ui.theme.FamekoBlue
 import com.example.famekodriver.core.domain.model.SavedPlace
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountDetailScreen(
     title: String,
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
-        containerColor = Color.White
-    ) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
-            content = content
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            content = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 0.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(title, fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                }
+
+                content()
+            }
         )
     }
 }
