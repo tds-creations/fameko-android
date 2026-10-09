@@ -16,16 +16,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.SessionManager
-import com.example.famekodriver.core.data.repository.OrderRepository
-import com.example.famekodriver.core.data.repository.RentalRepository
 import com.example.famekodriver.core.data.repository.UserRepository
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import java.util.Locale
@@ -38,9 +39,6 @@ fun CustomerAccountScreen(
 ) {
     val context = LocalContext.current
     val userRepository = remember { UserRepository() }
-    val rentalRepository = remember { RentalRepository() }
-    val orderRepository = remember { OrderRepository() }
-
     val customerId = sessionManager.getCustomerId() ?: sessionManager.getDriverId() ?: "1"
 
     var userName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Joel Asare") }
@@ -49,11 +47,8 @@ fun CustomerAccountScreen(
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
     var famekoPayBalance by remember { mutableStateOf("142.50") }
     var rewardsPoints by remember { mutableStateOf("350 Pts") }
-    var activeRentalsText by remember { mutableStateOf("None active") }
-    var promosText by remember { mutableStateOf("2 Available") }
 
     LaunchedEffect(Unit) {
-        // 1. Fetch Profile
         userRepository.getCustomerProfile(customerId).onSuccess { profile ->
             if (profile.isNotEmpty()) {
                 userName = profile["name"]?.toString() ?: profile["username"]?.toString() ?: userName
@@ -63,18 +58,8 @@ fun CustomerAccountScreen(
                 profile["wallet_balance"]?.let { famekoPayBalance = String.format(Locale.US, "%.2f", it.toString().toDoubleOrNull() ?: 142.50) }
                 profile["rewards_points"]?.let { rewardsPoints = "$it Pts" }
             }
-        }
-
-        // 2. Fetch Active Rentals Count
-        rentalRepository.getCustomerRentals(customerId).onSuccess { rentals ->
-            val activeCount = rentals.count { it["status"]?.toString()?.uppercase() in listOf("ACTIVE", "PENDING", "ONGOING") }
-            activeRentalsText = if (activeCount > 0) "$activeCount active" else "None active"
-        }
-
-        // 3. Fetch Promotions Count
-        orderRepository.getPromotions().onSuccess { promos ->
-            val promoCount = promos.size
-            promosText = if (promoCount > 0) "$promoCount Available" else "No promotions"
+        }.onFailure {
+            // Fallback to session
         }
     }
 
@@ -128,7 +113,7 @@ fun CustomerAccountScreen(
                                 Text(
                                     text = "$userRating • $ridesCount rides",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     color = BoltDark
                                 )
                                 Icon(
@@ -150,8 +135,17 @@ fun CustomerAccountScreen(
                                 .fillMaxSize()
                                 .border(2.dp, Color(0xFF10B981), CircleShape)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(initials.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                            if (!profilePicUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = profilePicUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(initials.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                                }
                             }
                         }
                         Surface(
@@ -189,7 +183,7 @@ fun CustomerAccountScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onNavigate(CustomerScreen.Payment) },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                         elevation = CardDefaults.cardElevation(0.dp),
                         border = BorderStroke(1.dp, Color(0xFFA7F3D0))
@@ -221,7 +215,7 @@ fun CustomerAccountScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clickable { Toast.makeText(context, "$rewardsPoints available", Toast.LENGTH_SHORT).show() },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                         elevation = CardDefaults.cardElevation(0.dp),
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
@@ -268,7 +262,7 @@ fun CustomerAccountScreen(
                 }
             }
 
-            // Account Management Card Container
+            // Account Management Card Container (Flush)
             item {
                 Surface(
                     color = Color.White,
@@ -351,7 +345,7 @@ fun CustomerAccountScreen(
                 }
             }
 
-            // Services & Perks Card Container
+            // Services & Perks Card Container (Flush)
             item {
                 Surface(
                     color = Color.White,
@@ -374,7 +368,7 @@ fun CustomerAccountScreen(
                             iconColor = Color(0xFF7C3AED),
                             title = "My Rentals",
                             subtitle = "View your active and past rentals",
-                            badgeText = activeRentalsText,
+                            badgeText = "None active",
                             badgeColor = Color(0xFFF1F5F9),
                             badgeTextColor = Color(0xFF64748B),
                             onClick = { onNavigate(CustomerScreen.Rentals) }
@@ -385,7 +379,7 @@ fun CustomerAccountScreen(
                             iconColor = Color(0xFFD97706),
                             title = "Promotions",
                             subtitle = "Promo codes, offers, and savings",
-                            badgeText = promosText,
+                            badgeText = "2 Available",
                             badgeColor = Color(0xFFFEF3C7),
                             badgeTextColor = Color(0xFFD97706),
                             onClick = { onNavigate(CustomerScreen.Promotions) }
