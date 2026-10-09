@@ -38,86 +38,104 @@ fun Application.configureSockets() {
             println("WS: User $userId connected. Total sessions: ${sessions.size}")
             try {
                 for (frame in incoming) {
-                    if (frame is Frame.Text) {
-                        val text = frame.readText()
-                        try {
-                            val msg = gson.fromJson(text, WebSocketMessage::class.java)
-                            when (msg.type) {
-                                "CALL_INITIATE" -> {
-                                    val data = gson.fromJson(msg.payload, Map::class.java)
-                                    val orderId = (data["order_id"] ?: 0).toString().toDoubleOrNull()?.toInt() ?: 0
-                                    val callerName = data["caller_name"]?.toString() ?: "Someone"
-                                    val callId = data["call_id"]?.toString() ?: ""
-                                    
-                                    val recipientId: String? = if (userId.startsWith("DRIVER_")) {
-                                        DatabaseRepository.getCustomerIdForOrder(orderId)?.let { "CUSTOMER_$it" }
-                                    } else {
-                                        DatabaseRepository.getDriverIdForOrder(orderId)?.let { "DRIVER_$it" }
-                                    }
-                                    
-                                    if (recipientId != null) {
-                                        activeCalls[callId] = CallParticipants(userId, recipientId)
-                                        sendToUser(recipientId, "CALL_INCOMING", mapOf(
-                                            "call_id" to callId,
-                                            "caller_name" to callerName,
-                                            "order_id" to orderId,
-                                            "initiator_id" to userId
-                                        ))
-                                    }
-                                }
-                                "CALL_ACCEPT" -> {
-                                    val data = gson.fromJson(msg.payload, Map::class.java)
-                                    val callId = data["call_id"]?.toString() ?: ""
-                                    val participants = activeCalls[callId]
-                                    if (participants != null) {
-                                        sendToUser(participants.initiatorId, "CALL_ACCEPTED", mapOf("call_id" to callId))
-                                    }
-                                }
-                                "CALL_REJECT" -> {
-                                    val data = gson.fromJson(msg.payload, Map::class.java)
-                                    val callId = data["call_id"]?.toString() ?: ""
-                                    val participants = activeCalls.remove(callId)
-                                    if (participants != null) {
-                                        sendToUser(participants.initiatorId, "CALL_REJECTED", mapOf("call_id" to callId))
-                                    }
-                                }
-                                "CALL_END" -> {
-                                    val data = gson.fromJson(msg.payload, Map::class.java)
-                                    val callId = data["call_id"]?.toString() ?: ""
-                                    val participants = activeCalls.remove(callId)
-                                    if (participants != null) {
-                                        val otherId = if (userId == participants.initiatorId) participants.recipientId else participants.initiatorId
-                                        sendToUser(otherId, "CALL_ENDED", mapOf("call_id" to callId))
-                                    }
-                                }
-                                "WEBRTC_OFFER", "WEBRTC_ANSWER", "WEBRTC_ICE_CANDIDATE" -> {
-                                    val data = gson.fromJson(msg.payload, Map::class.java)
-                                    val callId = data["call_id"]?.toString() ?: ""
-                                    val participants = activeCalls[callId]
-                                    if (participants != null) {
-                                        val targetId = if (userId == participants.initiatorId) participants.recipientId else participants.initiatorId
-                                        sendToUser(targetId, msg.type, data)
-                                    }
-                                }
-                                "LOCATION_UPDATE" -> {
-                                    if (userId.startsWith("DRIVER_")) {
-                                        val data = gson.fromJson(msg.payload, Map::class.java)
-                                        val lat = data["lat"]?.toString()?.toDoubleOrNull() ?: 0.0
-                                        val lng = data["lng"]?.toString()?.toDoubleOrNull() ?: 0.0
-                                        val bearing = data["bearing"]?.toString()?.toFloatOrNull() ?: 0f
-                                        val driverId = userId.removePrefix("DRIVER_")
-                                        
-                                        // Broadcast to all admins for live tracking
-                                        broadcastToAdmins("DRIVER_LOCATION_UPDATE", mapOf(
-                                            "driverId" to driverId,
-                                            "lat" to lat,
-                                            "lng" to lng,
-                                            "bearing" to bearing
-                                        ))
-                                    }
-                                }
+                    when (frame) {
+                        is Frame.Binary -> {
+                            val data = frame.readBytes()
+                            activeCalls.values.find { it.initiatorId == userId || it.recipientId == userId }?.let { call ->
+                                val targetId = if (userId == call.initiatorId) call.recipientId else call.initiatorId
+                                sessions[targetId]?.send(Frame.Binary(true, data))
                             }
-                        } catch (_: Exception) {}
+                        }
+                        is Frame.Text -> {
+                            val text = frame.readText()
+                            try {
+                                val msg = gson.fromJson(text, WebSocketMessage::class.java)
+                                when (msg.type) {
+                                    "CALL_INITIATE" -> {
+                                        val data = gson.fromJson(msg.payload, Map::class.java)
+                                        val orderId = (data["order_id"] ?: 0).toString().toDoubleOrNull()?.toInt() ?: 0
+                                        val callId = data["call_id"]?.toString() ?: ""
+                                        
+                                        val recipientId: String?
+                                        val resolvedCallerName: String
+                                        
+                                        if (userId.startsWith("DRIVER_")) {
+                                            val driverIdInt = userId.removePrefix("DRIVER_").toIntOrNull() ?: 0
+                                            val driverDetails = DatabaseRepository.getDriverDetails(driverIdInt)
+                                            resolvedCallerName = driverDetails?.get("name")?.toString() ?: data["caller_name"]?.toString() ?: "Driver"
+                                            recipientId = DatabaseRepository.getCustomerIdForOrder(orderId)?.let { "CUSTOMER_$it" }
+                                        } else {
+                                            val custIdInt = userId.removePrefix("CUSTOMER_").toIntOrNull() ?: 0
+                                            val custName = DatabaseRepository.getCustomerName(custIdInt)
+                                            resolvedCallerName = custName ?: data["caller_name"]?.toString() ?: "Customer"
+                                            recipientId = DatabaseRepository.getDriverIdForOrder(orderId)?.let { "DRIVER_$it" }
+                                        }
+                                        
+                                        if (recipientId != null) {
+                                            activeCalls[callId] = CallParticipants(userId, recipientId)
+                                            sendToUser(recipientId, "CALL_INCOMING", mapOf(
+                                                "call_id" to callId,
+                                                "caller_name" to resolvedCallerName,
+                                                "order_id" to orderId,
+                                                "initiator_id" to userId
+                                            ))
+                                        }
+                                    }
+                                    "CALL_ACCEPT" -> {
+                                        val data = gson.fromJson(msg.payload, Map::class.java)
+                                        val callId = data["call_id"]?.toString() ?: ""
+                                        val participants = activeCalls[callId]
+                                        if (participants != null) {
+                                            sendToUser(participants.initiatorId, "CALL_ACCEPTED", mapOf("call_id" to callId))
+                                        }
+                                    }
+                                    "CALL_REJECT" -> {
+                                        val data = gson.fromJson(msg.payload, Map::class.java)
+                                        val callId = data["call_id"]?.toString() ?: ""
+                                        val participants = activeCalls.remove(callId)
+                                        if (participants != null) {
+                                            sendToUser(participants.initiatorId, "CALL_REJECTED", mapOf("call_id" to callId))
+                                        }
+                                    }
+                                    "CALL_END" -> {
+                                        val data = gson.fromJson(msg.payload, Map::class.java)
+                                        val callId = data["call_id"]?.toString() ?: ""
+                                        val participants = activeCalls.remove(callId)
+                                        if (participants != null) {
+                                            val otherId = if (userId == participants.initiatorId) participants.recipientId else participants.initiatorId
+                                            sendToUser(otherId, "CALL_ENDED", mapOf("call_id" to callId))
+                                        }
+                                    }
+                                    "WEBRTC_OFFER", "WEBRTC_ANSWER", "WEBRTC_ICE_CANDIDATE" -> {
+                                        val data = gson.fromJson(msg.payload, Map::class.java)
+                                        val callId = data["call_id"]?.toString() ?: ""
+                                        val participants = activeCalls[callId]
+                                        if (participants != null) {
+                                            val targetId = if (userId == participants.initiatorId) participants.recipientId else participants.initiatorId
+                                            sendToUser(targetId, msg.type, data)
+                                        }
+                                    }
+                                    "LOCATION_UPDATE" -> {
+                                        if (userId.startsWith("DRIVER_")) {
+                                            val data = gson.fromJson(msg.payload, Map::class.java)
+                                            val lat = data["lat"]?.toString()?.toDoubleOrNull() ?: 0.0
+                                            val lng = data["lng"]?.toString()?.toDoubleOrNull() ?: 0.0
+                                            val bearing = data["bearing"]?.toString()?.toFloatOrNull() ?: 0f
+                                            val driverId = userId.removePrefix("DRIVER_")
+                                            
+                                            // Broadcast to all admins for live tracking
+                                            broadcastToAdmins("DRIVER_LOCATION_UPDATE", mapOf(
+                                                "driverId" to driverId,
+                                                "lat" to lat,
+                                                "lng" to lng,
+                                                "bearing" to bearing
+                                            ))
+                                        }
+                                    }
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        else -> {}
                     }
                 }
             } catch (e: Exception) {
