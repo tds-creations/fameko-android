@@ -91,11 +91,65 @@ fun CustomerProfileScreen(
     
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+    var showRegionDropdown by remember { mutableStateOf(false) }
+
+    val ghanaRegions = listOf(
+        "Greater Accra",
+        "Ashanti (Kumasi)",
+        "Western (Takoradi)",
+        "Central (Cape Coast)",
+        "Eastern (Koforidua)",
+        "Volta (Ho)",
+        "Northern (Tamale)",
+        "Upper East",
+        "Upper West",
+        "Bono"
+    )
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         selectedImageUri = uri
+    }
+
+    if (showRegionDropdown) {
+        AlertDialog(
+            onDismissRequest = { showRegionDropdown = false },
+            title = { Text("Select Region", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    ghanaRegions.forEach { r ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    region = r
+                                    showRegionDropdown = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = region == r, onClick = { region = r; showRegionDropdown = false })
+                            Spacer(Modifier.width(8.dp))
+                            Text(r, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = BoltDark)
+                        }
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showRegionDropdown = false }) {
+                    Text("Close")
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color.White
+        )
     }
 
     Scaffold(
@@ -109,22 +163,6 @@ fun CustomerProfileScreen(
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
                             }
                         }
-                    }
-                },
-                actions = {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFEFF6FF),
-                        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
-                        modifier = Modifier.padding(end = 16.dp)
-                    ) {
-                        Text(
-                            "Rider",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2563EB)
-                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -146,7 +184,6 @@ fun CustomerProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
                 // Avatar Header
                 Box(
                     modifier = Modifier
@@ -191,16 +228,16 @@ fun CustomerProfileScreen(
                 }
 
                 Text("Tap photo to change", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Card Input Fields
                 ModernEditableField(label = "FULL NAME", value = name, onValueChange = { name = it }, icon = Icons.Default.Person)
                 ModernEditableField(label = "PHONE NUMBER", value = phone, onValueChange = { phone = it }, icon = Icons.Default.Phone, showVerified = true)
                 ModernEditableField(label = "EMAIL ADDRESS", value = email, onValueChange = { email = it }, icon = Icons.Default.Email, showVerified = true)
                 ModernEditableField(label = "STREET ADDRESS / HOME LOCATION", value = address, onValueChange = { address = it }, icon = Icons.Default.LocationOn)
-                ModernEditableField(label = "REGION", value = region, onValueChange = { region = it }, icon = Icons.Default.Public, showDropdown = true)
+                ModernEditableField(label = "REGION", value = region, onValueChange = { region = it }, icon = Icons.Default.Public, showDropdown = true, onClick = { showRegionDropdown = true })
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 TextButton(onClick = { Toast.makeText(context, "Delete Account requested", Toast.LENGTH_SHORT).show() }) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Default.DeleteForever, null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
@@ -208,7 +245,7 @@ fun CustomerProfileScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = {
@@ -252,10 +289,13 @@ fun ModernEditableField(
     onValueChange: (String) -> Unit,
     icon: ImageVector,
     showVerified: Boolean = false,
-    showDropdown: Boolean = false
+    showDropdown: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = onClick != null) { onClick?.invoke() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(1.dp),
@@ -296,6 +336,7 @@ fun ModernEditableField(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.weight(1f),
+                    enabled = onClick == null,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
