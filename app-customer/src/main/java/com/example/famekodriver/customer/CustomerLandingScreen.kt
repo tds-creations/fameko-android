@@ -2,7 +2,6 @@ package com.example.famekodriver.customer
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -50,23 +49,11 @@ fun CustomerLandingScreen(
     
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .background(Color.White)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Text(
-            text = "Let's go places.",
-            style = MaterialTheme.typography.headlineMedium,
-            color = BoltDark,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 28.sp
-        )
-
         activeRental?.let { rental ->
-            Spacer(Modifier.height(20.dp))
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -96,9 +83,8 @@ fun CustomerLandingScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = FamekoBlue, modifier = Modifier.size(16.dp))
                 }
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
 
         // Quick Destination Shortcuts Grid (Home, Work, Recent, Saved)
         Row(
@@ -107,7 +93,7 @@ fun CustomerLandingScreen(
         ) {
             ShortcutGridItem(
                 title = "Home",
-                subtitle = "Temple St",
+                subtitle = "East Legon",
                 icon = Icons.Default.Home,
                 containerColor = Color(0xFFECFDF5),
                 contentColor = Color(0xFF059669),
@@ -123,7 +109,7 @@ fun CustomerLandingScreen(
             )
             ShortcutGridItem(
                 title = "Recent",
-                subtitle = "Achimota",
+                subtitle = "Accra Mall",
                 icon = Icons.Default.History,
                 containerColor = Color(0xFFF1F5F9),
                 contentColor = Color(0xFF475569),
@@ -131,7 +117,7 @@ fun CustomerLandingScreen(
             )
             ShortcutGridItem(
                 title = "Saved",
-                subtitle = "4 spots",
+                subtitle = "3 spots",
                 icon = Icons.Default.Star,
                 containerColor = Color(0xFFFEF3C7),
                 contentColor = Color(0xFFD97706),
@@ -139,7 +125,51 @@ fun CustomerLandingScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Popular Destination Quick Booking Card (Kotoka Airport)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSearchClick() },
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            elevation = CardDefaults.cardElevation(1.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFECFDF5),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF059669), modifier = Modifier.size(22.dp))
+                        }
+                    }
+
+                    Column {
+                        Text("Kotoka Int. Airport (ACC)", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
+                        Spacer(Modifier.height(2.dp))
+                        Text("Fast pickup • ~18 mins away", fontSize = 12.sp, color = Color.Gray)
+                    }
+                }
+
+                Surface(
+                    color = Color(0xFFECFDF5),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("GH₵ 42", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Service Grid - Row 1
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -184,56 +214,7 @@ fun CustomerLandingScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // Around You Fleet Tier Preview Carousel (Dynamically fetched with Cedis ₵)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Around You", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Gray, letterSpacing = 1.sp)
-            Surface(
-                color = Color(0xFFECFDF5),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Fastest pickup 2 min", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (rideEstimates.isNotEmpty()) {
-                rideEstimates.forEach { estimate ->
-                    FleetTierCard(
-                        title = estimate.name,
-                        eta = "${estimate.pickupEtaMin}m away",
-                        price = "₵${String.format(Locale.getDefault(), "%.2f", estimate.fare)}",
-                        bgColor = Color(0xFFF8FAFC),
-                        textColor = Color(0xFF0F172A)
-                    )
-                }
-            } else {
-                FleetTierCard("Economy", "2m away", "₵8.40", Color(0xFFF8FAFC), Color(0xFF0F172A))
-                FleetTierCard("Comfort", "4m away", "₵12.50", Color(0xFFECFDF5), Color(0xFF065F46))
-                FleetTierCard("Pragya", "3m away", "₵6.00", Color(0xFFF8FAFC), Color(0xFF0F172A))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Recent Places List
         recentPlaces.forEach { place ->
@@ -245,7 +226,7 @@ fun CustomerLandingScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
         
-        Spacer(modifier = Modifier.height(100.dp)) // Extra space for bottom nav
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -263,13 +244,13 @@ fun ShortcutGridItem(
         modifier = Modifier.clickable { onClick() }
     ) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(18.dp),
             color = containerColor,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(60.dp),
             border = BorderStroke(1.dp, contentColor.copy(alpha = 0.2f))
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = contentColor, modifier = Modifier.size(24.dp))
+                Icon(icon, null, tint = contentColor, modifier = Modifier.size(26.dp))
             }
         }
         Spacer(modifier = Modifier.height(6.dp))
@@ -316,9 +297,9 @@ fun ServiceGridItem(
 ) {
     Surface(
         modifier = modifier
-            .height(130.dp)
+            .height(115.dp)
             .clickable(enabled = enabled) { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = if (enabled) BoltLightGray else BoltLightGray.copy(alpha = 0.5f)
     ) {
         Column(
@@ -330,7 +311,7 @@ fun ServiceGridItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    modifier = Modifier.size(56.dp),
+                    modifier = Modifier.size(48.dp),
                     tint = BoltDark
                 )
             } else if (imageUrl != null) {
@@ -338,7 +319,7 @@ fun ServiceGridItem(
                     model = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(52.dp)
                         .clip(RoundedCornerShape(12.dp)),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
@@ -347,12 +328,12 @@ fun ServiceGridItem(
             Text(
                 text = title,
                 fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 color = BoltDark
             )
             Text(
                 text = description,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 color = Color.Gray
             )
         }

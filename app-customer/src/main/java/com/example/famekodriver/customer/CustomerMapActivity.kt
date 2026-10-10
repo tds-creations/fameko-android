@@ -1047,7 +1047,7 @@ fun MainMapContent(
                 val isTerminalStatus = status == "CANCELLED" || status == "DELIVERED"
                 val hasActiveOrder = viewModel.currentOrderId != null && viewModel.orderStatusData != null && !isTerminalStatus
 
-                if (!hasActiveOrder && currentSheetState != CustomerSheetState.LANDING && !viewModel.isFullscreenMap) {
+                if (!hasActiveOrder && !viewModel.isFullscreenMap) {
                     Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 16.dp, end = 16.dp).statusBarsPadding()) {
                         Surface(
                             modifier = Modifier
@@ -1057,7 +1057,7 @@ fun MainMapContent(
                                     if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) viewModel.resetSearch() 
                                     else viewModel.navigateTo(CustomerScreen.RouteSelection) 
                                 },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(20.dp),
                             color = Color.White,
                             shadowElevation = 8.dp,
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
@@ -1116,8 +1116,40 @@ fun MainMapContent(
                 }
 
                 if (!viewModel.isFullscreenMap && (currentSheetState == CustomerSheetState.IDLE || currentSheetState == CustomerSheetState.LANDING || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS)) {
-                    Column(modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 160.dp, end = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        FloatingActionButton(onClick = { hasLocationPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED; if (hasLocationPermission) { fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { loc -> loc?.let { mapLibreMap?.animateCamera(CameraUpdateFactory.newCameraPosition(org.maplibre.android.camera.CameraPosition.Builder().target(LatLng(it.latitude, it.longitude)).zoom(15.0).build()), 1000) } } } }, containerColor = Color.White, contentColor = BoltDark, shape = CircleShape, modifier = Modifier.size(48.dp)) { Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(20.dp)) }
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 160.dp, end = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FloatingActionButton(
+                            onClick = { 
+                                hasLocationPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                if (hasLocationPermission) { 
+                                    fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { loc -> 
+                                        loc?.let { mapLibreMap?.animateCamera(CameraUpdateFactory.newCameraPosition(org.maplibre.android.camera.CameraPosition.Builder().target(LatLng(it.latitude, it.longitude)).zoom(15.0).build()), 1000) } 
+                                    } 
+                                } 
+                            }, 
+                            containerColor = Color.White, 
+                            contentColor = Color(0xFF0F172A), 
+                            shape = CircleShape, 
+                            modifier = Modifier.size(48.dp),
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                        ) { 
+                            Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(20.dp)) 
+                        }
+
+                        FloatingActionButton(
+                            onClick = { viewModel.navigateTo(CustomerScreen.Safety) }, 
+                            containerColor = Color.White, 
+                            contentColor = Color(0xFF059669), 
+                            shape = CircleShape, 
+                            modifier = Modifier.size(48.dp),
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp)
+                        ) { 
+                            Icon(Icons.Default.VerifiedUser, null, modifier = Modifier.size(20.dp)) 
+                        }
                     }
                 }
                 
