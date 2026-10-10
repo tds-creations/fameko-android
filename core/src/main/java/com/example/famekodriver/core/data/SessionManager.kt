@@ -18,6 +18,7 @@ class SessionManager(context: Context) {
         private const val KEY_USER_ROLE = "userRole"
         private const val KEY_COMPANY_NAME = "companyName"
         private const val KEY_VEHICLE_TYPE = "vehicleType"
+        private const val KEY_PROFILE_PICTURE = "profilePicture"
         private const val KEY_IS_FIRST_LOGIN = "isLoginFirst"
         private const val KEY_ACCEPTED_TERMS_VERSION = "acceptedTermsVersion"
 
@@ -48,7 +49,16 @@ class SessionManager(context: Context) {
     fun getAccountAlertsEnabled(): Boolean = getNotificationPreference(KEY_NOTIF_ACCOUNT)
     fun setAccountAlertsEnabled(enabled: Boolean) = setNotificationPreference(KEY_NOTIF_ACCOUNT, enabled)
 
-    fun saveSession(driverId: String, driverName: String, status: String = "PENDING", phone: String = "", role: String = "DRIVER", company: String? = null, vehicleType: String? = null) {
+    fun saveSession(
+        driverId: String, 
+        driverName: String, 
+        status: String = "PENDING", 
+        phone: String = "", 
+        role: String = "DRIVER", 
+        company: String? = null, 
+        vehicleType: String? = null,
+        profilePicture: String? = null
+    ) {
         prefs.edit().apply {
             putBoolean(KEY_IS_LOGGED_IN, true)
             putString(KEY_DRIVER_ID, driverId)
@@ -58,8 +68,15 @@ class SessionManager(context: Context) {
             putString(KEY_USER_ROLE, role)
             putString(KEY_COMPANY_NAME, company)
             putString(KEY_VEHICLE_TYPE, vehicleType)
+            putString(KEY_PROFILE_PICTURE, profilePicture)
             apply()
         }
+    }
+
+    fun getProfilePicture(): String? = prefs.getString(KEY_PROFILE_PICTURE, null)
+
+    fun updateProfilePicture(url: String?) {
+        prefs.edit().putString(KEY_PROFILE_PICTURE, url).apply()
     }
 
     fun saveDriverSession(driverId: String, driverName: String, role: String) {

@@ -130,7 +130,8 @@ class DriverLoginActivity : AppCompatActivity() {
                                 phone = driver.phone,
                                 role = driver.userRole,
                                 company = driver.companyName,
-                                vehicleType = driver.vehicleType
+                                vehicleType = driver.vehicleType,
+                                profilePicture = driver.profilePicture
                             )
                             Toast.makeText(this@DriverLoginActivity, "Login Successful!", Toast.LENGTH_SHORT).show()
                             

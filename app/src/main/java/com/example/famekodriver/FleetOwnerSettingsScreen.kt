@@ -44,7 +44,7 @@ fun FleetOwnerSettingsScreen(
     var ownerName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
     var ownerPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "") }
     var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "") }
-    var profilePicUrl by remember { mutableStateOf<String?>(null) }
+    var profilePicUrl by remember { mutableStateOf<String?>(sessionManager.getProfilePicture()) }
     var fleetCount by remember { mutableStateOf(0) }
 
     var dailyMomoRemittance by remember { mutableStateOf(true) }
