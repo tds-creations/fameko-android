@@ -1,8 +1,6 @@
 package com.example.famekodriver
 
 import android.app.Application
-import org.osmdroid.config.Configuration
-import androidx.preference.PreferenceManager
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.module.http.HttpRequestUtil
@@ -44,12 +42,5 @@ class DriverApplication : Application() {
             .build()
         
         HttpRequestUtil.setOkHttpClient(client)
-        
-        // Initialize osmdroid configuration
-        Configuration.getInstance().load(
-            this,
-            PreferenceManager.getDefaultSharedPreferences(this)
-        )
-        Configuration.getInstance().userAgentValue = packageName
     }
 }

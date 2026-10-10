@@ -7,7 +7,6 @@ plugins {
     alias(libs.plugins.secrets.gradle.plugin)
 }
 
-
 android {
     namespace = "com.example.famekodriver"
     compileSdk = 35
@@ -69,18 +68,15 @@ dependencies {
 
     implementation(libs.androidx.appcompat)
     implementation(libs.google.material)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.viewpager2)
 
-    // Maps and Location (OSM / MapLibre)
+    // Maps and Location (MapLibre Online)
     implementation(libs.maplibre.android)
-    implementation(libs.osmdroid.android)
     implementation(libs.play.services.location)
     implementation(libs.play.services.auth)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.preference)
 
-    // Cloudinary for fast uploads
+    // Cloudinary & Coil for images
     implementation(libs.cloudinary.android)
     implementation(libs.coil.compose)
 

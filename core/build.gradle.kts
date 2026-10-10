@@ -43,7 +43,6 @@ dependencies {
     
     api(libs.androidx.core.ktx)
     api(libs.androidx.appcompat)
-    api(libs.postgresql.android) // Downgraded for Android compatibility (ManagementFactory issue)
     api(libs.kotlinx.coroutines.android)
 
     // Compose
@@ -66,7 +65,7 @@ dependencies {
     api(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Maps
+    // Maps (MapLibre Online)
     api(libs.maplibre.android)
     api(libs.maplibre.annotation)
 
