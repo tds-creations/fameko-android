@@ -1661,11 +1661,17 @@ object DatabaseRepository {
     }
 
     fun loginCustomer(phone: String, password: String): AuthResponse {
-        val normalizedPhone = normalizePhone(phone)
+        val cleanInput = phone.trim().lowercase()
+        val digitsOnly = phone.filter { it.isDigit() }
+        val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
+
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, name, password FROM customers WHERE TRIM(phone) = ?"
+            val sql = "SELECT id, name, password FROM customers WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
             val stmt = conn.prepareStatement(sql)
-            stmt.setString(1, normalizedPhone)
+            stmt.setString(1, last9Digits)
+            stmt.setString(2, cleanInput)
+            stmt.setString(3, phone.trim())
+
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 val dbPass = rs.getString("password")
@@ -1701,7 +1707,30 @@ object DatabaseRepository {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
             } else {
-                return AuthResponse(false, "User not found with this phone number", null, null)
+                // Check if account belongs to a driver or fleet owner
+                try {
+                    val driverSql = "SELECT full_name, COALESCE(user_role, 'DRIVER') as user_role FROM drivers WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ?"
+                    val stmtDriver = conn.prepareStatement(driverSql)
+                    stmtDriver.setString(1, last9Digits)
+                    stmtDriver.setString(2, cleanInput)
+                    val rsDriver = stmtDriver.executeQuery()
+                    if (rsDriver.next()) {
+                        val role = rsDriver.getString("user_role") ?: "DRIVER"
+                        val roleLabel = if (role == "OWNER" || role == "BOTH") "Fleet Owner" else "Driver"
+                        return AuthResponse(false, "This account is registered as a $roleLabel. Please log in using the Fameko Driver app.", null, null)
+                    }
+
+                    val fleetSql = "SELECT full_name FROM fleet_owners WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ?"
+                    val stmtFleet = conn.prepareStatement(fleetSql)
+                    stmtFleet.setString(1, last9Digits)
+                    stmtFleet.setString(2, cleanInput)
+                    val rsFleet = stmtFleet.executeQuery()
+                    if (rsFleet.next()) {
+                        return AuthResponse(false, "This account is registered as a Fleet Owner. Please log in using the Fameko Driver app.", null, null)
+                    }
+                } catch (_: Exception) {}
+
+                return AuthResponse(false, "Customer account not found with this phone number or email", null, null)
             }
         }
     }
