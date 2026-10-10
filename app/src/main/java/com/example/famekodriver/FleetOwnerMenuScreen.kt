@@ -45,14 +45,14 @@ fun FleetOwnerMenuScreen(
     val repository = remember { DriverRepository.getInstance() }
     val ownerId = sessionManager.getDriverId() ?: ""
 
-    var ownerName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Nii Odartai Sackey") }
-    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "Sackey's Rentals") }
+    var ownerName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
+    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "") }
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
-    var fleetCount by remember { mutableStateOf(6) }
-    var activeDriversCount by remember { mutableStateOf(6) }
-    var totalDispatches by remember { mutableStateOf(48) }
-    var todayGross by remember { mutableStateOf(1850.0) }
-    var weeklyGross by remember { mutableStateOf(12400.0) }
+    var fleetCount by remember { mutableStateOf(0) }
+    var activeDriversCount by remember { mutableStateOf(0) }
+    var totalDispatches by remember { mutableStateOf(0) }
+    var todayGross by remember { mutableStateOf(0.0) }
+    var weeklyGross by remember { mutableStateOf(0.0) }
 
     LaunchedEffect(Unit) {
         if (ownerId.isNotEmpty()) {
@@ -60,10 +60,10 @@ fun FleetOwnerMenuScreen(
                 if (profile["success"] == true) {
                     profilePicUrl = profile["profile_picture"]?.toString()
                     ownerName = profile["name"]?.toString() ?: ownerName
-                    companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
-                    (profile["fleet_count"] as? Number)?.toInt()?.let { if (it > 0) fleetCount = it }
+                    companyName = profile["company_name"]?.toString() ?: companyName
+                    (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
                     (profile["active_rentals_count"] as? Number)?.toInt()?.let { activeDriversCount = it }
-                    (profile["total_earnings"] as? Number)?.toDouble()?.let { if (it > 0) todayGross = it }
+                    (profile["total_earnings"] as? Number)?.toDouble()?.let { todayGross = it }
                 }
             }
         }

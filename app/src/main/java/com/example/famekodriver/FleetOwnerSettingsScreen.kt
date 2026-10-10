@@ -41,11 +41,11 @@ fun FleetOwnerSettingsScreen(
     val repository = remember { DriverRepository.getInstance() }
     val ownerId = sessionManager.getDriverId() ?: ""
 
-    var ownerName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Nii Odartai Sackey") }
-    var ownerPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "+233 24 000 8900") }
-    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "Sackey's Rentals") }
+    var ownerName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
+    var ownerPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "") }
+    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "") }
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
-    var fleetCount by remember { mutableStateOf(14) }
+    var fleetCount by remember { mutableStateOf(0) }
 
     var dailyMomoRemittance by remember { mutableStateOf(true) }
     var graWithholdingTax by remember { mutableStateOf(true) }
@@ -57,9 +57,9 @@ fun FleetOwnerSettingsScreen(
                 if (profile["success"] == true) {
                     profilePicUrl = profile["profile_picture"]?.toString()
                     ownerName = profile["name"]?.toString() ?: ownerName
-                    companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
+                    companyName = profile["company_name"]?.toString() ?: companyName
                     ownerPhone = profile["phone"]?.toString() ?: ownerPhone
-                    (profile["fleet_count"] as? Number)?.toInt()?.let { if (it > 0) fleetCount = it }
+                    (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
                 }
             }
         }

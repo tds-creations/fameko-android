@@ -1233,6 +1233,58 @@ object DatabaseRepository {
         }
     }
 
+    fun getFleetOwnerProfile(id: Int): Map<String, Any>? {
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val sqlOwner = "SELECT id, full_name, email, phone, region, profile_picture, status, company_name, registration_number FROM fleet_owners WHERE id = ?"
+            val stmtOwner = conn.prepareStatement(sqlOwner)
+            stmtOwner.setInt(1, id)
+            val rsOwner = stmtOwner.executeQuery()
+            if (rsOwner.next()) {
+                var fleetCount = 0
+                var activeRentalsCount = 0
+                var totalEarnings = 0.0
+                try {
+                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ?")
+                    stmtCount.setInt(1, id)
+                    stmtCount.setInt(2, id)
+                    val rsCount = stmtCount.executeQuery()
+                    if (rsCount.next()) fleetCount = rsCount.getInt(1)
+
+                    val stmtActive = conn.prepareStatement("SELECT COUNT(*) FROM rentals r JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE (v.fleet_owner_id = ? OR v.owner_id = ?) AND r.status = 'ACTIVE'")
+                    stmtActive.setInt(1, id)
+                    stmtActive.setInt(2, id)
+                    val rsActive = stmtActive.executeQuery()
+                    if (rsActive.next()) activeRentalsCount = rsActive.getInt(1)
+
+                    val stmtEarn = conn.prepareStatement("SELECT COALESCE(SUM(r.total_price), 0.0) FROM rentals r JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE (v.fleet_owner_id = ? OR v.owner_id = ?) AND r.payment_status = 'COMPLETED'")
+                    stmtEarn.setInt(1, id)
+                    stmtEarn.setInt(2, id)
+                    val rsEarn = stmtEarn.executeQuery()
+                    if (rsEarn.next()) totalEarnings = rsEarn.getDouble(1)
+                } catch (_: Exception) {}
+
+                return mapOf(
+                    "success" to true,
+                    "id" to rsOwner.getInt("id"),
+                    "name" to rsOwner.getString("full_name"),
+                    "email" to rsOwner.getString("email"),
+                    "phone" to rsOwner.getString("phone"),
+                    "region" to (rsOwner.getString("region") ?: ""),
+                    "profile_picture" to (rsOwner.getString("profile_picture") ?: ""),
+                    "vehicle_type" to "Fleet",
+                    "status" to rsOwner.getString("status"),
+                    "user_role" to "OWNER",
+                    "company_name" to (rsOwner.getString("company_name") ?: "Sackey's Rentals"),
+                    "registration_number" to (rsOwner.getString("registration_number") ?: "REG-2024-8891"),
+                    "fleet_count" to fleetCount,
+                    "active_rentals_count" to activeRentalsCount,
+                    "total_earnings" to totalEarnings
+                )
+            }
+        }
+        return null
+    }
+
     fun getDriverProfile(id: Int, role: String? = null): Map<String, Any>? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             if (role?.uppercase() == "OWNER") {
@@ -2019,7 +2071,61 @@ object DatabaseRepository {
         val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            // 1. Try drivers table first
+            // 1. Try fleet_owners table first
+            val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
+            val stmtOwner = conn.prepareStatement(sqlOwner)
+            stmtOwner.setString(1, last9Digits)
+            stmtOwner.setString(2, cleanInput)
+            stmtOwner.setString(3, phone.trim())
+
+            val rsOwner = stmtOwner.executeQuery()
+            if (rsOwner.next()) {
+                val dbPass = rsOwner.getString("password")
+                val ownerId = rsOwner.getInt("id")
+                
+                var isMatch = false
+                var needsMigration = false
+                
+                if (dbPass == "GOOGLE_AUTH") {
+                    isMatch = true
+                } else if (dbPass != null) {
+                    try {
+                        isMatch = BCrypt.checkpw(password, dbPass)
+                    } catch (e: Throwable) {
+                        if (dbPass == password) {
+                            isMatch = true
+                            needsMigration = true
+                        }
+                    }
+                }
+
+                if (isMatch) {
+                    if (needsMigration) {
+                        val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
+                        conn.prepareStatement("UPDATE fleet_owners SET password = ? WHERE id = ?").apply {
+                            setString(1, hashed)
+                            setInt(2, ownerId)
+                            executeUpdate()
+                        }
+                    }
+                    val name = rsOwner.getString("full_name") ?: ""
+                    val company = rsOwner.getString("company_name")?.ifEmpty { "$name's Fleet" } ?: "$name's Fleet"
+                    return AuthResponse(
+                        success = true,
+                        message = "Success",
+                        user_id = ownerId.toString(),
+                        name = name,
+                        status = rsOwner.getString("status") ?: "APPROVED",
+                        profile_picture = rsOwner.getString("profile_picture"),
+                        user_role = "OWNER",
+                        company_name = company
+                    )
+                } else {
+                    return AuthResponse(false, "Invalid password", null, null)
+                }
+            }
+
+            // 2. Try drivers table second
             val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, last9Digits)
@@ -2056,74 +2162,25 @@ object DatabaseRepository {
                             executeUpdate()
                         }
                     }
+                    val name = rs.getString("full_name") ?: ""
+                    val role = rs.getString("user_role") ?: "DRIVER"
+                    val company = rs.getString("company_name")
                     return AuthResponse(
                         success = true, 
                         message = "Success", 
                         user_id = driverId.toString(), 
-                        name = rs.getString("full_name"), 
-                        status = rs.getString("status"), 
+                        name = name, 
+                        status = rs.getString("status") ?: "APPROVED", 
                         profile_picture = rs.getString("profile_picture"),
-                        user_role = rs.getString("user_role") ?: "DRIVER",
-                        company_name = rs.getString("company_name"),
+                        user_role = role,
+                        company_name = company,
                         vehicle_type = rs.getString("vehicle_type")
                     )
                 } else {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
             } else {
-                // 2. Try fleet_owners table
-                val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
-                val stmtOwner = conn.prepareStatement(sqlOwner)
-                stmtOwner.setString(1, last9Digits)
-                stmtOwner.setString(2, cleanInput)
-                stmtOwner.setString(3, phone.trim())
-
-                val rsOwner = stmtOwner.executeQuery()
-                if (rsOwner.next()) {
-                    val dbPass = rsOwner.getString("password")
-                    val ownerId = rsOwner.getInt("id")
-                    
-                    var isMatch = false
-                    var needsMigration = false
-                    
-                    if (dbPass == "GOOGLE_AUTH") {
-                        isMatch = true
-                    } else if (dbPass != null) {
-                        try {
-                            isMatch = BCrypt.checkpw(password, dbPass)
-                        } catch (e: Throwable) {
-                            if (dbPass == password) {
-                                isMatch = true
-                                needsMigration = true
-                            }
-                        }
-                    }
-
-                    if (isMatch) {
-                        if (needsMigration) {
-                            val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
-                            conn.prepareStatement("UPDATE fleet_owners SET password = ? WHERE id = ?").apply {
-                                setString(1, hashed)
-                                setInt(2, ownerId)
-                                executeUpdate()
-                            }
-                        }
-                        return AuthResponse(
-                            success = true,
-                            message = "Success",
-                            user_id = ownerId.toString(),
-                            name = rsOwner.getString("full_name"),
-                            status = rsOwner.getString("status"),
-                            profile_picture = rsOwner.getString("profile_picture"),
-                            user_role = "OWNER",
-                            company_name = rsOwner.getString("company_name")
-                        )
-                    } else {
-                        return AuthResponse(false, "Invalid password", null, null)
-                    }
-                } else {
-                    return AuthResponse(false, "User not found with this phone number or email", null, null)
-                }
+                return AuthResponse(false, "User not found with this phone number or email", null, null)
             }
         }
     }
