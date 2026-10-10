@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
         updateFcmToken()
 
         setContent {
-            val userRole = remember { sessionManager.getUserRole() }
+            var userRole by remember { mutableStateOf(sessionManager.getUserRole()) }
             var currentStatus by rememberSaveable { mutableStateOf(sessionManager.getDriverStatus()) }
             var currentVehicleType by rememberSaveable { mutableStateOf(sessionManager.getVehicleType() ?: "") }
             
@@ -155,57 +155,75 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 is Screen.Menu -> {
-                    MenuScreen(
-                        onBack = { 
-                            currentScreen = if (userRole == "OWNER") Screen.FleetManagement else Screen.DriverMap 
-                        },
-                        onNavigateToProfile = {
-                            val intent = Intent(this@MainActivity, DriverProfileActivity::class.java)
-                            startActivity(intent)
-                        },
-                        onNavigateToWallet = {
-                            currentScreen = Screen.Earnings
-                        },
-                        onNavigateToRentals = {
-                            currentScreen = Screen.Rentals
-                        },
-                        onNavigateToRideHistory = {
-                            currentScreen = Screen.RideHistory
-                        },
-                        onNavigateToSettings = {
-                            currentScreen = Screen.Settings
-                        },
-                        onNavigateToFleet = {
-                            currentScreen = Screen.FleetManagement
-                        },
-                        onNavigateToVehicleReg = {
-                            currentScreen = Screen.VehicleRegistration
-                        },
-                        onNavigateToSupport = {
-                            currentScreen = Screen.SupportChat
-                        }
-                    )
+                    if (userRole == "OWNER") {
+                        FleetOwnerMenuScreen(
+                            onBack = { currentScreen = Screen.FleetManagement },
+                            onNavigateToFleetSettings = { currentScreen = Screen.Settings },
+                            onNavigateToFleetInventory = { currentScreen = Screen.FleetManagement },
+                            onNavigateToDriverRoster = { currentScreen = Screen.FleetManagement },
+                            onNavigateToWallet = { currentScreen = Screen.Earnings },
+                            onSwitchToDriverMode = {
+                                sessionManager.setUserRole("DRIVER")
+                                userRole = "DRIVER"
+                                currentScreen = Screen.DriverMap
+                            }
+                        )
+                    } else {
+                        DriverMenuScreen(
+                            onBack = { currentScreen = Screen.DriverMap },
+                            onNavigateToProfile = {
+                                val intent = Intent(this@MainActivity, DriverProfileActivity::class.java)
+                                startActivity(intent)
+                            },
+                            onNavigateToWallet = { currentScreen = Screen.Earnings },
+                            onNavigateToRentals = { currentScreen = Screen.Rentals },
+                            onNavigateToRideHistory = { currentScreen = Screen.RideHistory },
+                            onNavigateToSettings = { currentScreen = Screen.Settings },
+                            onNavigateToSupport = { currentScreen = Screen.SupportChat },
+                            onSwitchToFleetConsole = {
+                                sessionManager.setUserRole("OWNER")
+                                userRole = "OWNER"
+                                currentScreen = Screen.FleetManagement
+                            }
+                        )
+                    }
                 }
                 is Screen.Settings -> {
-                    SettingsScreen(
-                        onBack = { currentScreen = Screen.Menu },
-                        onNavigateToNotificationSettings = {
-                            currentScreen = Screen.NotificationSettings
-                        },
-                        onNavigateToTerms = {
-                            currentScreen = Screen.TermsAndConditions
-                        },
-                        onNavigateToPrivacy = {
-                            currentScreen = Screen.PrivacyPolicy
-                        },
-                        onLogout = {
-                            sessionManager.logout()
-                            val intent = Intent(this@MainActivity, DriverLoginActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            startActivity(intent)
-                            finish()
-                        }
-                    )
+                    if (userRole == "OWNER") {
+                        FleetOwnerSettingsScreen(
+                            onBack = { currentScreen = Screen.Menu },
+                            onLogout = {
+                                sessionManager.logout()
+                                val intent = Intent(this@MainActivity, DriverLoginActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                finish()
+                            },
+                            onSwitchToDriverMode = {
+                                sessionManager.setUserRole("DRIVER")
+                                userRole = "DRIVER"
+                                currentScreen = Screen.DriverMap
+                            }
+                        )
+                    } else {
+                        DriverSettingsScreen(
+                            onBack = { currentScreen = Screen.Menu },
+                            onLogout = {
+                                sessionManager.logout()
+                                val intent = Intent(this@MainActivity, DriverLoginActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                finish()
+                            },
+                            onSwitchToFleetConsole = {
+                                sessionManager.setUserRole("OWNER")
+                                userRole = "OWNER"
+                                currentScreen = Screen.FleetManagement
+                            },
+                            onNavigateToTerms = { currentScreen = Screen.TermsAndConditions },
+                            onNavigateToPrivacy = { currentScreen = Screen.PrivacyPolicy }
+                        )
+                    }
                 }
                 is Screen.Earnings -> {
                     EarningsScreen(
@@ -253,17 +271,14 @@ class MainActivity : ComponentActivity() {
                 is Screen.VehicleRegistration -> {
                     VehicleRegistrationScreen(
                         onBack = { currentScreen = Screen.Menu },
-                        onComplete = { currentScreen = Screen.DriverMap }
+                        onComplete = { currentScreen = Screen.Menu }
                     )
-                }
-                is Screen.NotificationSettings -> {
-                    NotificationSettingsScreen(onBack = { currentScreen = Screen.Settings })
                 }
                 is Screen.Chat -> {
                     ChatScreen(
                         conversationId = screen.conversationId,
                         customerName = screen.customerName,
-                        onBack = { currentScreen = Screen.DriverMap }
+                        onBack = { currentScreen = if (userRole == "OWNER") Screen.FleetManagement else Screen.DriverMap }
                     )
                 }
                 is Screen.SupportChat -> {
@@ -271,54 +286,51 @@ class MainActivity : ComponentActivity() {
                         onBack = { currentScreen = Screen.Menu }
                     )
                 }
+                is Screen.NotificationSettings -> {
+                    NotificationSettingsScreen(
+                        onBack = { currentScreen = Screen.Settings }
+                    )
+                }
                 is Screen.TermsAndConditions -> {
-                    TermsAndConditionsScreen(onBack = { currentScreen = Screen.Settings })
+                    TermsAndConditionsScreen(
+                        onBack = { currentScreen = Screen.Settings }
+                    )
                 }
                 is Screen.PrivacyPolicy -> {
-                    PrivacyPolicyScreen(onBack = { currentScreen = Screen.Settings })
+                    PrivacyPolicyScreen(
+                        onBack = { currentScreen = Screen.Settings }
+                    )
                 }
             }
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-    }
-
     private fun startApprovalPolling(sessionManager: SessionManager) {
-        val driverId = sessionManager.getDriverId() ?: return
-
         lifecycleScope.launch {
             while (true) {
-                delay(10000) // Poll every 10 seconds
-                repository.getDriverStatus(driverId).onSuccess { response ->
-                    val oldStatus = sessionManager.getDriverStatus()
-                    if (response.status != oldStatus) {
-                        sessionManager.updateStatus(response.status)
-                        
-                        if (response.status == "APPROVED") {
-                            Toast.makeText(this@MainActivity, "Account Approved!", Toast.LENGTH_LONG).show()
-                        } else if (response.status == "SUSPENDED") {
-                            Toast.makeText(this@MainActivity, "Account Suspended!", Toast.LENGTH_LONG).show()
+                val driverId = sessionManager.getDriverId()
+                if (!driverId.isNullOrEmpty()) {
+                    repository.getDriverStatus(driverId).onSuccess { response ->
+                        if (response.status != sessionManager.getDriverStatus()) {
+                            sessionManager.updateStatus(response.status)
                         }
                     }
-                    
-                    val oldVehicle = sessionManager.getVehicleType()
-                    if (response.vehicleType != null && response.vehicleType != oldVehicle) {
-                        sessionManager.updateVehicleType(response.vehicleType)
-                    }
                 }
+                delay(30000)
             }
         }
     }
 
     private fun updateFcmToken() {
-        val driverId = sessionManager.getDriverId() ?: return
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val token = task.result
-                lifecycleScope.launch {
-                    repository.updateFcmToken(driverId, token, "driver")
+                val driverId = sessionManager.getDriverId()
+                val role = sessionManager.getUserRole()
+                if (!token.isNullOrEmpty() && !driverId.isNullOrEmpty()) {
+                    lifecycleScope.launch {
+                        repository.updateFcmToken(driverId, token, if (role == "OWNER") "FLEET_OWNER" else "DRIVER")
+                    }
                 }
             }
         }
