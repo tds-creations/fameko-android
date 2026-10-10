@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FleetOwnerSignInScreen(
+fun FleetOwnerLoginScreen(
     onBack: () -> Unit,
     onLogin: (String, String) -> Unit,
     onSwitchToDriverLogin: () -> Unit,

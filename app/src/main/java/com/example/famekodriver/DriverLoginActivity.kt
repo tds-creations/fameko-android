@@ -34,7 +34,7 @@ class DriverLoginActivity : ComponentActivity() {
                     )
                 }
                 1 -> {
-                    DriverSignInScreen(
+                    DriverLoginScreen(
                         onBack = { authStep = 0 },
                         onLogin = { phone, password -> performLogin(phone, password, "DRIVER") },
                         onSwitchToFleetLogin = { authStep = 2 },
@@ -44,7 +44,7 @@ class DriverLoginActivity : ComponentActivity() {
                     )
                 }
                 2 -> {
-                    FleetOwnerSignInScreen(
+                    FleetOwnerLoginScreen(
                         onBack = { authStep = 0 },
                         onLogin = { phone, password -> performLogin(phone, password, "OWNER") },
                         onSwitchToDriverLogin = { authStep = 1 },
