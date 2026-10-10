@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.repository.RentalRepository
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -325,11 +326,18 @@ fun CustomerVehicleCard(
     onSelect: () -> Unit
 ) {
     val context = LocalContext.current
-    val name = vehicle["name"]?.toString() ?: "Toyota Camry 2023"
-    val model = vehicle["model"]?.toString() ?: "Standard Sedan • Silver"
+    val name = vehicle["name"]?.toString() ?: "Vehicle"
+    val model = (vehicle["model"]?.toString() ?: "").ifEmpty { (vehicle["vehicle_type"]?.toString() ?: "Car") }
     val type = vehicle["vehicle_type"]?.toString() ?: "Car"
-    val rate = vehicle["daily_rate"]?.toString() ?: "450"
-    val imageUrl = vehicle["image_urls"]?.toString()?.split(",")?.firstOrNull() ?: ""
+    val rateDouble = vehicle["daily_rate"]?.toString()?.toDoubleOrNull() ?: 450.0
+    val rate = String.format(Locale.US, "%.0f", rateDouble)
+    val imageUrls = vehicle["image_urls"]?.toString() ?: ""
+    val imageUrl = imageUrls.split(",").firstOrNull { it.isNotBlank() } ?: ""
+    val seats = vehicle["seats"]?.toString() ?: "5"
+    val transmission = vehicle["transmission"]?.toString() ?: "Automatic"
+    val fuelType = vehicle["fuel_type"]?.toString() ?: "Petrol"
+    val location = vehicle["location"]?.toString() ?: "Accra Central"
+    val isAvailable = vehicle["is_available"] as? Boolean ?: true
     var isFavorite by remember { mutableStateOf(false) }
 
     Card(
@@ -357,11 +365,11 @@ fun CustomerVehicleCard(
                 // Top Tag Badge
                 Surface(
                     modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-                    color = Color(0xFF059669),
+                    color = if (isAvailable) Color(0xFF059669) else Color(0xFFDC2626),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        "● INSTANT BOOKING",
+                        if (isAvailable) "● INSTANT BOOKING" else "● RESERVED",
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         fontWeight = FontWeight.Bold,
@@ -387,15 +395,14 @@ fun CustomerVehicleCard(
 
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(name, fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
-                        Text(model, color = Color.Gray, fontSize = 12.sp)
+                        Text("$model • $location", color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     
                     Surface(color = Color(0xFFFEF3C7), shape = RoundedCornerShape(10.dp)) {
                         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("★ 4.9", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFD97706))
-                            Text(" (38)", fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -405,10 +412,10 @@ fun CustomerVehicleCard(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    SpecChip("Automatic")
-                    SpecChip("5 Seats")
-                    SpecChip("A/C Climate")
-                    SpecChip("Unlimited km")
+                    SpecChip(transmission)
+                    SpecChip("$seats Seats")
+                    SpecChip(fuelType)
+                    SpecChip(type)
                 }
 
                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
@@ -429,11 +436,12 @@ fun CustomerVehicleCard(
 
                     Button(
                         onClick = onSelect,
+                        enabled = isAvailable,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                     ) {
-                        Text("Book Now", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                        Text(if (isAvailable) "Book Now" else "Unavailable", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
                     }
                 }
             }

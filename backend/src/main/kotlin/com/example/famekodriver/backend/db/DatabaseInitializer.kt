@@ -619,6 +619,17 @@ object DatabaseInitializer {
                 """.trimIndent())
                 println("Initial products seeded.")
             }
+
+            val resVehicles = conn.createStatement().executeQuery("SELECT COUNT(*) FROM rental_vehicles")
+            if (resVehicles.next() && resVehicles.getInt(1) == 0) {
+                conn.createStatement().execute("""
+                    INSERT INTO rental_vehicles (name, model, vehicle_type, vehicle_number, daily_rate, status, is_available, description, features, image_urls, location, seats, transmission, fuel_type) VALUES 
+                    ('Toyota Camry 2023', 'Standard Sedan • Silver', 'Sedan', 'GN-4512-23', 450.0, 'AVAILABLE', true, 'Comfortable sedan with A/C and smooth drive', 'A/C,Bluetooth,Unlimited KM', 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800', 'Accra Central', 5, 'Automatic', 'Petrol'),
+                    ('Hyundai Tucson 2024', 'Mid-size SUV • Phantom Black', 'SUV', 'GT-9821-24', 650.0, 'AVAILABLE', true, 'Spacious all-terrain SUV for family & business trips', 'AWD,A/C,5 Seats,High Clearance', 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800', 'Airport City', 5, 'Automatic', 'Petrol'),
+                    ('Mercedes-Benz C-Class', 'Executive Luxury • Polar White', 'Luxury', 'GW-1102-23', 1200.0, 'AVAILABLE', true, 'Premium luxury vehicle with optional chauffeur service', 'Leather Seats,Chauffeur Option,Burmester Sound', 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800', 'East Legon', 5, 'Automatic', 'Petrol')
+                """.trimIndent())
+                println("Initial rental vehicles seeded.")
+            }
         } catch (e: Exception) {
             println("Seeding error: ${e.message}")
         }
