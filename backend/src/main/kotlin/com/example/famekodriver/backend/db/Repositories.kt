@@ -1952,17 +1952,17 @@ object DatabaseRepository {
     }
 
     fun loginDriver(phone: String, password: String): AuthResponse {
-        val variations = getPhoneVariations(phone)
         val cleanInput = phone.trim().lowercase()
+        val digitsOnly = phone.filter { it.isDigit() }
+        val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
             // 1. Try drivers table first
-            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE TRIM(phone) IN (?, ?, ?, ?) OR LOWER(TRIM(email)) = ?"
+            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
             val stmt = conn.prepareStatement(sql)
-            for (i in 1..4) {
-                stmt.setString(i, variations.getOrElse(i - 1) { cleanInput })
-            }
-            stmt.setString(5, cleanInput)
+            stmt.setString(1, last9Digits)
+            stmt.setString(2, cleanInput)
+            stmt.setString(3, phone.trim())
 
             val rs = stmt.executeQuery()
             if (rs.next()) {
@@ -2010,12 +2010,11 @@ object DatabaseRepository {
                 }
             } else {
                 // 2. Try fleet_owners table
-                val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE TRIM(phone) IN (?, ?, ?, ?) OR LOWER(TRIM(email)) = ?"
+                val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
                 val stmtOwner = conn.prepareStatement(sqlOwner)
-                for (i in 1..4) {
-                    stmtOwner.setString(i, variations.getOrElse(i - 1) { cleanInput })
-                }
-                stmtOwner.setString(5, cleanInput)
+                stmtOwner.setString(1, last9Digits)
+                stmtOwner.setString(2, cleanInput)
+                stmtOwner.setString(3, phone.trim())
 
                 val rsOwner = stmtOwner.executeQuery()
                 if (rsOwner.next()) {
