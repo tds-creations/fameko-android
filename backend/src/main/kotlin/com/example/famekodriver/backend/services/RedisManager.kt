@@ -15,26 +15,25 @@ object RedisManager {
         val config = JedisPoolConfig().apply {
             maxTotal = 16
             maxIdle = 8
-            minIdle = 2
-            testOnBorrow = true
-            testWhileIdle = true
+            minIdle = 1
+            testOnBorrow = false
+            testWhileIdle = false
+            blockWhenExhausted = false
         }
 
         println("Initializing Redis connection... (Url present: ${redisUrl != null})")
 
         try {
             if (!redisUrl.isNullOrBlank()) {
-                // Remove potential double slashes if Railway provides it weirdly
                 val cleanUrl = if (redisUrl.startsWith("redis://")) redisUrl else "redis://$redisUrl"
-                JedisPool(config, java.net.URI(cleanUrl))
+                JedisPool(config, java.net.URI(cleanUrl), 2000)
             } else if (!password.isNullOrBlank()) {
                 JedisPool(config, host, port, 2000, password)
             } else {
-                JedisPool(config, host, port)
+                JedisPool(config, host, port, 2000)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("CRITICAL: Failed to initialize Redis Pool: ${e.message}")
-            // Fallback to local if URI parsing fails
             JedisPool(config, "localhost", 6379)
         }
     }
@@ -51,7 +50,7 @@ object RedisManager {
                     jedis.set(key, value)
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Set Error: ${e.message}")
         }
     }
@@ -64,7 +63,7 @@ object RedisManager {
             pool.resource.use { jedis ->
                 jedis.get(key)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Get Error: ${e.message}")
             null
         }
@@ -78,7 +77,7 @@ object RedisManager {
             pool.resource.use { jedis ->
                 jedis.del(key)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Delete Error: ${e.message}")
         }
     }
@@ -91,10 +90,7 @@ object RedisManager {
     fun updateDriverLocation(driverId: String, lat: Double, lng: Double, bearing: Float = 0f) {
         try {
             pool.resource.use { jedis ->
-                // Store coordinates in Geo set for radius searches
                 jedis.geoadd("active_drivers_geo", lng, lat, driverId)
-                
-                // Store detailed stats in a hash for quick retrieval
                 val data = mapOf(
                     "lat" to lat.toString(),
                     "lng" to lng.toString(),
@@ -102,12 +98,9 @@ object RedisManager {
                     "last_update" to System.currentTimeMillis().toString()
                 )
                 jedis.hmset("driver_stats:$driverId", data)
-                
-                // Set TTL for the geo entry? Jedis doesn't support TTL on individual members of a GEO set.
-                // We'll manage cleanup via a background job or by checking last_update in hash.
-                jedis.expire("driver_stats:$driverId", 300) // Keep detail for 5 mins
+                jedis.expire("driver_stats:$driverId", 300)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Location Update Error: ${e.message}")
         }
     }
@@ -121,7 +114,7 @@ object RedisManager {
                 val results = jedis.georadius("active_drivers_geo", lng, lat, radiusKm, redis.clients.jedis.args.GeoUnit.KM)
                 results.map { it.memberByString }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis GeoRadius Error: ${e.message}")
             emptyList()
         }
@@ -136,7 +129,7 @@ object RedisManager {
                 jedis.zrem("active_drivers_geo", driverId)
                 jedis.del("driver_stats:$driverId")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Driver Removal Error: ${e.message}")
         }
     }
@@ -145,7 +138,7 @@ object RedisManager {
      * Cache order data during dispatch to avoid repeated DB hits
      */
     fun cacheOrderData(orderId: Int, json: String) {
-        set("dispatch_cache:$orderId", json, 300) // Cache for 5 mins
+        set("dispatch_cache:$orderId", json, 300)
     }
 
     fun tryLockDriver(driverId: String, ttlSeconds: Long = 15): Boolean {
@@ -156,9 +149,8 @@ object RedisManager {
                 val result = jedis.set(key, "LOCKED", params)
                 result == "OK"
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Error: ${e.message}")
-            // Fallback to true (allow) or false (block) depending on desired safety
             true 
         }
     }
@@ -168,12 +160,12 @@ object RedisManager {
             pool.resource.use { jedis ->
                 jedis.del("driver_lock:$driverId")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Error: ${e.message}")
         }
     }
 
-    // --- SOS MANAGEMENT (Temporary Storage) ---
+    // --- SOS MANAGEMENT ---
 
     private val SOS_KEY = "active_sos_alerts"
 
@@ -182,10 +174,9 @@ object RedisManager {
             pool.resource.use { jedis ->
                 val json = com.google.gson.Gson().toJson(alert)
                 jedis.hset(SOS_KEY, alert.id.toString(), json)
-                // SOS alerts expire after 24 hours if not resolved
                 jedis.expire(SOS_KEY, 86400)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis SOS Add Error: ${e.message}")
         }
     }
@@ -197,7 +188,7 @@ object RedisManager {
                     com.google.gson.Gson().fromJson(it, SOSAlert::class.java)
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             emptyList<SOSAlert>()
         }
     }
@@ -207,7 +198,7 @@ object RedisManager {
             pool.resource.use { jedis ->
                 jedis.hdel(SOS_KEY, id.toString())
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis SOS Resolve Error: ${e.message}")
         }
     }
@@ -217,105 +208,77 @@ object RedisManager {
             pool.resource.use { jedis ->
                 jedis.hlen(SOS_KEY).toInt()
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             0
         }
     }
 
-    /**
-     * Store OTP for login (5 mins TTL)
-     */
     fun storeLoginOtp(phone: String, otp: String) {
         set("login_otp:$phone", otp, 300)
     }
 
-    /**
-     * Verify OTP for login
-     */
     fun verifyLoginOtp(phone: String, otp: String): Boolean {
         val key = "login_otp:$phone"
         val stored = get(key)
         if (stored != null && stored == otp) {
-            delete(key) // Consume OTP after successful verification
+            delete(key)
             return true
         }
         return false
     }
 
-    /**
-     * Store OTP for password reset (10 mins TTL)
-     */
     fun storeResetOtp(email: String, otp: String) {
         set("reset_otp:$email", otp, 600)
     }
 
-    /**
-     * Verify OTP for password reset
-     */
     fun verifyResetOtp(email: String, otp: String): Boolean {
         val stored = get("reset_otp:$email")
         return stored != null && stored == otp
     }
 
-    // --- TEMPORARY CHAT STORAGE ---
+    // --- CHAT STORAGE ---
 
-    /**
-     * Store a chat message in a trip-specific list in Redis.
-     */
     fun saveChatMessage(convId: Int, messageJson: String) {
         try {
             pool.resource.use { jedis ->
                 val key = "chat:$convId"
                 jedis.rpush(key, messageJson)
-                // Default TTL for active trips is 12 hours to prevent orphaned keys if ride never "ends"
                 jedis.expire(key, 43200) 
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Chat Save Error: ${e.message}")
         }
     }
 
-    /**
-     * Retrieve temporary chat history from Redis.
-     */
     fun getChatHistory(convId: Int): List<String> {
         return try {
             pool.resource.use { it.lrange("chat:$convId", 0, -1) }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Chat Fetch Error: ${e.message}")
             emptyList()
         }
     }
 
-    /**
-     * Retrieve all conversation IDs that have active chats in Redis.
-     */
     fun getActiveConversationIds(): List<Int> {
         return try {
             pool.resource.use { jedis ->
                 val keys = jedis.keys("chat:*")
                 keys.map { it.removePrefix("chat:").toInt() }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Keys Error: ${e.message}")
             emptyList()
         }
     }
 
-    /**
-     * Once ride ends, keep chat for 24 hours only for dispute resolution/safety.
-     */
     fun setChatRetention(convId: Int) {
         try {
             pool.resource.use { it.expire("chat:$convId", 86400) }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Chat TTL Error: ${e.message}")
         }
     }
 
-    /**
-     * Record driver earnings and trip count in Redis for today
-     */
     fun recordDriverEarningsToday(driverId: String, earnings: Double) {
         try {
             val todayDate = java.time.LocalDate.now().toString()
@@ -323,18 +286,15 @@ object RedisManager {
             val tripsKey = "driver_today_trips:$driverId:$todayDate"
             pool.resource.use { jedis ->
                 jedis.incrByFloat(earningsKey, earnings)
-                jedis.expire(earningsKey, 172800) // 48 hours TTL
+                jedis.expire(earningsKey, 172800)
                 jedis.incr(tripsKey)
-                jedis.expire(tripsKey, 172800) // 48 hours TTL
+                jedis.expire(tripsKey, 172800)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Record Driver Earnings Error: ${e.message}")
         }
     }
 
-    /**
-     * Get driver earnings and completed trips for today from Redis
-     */
     fun getDriverEarningsToday(driverId: String): Pair<Double, Int>? {
         return try {
             val todayDate = java.time.LocalDate.now().toString()
@@ -349,7 +309,7 @@ object RedisManager {
                     Pair(earnings, trips)
                 } else null
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Redis Get Driver Earnings Error: ${e.message}")
             null
         }

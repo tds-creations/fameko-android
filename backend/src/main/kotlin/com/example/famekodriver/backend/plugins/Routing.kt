@@ -802,13 +802,17 @@ fun Application.configureRouting() {
                 val req = call.receive<LoginRequest>()
                 val phone = req.phone
                 val password = req.password
+                println("DEBUG: Customer Login Attempt for: '$phone'")
                 if (phone.isNullOrBlank() || password.isNullOrBlank()) {
                     call.respond(AuthResponse(false, "Phone and password are required", null, null))
                     return@post
                 }
                 
-                call.respond(DatabaseRepository.loginCustomer(phone, password))
+                val resp = DatabaseRepository.loginCustomer(phone, password)
+                println("DEBUG: Customer Login Result for '$phone': success=${resp.success}, msg=${resp.message}")
+                call.respond(resp)
             } catch (e: Throwable) {
+                println("DEBUG: Customer Login Exception: ${e.localizedMessage}")
                 call.respond(AuthResponse(false, "Login error: ${e.localizedMessage}", null, null))
             }
         }
@@ -968,13 +972,17 @@ fun Application.configureRouting() {
                 val req = call.receive<LoginRequest>()
                 val phone = req.phone
                 val password = req.password
+                println("DEBUG: Driver Login Attempt for: '$phone'")
                 if (phone.isNullOrBlank() || password.isNullOrBlank()) {
                     call.respond(AuthResponse(false, "Phone and password are required", null, null))
                     return@post
                 }
 
-                call.respond(DatabaseRepository.loginDriver(phone, password))
+                val resp = DatabaseRepository.loginDriver(phone, password)
+                println("DEBUG: Driver Login Result for '$phone': success=${resp.success}, msg=${resp.message}")
+                call.respond(resp)
             } catch (e: Throwable) {
+                println("DEBUG: Driver Login Exception: ${e.localizedMessage}")
                 call.respond(AuthResponse(false, "Login error: ${e.localizedMessage}", null, null))
             }
         }
