@@ -12,21 +12,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import java.util.Locale
@@ -43,21 +43,41 @@ fun SettingsScreen(
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
     val repository = remember { DriverRepository.getInstance() }
-    
-    var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
     val driverId = sessionManager.getDriverId() ?: ""
     
+    var userRole by remember { mutableStateOf(sessionManager.getUserRole()) }
+    var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Emmanuel Sackey") }
+    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "Sackey's Rentals") }
+    var driverPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "+233 24 971 2254") }
+    var profilePicUrl by remember { mutableStateOf<String?>(null) }
+    var fleetCount by remember { mutableStateOf(1) }
+    var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
     var voiceNavEnabled by remember { mutableStateOf(true) }
+
+    val isFleetOwner = userRole == "OWNER" || userRole == "BOTH"
 
     LaunchedEffect(Unit) {
         if (driverId.isNotEmpty()) {
             repository.getDriverStats(driverId).onSuccess { stats -> driverStats = stats }
+            repository.getDriverProfile(driverId, userRole).onSuccess { profile ->
+                if (profile["success"] == true) {
+                    profilePicUrl = profile["profile_picture"]?.toString()
+                    driverName = profile["name"]?.toString() ?: driverName
+                    companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
+                    (profile["fleet_count"] as? Number)?.toInt()?.let { if (it > 0) fleetCount = it }
+                    
+                    val fetchedRole = profile["user_role"]?.toString()
+                    if (!fetchedRole.isNullOrEmpty()) {
+                        userRole = fetchedRole
+                        sessionManager.setUserRole(fetchedRole)
+                    }
+                }
+            }
         }
     }
 
-    val driverName = sessionManager.getDriverName() ?: "Nii Odartei"
-    val driverPhone = sessionManager.getDriverPhone() ?: "+233 24 123 4567"
     val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz" }
+    val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "ES" }
 
     Scaffold(
         topBar = {
@@ -67,7 +87,12 @@ fun SettingsScreen(
                         Text("App Settings", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
-                            Text("DRIVER ACTIVE", fontSize = 11.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
+                            Text(
+                                if (isFleetOwner) "FLEET OWNER ACTIVE" else "DRIVER ACTIVE",
+                                fontSize = 11.sp,
+                                color = Color(0xFF10B981),
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 },
@@ -81,7 +106,7 @@ fun SettingsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { Toast.makeText(context, "Fameko Driver Support: 24/7 Helpline (+233 30 212 3456)", Toast.LENGTH_LONG).show() }) {
+                    IconButton(onClick = { Toast.makeText(context, "Fameko Support: 24/7 Helpline (+233 30 212 3456)", Toast.LENGTH_LONG).show() }) {
                         Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Help", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
@@ -120,8 +145,17 @@ fun SettingsScreen(
                             color = Color(0xFF2563EB),
                             modifier = Modifier.size(52.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("NO", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            if (!profilePicUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = profilePicUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                }
                             }
                         }
                         Spacer(Modifier.width(14.dp))
@@ -133,7 +167,7 @@ fun SettingsScreen(
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Text(
-                                        "Verified Pro",
+                                        if (isFleetOwner) "Fleet Partner" else "Verified Pro",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF34D399),
@@ -142,13 +176,23 @@ fun SettingsScreen(
                                 }
                             }
                             Spacer(Modifier.height(2.dp))
-                            Text("$driverPhone • $vehicleInfo", fontSize = 12.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                if (isFleetOwner) "$driverPhone • $companyName" else "$driverPhone • $vehicleInfo",
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Rating", fontSize = 10.sp, color = Color.Gray)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(String.format(Locale.US, "%.2f", if (driverStats.rating > 0) driverStats.rating else 4.95), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                                Text("★", fontSize = 12.sp, color = Color(0xFFFFC107))
+                            Text(if (isFleetOwner) "Fleet Size" else "Rating", fontSize = 10.sp, color = Color.Gray)
+                            if (isFleetOwner) {
+                                Text("$fleetCount Vehicles", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(String.format(Locale.US, "%.2f", if (driverStats.rating > 0) driverStats.rating else 4.95), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                    Text("★", fontSize = 12.sp, color = Color(0xFFFFC107))
+                                }
                             }
                         }
                     }
@@ -158,14 +202,7 @@ fun SettingsScreen(
             // Section 1: ACCOUNT PREFERENCES
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("ACCOUNT PREFERENCES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
-                        Text("Personalize", fontSize = 12.sp, color = Color.Gray)
-                    }
+                    Text("ACCOUNT PREFERENCES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp))
 
                     Card(
                         shape = RoundedCornerShape(24.dp),
@@ -174,7 +211,7 @@ fun SettingsScreen(
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
                         Column {
-                            SettingsRowItem(
+                            SettingsOptionRow(
                                 icon = Icons.Default.Notifications,
                                 iconColor = Color(0xFF2563EB),
                                 title = "Notification Settings",
@@ -185,7 +222,7 @@ fun SettingsScreen(
                                 onClick = onNavigateToNotificationSettings
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                            SettingsRowItem(
+                            SettingsOptionRow(
                                 icon = Icons.Default.Language,
                                 iconColor = Color(0xFF0284C7),
                                 title = "Language",
@@ -193,19 +230,16 @@ fun SettingsScreen(
                                 badgeText = "English",
                                 badgeColor = Color(0xFFF1F5F9),
                                 badgeTextColor = Color(0xFF475569),
-                                onClick = { Toast.makeText(context, "Language: English (Ghana) active", Toast.LENGTH_SHORT).show() }
+                                onClick = { Toast.makeText(context, "Ghana English & Twi active", Toast.LENGTH_SHORT).show() }
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                            SettingsSwitchRow(
-                                icon = Icons.AutoMirrored.Filled.VolumeUp,
+                            SettingsToggleRow(
+                                icon = Icons.Default.VolumeUp,
                                 iconColor = Color(0xFF7C3AED),
                                 title = "Voice Navigation Audio",
-                                subtitle = "Read turn directions at max volume",
+                                subtitle = "Read turn directions at max volume during trips",
                                 checked = voiceNavEnabled,
-                                onCheckedChange = { 
-                                    voiceNavEnabled = it
-                                    Toast.makeText(context, if (it) "Voice Navigation Enabled" else "Voice Navigation Muted", Toast.LENGTH_SHORT).show()
-                                }
+                                onCheckedChange = { voiceNavEnabled = it }
                             )
                         }
                     }
@@ -215,14 +249,7 @@ fun SettingsScreen(
             // Section 2: DRIVING & APP BEHAVIOR
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("DRIVING & APP BEHAVIOR", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
-                        Text("Diagnostics", fontSize = 12.sp, color = Color.Gray)
-                    }
+                    Text("DRIVING & APP BEHAVIOR", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp))
 
                     Card(
                         shape = RoundedCornerShape(24.dp),
@@ -231,54 +258,47 @@ fun SettingsScreen(
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
                         Column {
-                            SettingsRowItem(
+                            SettingsOptionRow(
                                 icon = Icons.Default.Map,
-                                iconColor = Color(0xFF059669),
+                                iconColor = Color(0xFF10B981),
                                 title = "Navigation App",
                                 subtitle = "Integrated TomTom / MapLibre",
                                 badgeText = "In-App GPS",
                                 badgeColor = Color(0xFFECFDF5),
                                 badgeTextColor = Color(0xFF059669),
-                                onClick = { Toast.makeText(context, "Using Integrated TomTom / MapLibre GPS", Toast.LENGTH_SHORT).show() }
+                                onClick = { Toast.makeText(context, "Integrated In-App Navigation Active", Toast.LENGTH_SHORT).show() }
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                            SettingsRowItem(
-                                icon = Icons.Default.MyLocation,
+                            SettingsOptionRow(
+                                icon = Icons.Default.GpsFixed,
                                 iconColor = Color(0xFFD97706),
                                 title = "High-Precision Location",
                                 subtitle = "Keep GPS active in background",
                                 badgeText = "Optimized",
-                                badgeColor = Color(0xFFECFDF5),
-                                badgeTextColor = Color(0xFF059669),
-                                onClick = { Toast.makeText(context, "High-Precision GPS is fully optimized", Toast.LENGTH_SHORT).show() }
+                                badgeColor = Color(0xFFFEF3C7),
+                                badgeTextColor = Color(0xFFD97706),
+                                onClick = { Toast.makeText(context, "Background GPS High Precision Active", Toast.LENGTH_SHORT).show() }
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                            SettingsRowItem(
-                                icon = Icons.Default.Download,
+                            SettingsOptionRow(
+                                icon = Icons.Default.GetApp,
                                 iconColor = Color(0xFF2563EB),
                                 title = "Accra Map Offline Cache",
                                 subtitle = "68 MB saved for zero-latency routes",
                                 badgeText = "Updated",
                                 badgeColor = Color(0xFFEFF6FF),
                                 badgeTextColor = Color(0xFF2563EB),
-                                onClick = { Toast.makeText(context, "Accra offline map cache is up to date (68 MB)", Toast.LENGTH_SHORT).show() }
+                                onClick = { Toast.makeText(context, "Accra map cache is up to date (68 MB)", Toast.LENGTH_SHORT).show() }
                             )
                         }
                     }
                 }
             }
 
-            // Section 3: LEGAL & PRIVACY
+            // Section 3: ABOUT & LEGAL
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("LEGAL & PRIVACY", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
-                        Text("Compliance", fontSize = 12.sp, color = Color.Gray)
-                    }
+                    Text("ABOUT & LEGAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp))
 
                     Card(
                         shape = RoundedCornerShape(24.dp),
@@ -287,76 +307,50 @@ fun SettingsScreen(
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
                         Column {
-                            SettingsRowItem(
-                                icon = Icons.Default.Security,
-                                iconColor = Color(0xFF059669),
+                            SettingsOptionRow(
+                                icon = Icons.Default.Description,
+                                iconColor = Color(0xFF64748B),
+                                title = "Terms of Service",
+                                subtitle = "Fameko Ghana Partner Agreement",
+                                onClick = onNavigateToTerms
+                            )
+                            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                            SettingsOptionRow(
+                                icon = Icons.Default.PrivacyTip,
+                                iconColor = Color(0xFF64748B),
                                 title = "Privacy Policy",
-                                subtitle = "How Fameko securely protects driver data",
+                                subtitle = "How we collect, protect & use location data",
                                 onClick = onNavigateToPrivacy
                             )
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                            SettingsRowItem(
-                                icon = Icons.Default.Description,
-                                iconColor = Color(0xFF2563EB),
-                                title = "Terms and Conditions",
-                                subtitle = "Driver partner contract & fee schedules",
-                                onClick = onNavigateToTerms
+                            SettingsOptionRow(
+                                icon = Icons.Default.Info,
+                                iconColor = Color(0xFF64748B),
+                                title = "App Version",
+                                subtitle = "Fameko Partner v4.26.1 (Build 2024.9)",
+                                badgeText = "Latest",
+                                badgeColor = Color(0xFFECFDF5),
+                                badgeTextColor = Color(0xFF059669),
+                                onClick = {}
                             )
                         }
                     }
                 }
             }
 
-            // Logout Button
+            // Log Out Button
             item {
                 Spacer(Modifier.height(8.dp))
-                Button(
+                OutlinedButton(
                     onClick = onLogout,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
+                        .height(54.dp),
                     shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-                    elevation = ButtonDefaults.buttonElevation(0.dp)
+                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "LOGOUT",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 15.sp,
-                            color = Color.White,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
-            }
-
-            // Version Footer
-            item {
-                Spacer(Modifier.height(16.dp))
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "Fameko for Drivers v1.2.0 • Build 248",
-                        textAlign = TextAlign.Center,
-                        color = Color.Gray,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Accra, Ghana • Powered by Fameko Mobility",
-                        textAlign = TextAlign.Center,
-                        color = Color.Gray.copy(alpha = 0.7f),
-                        fontSize = 11.sp
-                    )
+                    Text("Log Out of Account", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 Spacer(Modifier.height(32.dp))
             }
@@ -365,14 +359,14 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SettingsRowItem(
+fun SettingsOptionRow(
     icon: ImageVector,
     iconColor: Color,
     title: String,
     subtitle: String,
     badgeText: String? = null,
-    badgeColor: Color = Color.LightGray,
-    badgeTextColor: Color = Color.DarkGray,
+    badgeColor: Color = Color(0xFFECFDF5),
+    badgeTextColor: Color = Color(0xFF059669),
     onClick: () -> Unit
 ) {
     Row(
@@ -385,13 +379,13 @@ fun SettingsRowItem(
         Surface(
             shape = RoundedCornerShape(14.dp),
             color = iconColor.copy(alpha = 0.1f),
-            modifier = Modifier.size(46.dp)
+            modifier = Modifier.size(44.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
             }
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
@@ -418,7 +412,7 @@ fun SettingsRowItem(
 }
 
 @Composable
-fun SettingsSwitchRow(
+fun SettingsToggleRow(
     icon: ImageVector,
     iconColor: Color,
     title: String,
@@ -435,22 +429,26 @@ fun SettingsSwitchRow(
         Surface(
             shape = RoundedCornerShape(14.dp),
             color = iconColor.copy(alpha = 0.1f),
-            modifier = Modifier.size(46.dp)
+            modifier = Modifier.size(44.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
             }
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
             Spacer(Modifier.height(2.dp))
             Text(subtitle, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(10.dp))
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF10B981))
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF10B981)
+            )
         )
     }
 }
