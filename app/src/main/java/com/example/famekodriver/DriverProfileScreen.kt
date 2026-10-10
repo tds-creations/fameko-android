@@ -52,15 +52,15 @@ fun DriverProfileScreen(onBack: () -> Unit) {
 
     var userRole by remember { mutableStateOf(sessionManager.getUserRole()) }
     var status by remember { mutableStateOf(sessionManager.getDriverStatus()) }
-    var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Nii Odartei") }
-    var driverEmail by remember { mutableStateOf("niiodartei24@gmail.com") }
-    var driverPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "+233 53 818 8056") }
+    var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
+    var driverEmail by remember { mutableStateOf("") }
+    var driverPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "") }
     var driverRegion by remember { mutableStateOf("Greater Accra, Ghana") }
-    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "Fameko Fleet Operations") }
-    var regNumber by remember { mutableStateOf("REG-2024-8891") }
-    var fleetCount by remember { mutableStateOf(1) }
-    var vehicleModel by remember { mutableStateOf("Toyota Vitz (2018) • Silver") }
-    var vehiclePlate by remember { mutableStateOf("GT-4821-22") }
+    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "") }
+    var regNumber by remember { mutableStateOf("") }
+    var fleetCount by remember { mutableStateOf(0) }
+    var vehicleModel by remember { mutableStateOf("") }
+    var vehiclePlate by remember { mutableStateOf("") }
     var missingDocs by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
@@ -341,7 +341,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                 ProfileDetailRow(
                                     icon = Icons.Default.Email,
                                     label = "Email Address",
-                                    value = driverEmail.ifEmpty { "niiodartei24@gmail.com" },
+                                    value = driverEmail,
                                     badgeText = "✓ Active",
                                     badgeColor = Color(0xFFECFDF5),
                                     badgeTextColor = Color(0xFF059669),

@@ -57,6 +57,7 @@ class CustomerLoginActivity : AppCompatActivity() {
         val etPhone = findViewById<EditText>(R.id.etPhone)
         val btnLogin = findViewById<MaterialButton>(R.id.btnLogin)
         val btnGoogleLogin = findViewById<MaterialButton>(R.id.btnGoogleLogin)
+        btnGoogleLogin?.visibility = View.GONE
         val tvBackToHome = findViewById<TextView>(R.id.tvBackToHome)
         val etPassword = findViewById<EditText>(R.id.etPassword)
         val ivPasswordVisibility = findViewById<ImageView>(R.id.ivPasswordVisibility)
