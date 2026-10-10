@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -458,40 +459,234 @@ fun FilterSheetContent(
     onTransChange: (String) -> Unit,
     onApply: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(24.dp).fillMaxWidth().navigationBarsPadding()) {
-        Text("Filter Vehicles", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-        
-        Text("Max Daily Rate: GH₵${currentMaxPrice.toInt()}", fontWeight = FontWeight.Medium)
-        Slider(
-            value = currentMaxPrice,
-            onValueChange = onPriceChange,
-            valueRange = 100f..5000f,
-            colors = SliderDefaults.colors(thumbColor = Color(0xFF2563EB), activeTrackColor = Color(0xFF2563EB))
-        )
-        
-        Spacer(Modifier.height(24.dp))
-        
-        Text("Transmission", fontWeight = FontWeight.Medium)
-        Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("All", "Automatic", "Manual").forEach { type ->
-                FilterChip(
-                    selected = currentTrans == type,
-                    onClick = { onTransChange(type) },
-                    label = { Text(type) }
-                )
+    var selectedBudgetPill by remember { mutableStateOf("GH₵ 500 - 1,500") }
+    var selectedVehicleTypeCard by remember { mutableStateOf("Sedan") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Header Row: Title, Subtitle, Reset All Link
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Filter Vehicles", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                Text("Customise your rental experience in Accra", fontSize = 12.sp, color = Color.Gray)
+            }
+
+            TextButton(onClick = {
+                onPriceChange(5000f)
+                onTransChange("All")
+                selectedBudgetPill = "GH₵ 500 - 1,500"
+                selectedVehicleTypeCard = "Sedan"
+            }) {
+                Text("Reset All", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF2563EB))
             }
         }
-        
-        Spacer(Modifier.height(32.dp))
-        
+
+        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+
+        // Section 1: DAILY RATE
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("DAILY RATE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                Surface(
+                    color = Color(0xFFEFF6FF),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                ) {
+                    Text("Up to GH₵ ${currentMaxPrice.toInt()}/ day", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                }
+            }
+
+            Slider(
+                value = currentMaxPrice,
+                onValueChange = onPriceChange,
+                valueRange = 200f..10000f,
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFF2563EB),
+                    activeTrackColor = Color(0xFF2563EB),
+                    inactiveTrackColor = Color(0xFFE2E8F0)
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("GH₵ 200", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                Text("Average: GH₵ 1,200", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                Text("GH₵ 10,000+", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+            }
+
+            // Budget Pill Chips Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf("Under GH₵ 500", "GH₵ 500 - 1,500", "Luxury (1,500+)").forEach { budgetText ->
+                    val isSelected = selectedBudgetPill == budgetText
+                    Surface(
+                        onClick = {
+                            selectedBudgetPill = budgetText
+                            when (budgetText) {
+                                "Under GH₵ 500" -> onPriceChange(500f)
+                                "GH₵ 500 - 1,500" -> onPriceChange(1500f)
+                                else -> onPriceChange(10000f)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+                        border = BorderStroke(1.dp, if (isSelected) Color(0xFF2563EB) else Color.Transparent)
+                    ) {
+                        Text(
+                            text = budgetText,
+                            modifier = Modifier.padding(vertical = 10.dp),
+                            textAlign = TextAlign.Center,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) Color(0xFF2563EB) else Color(0xFF475569)
+                        )
+                    }
+                }
+            }
+        }
+
+        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+
+        // Section 2: TRANSMISSION
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("TRANSMISSION", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                Text("Any option selected", fontSize = 11.sp, color = Color.Gray)
+            }
+
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFFF1F5F9),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    listOf("All", "Auto", "Manual").forEach { transText ->
+                        val isSelected = currentTrans.equals(transText, ignoreCase = true) || (transText == "Auto" && currentTrans.equals("Automatic", ignoreCase = true))
+                        Surface(
+                            onClick = { onTransChange(if (transText == "Auto") "Automatic" else transText) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) Color.White else Color.Transparent,
+                            shadowElevation = if (isSelected) 2.dp else 0.dp
+                        ) {
+                            Text(
+                                text = transText,
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                textAlign = TextAlign.Center,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) Color(0xFF0F172A) else Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+
+        // Section 3: VEHICLE TYPE
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("VEHICLE TYPE", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+
+            val vehicleTypeCards = listOf(
+                Triple("Sedan", "4 - 5 Seats • Compact", "Sedan"),
+                Triple("SUV & 4x4", "Spacious • All-terrain", "SUV"),
+                Triple("Executive Luxury", "Mercedes, BMW, etc.", "Luxury"),
+                Triple("Minivan / Bus", "7 - 15 Passengers", "Van")
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                vehicleTypeCards.chunked(2).forEach { rowCards ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowCards.forEach { (title, subtitle, typeKey) ->
+                            val isSelected = selectedVehicleTypeCard == typeKey
+                            Card(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { selectedVehicleTypeCard = typeKey },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFEFF6FF) else Color.White),
+                                border = BorderStroke(1.dp, if (isSelected) Color(0xFF2563EB) else Color(0xFFE2E8F0))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(subtitle, fontSize = 10.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isSelected) Color(0xFF2563EB) else Color.Transparent,
+                                        border = if (!isSelected) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
+                                        modifier = Modifier.size(20.dp)
+                                    ) {
+                                        if (isSelected) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // Apply Button
         Button(
             onClick = onApply,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+            elevation = ButtonDefaults.buttonElevation(4.dp)
         ) {
-            Text("Apply Filters", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text("Apply Filters", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color.White)
+                Text(" • 14 Vehicles Available", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White.copy(alpha = 0.85f))
+            }
         }
     }
 }
