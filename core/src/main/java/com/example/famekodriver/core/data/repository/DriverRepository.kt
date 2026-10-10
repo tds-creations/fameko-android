@@ -318,31 +318,32 @@ class DriverRepository private constructor() {
     }
 
     /**
-     * Authenticates a driver by phone and password
+     * Authenticates a driver or fleet owner by phone and password
      */
-    suspend fun login(phone: String, pass: String): Result<Driver?> = withContext(Dispatchers.IO) {
+    suspend fun login(phone: String, pass: String, role: String = "DRIVER"): Result<Driver?> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(phone = phone, password = pass))
+            val response = NetworkClient.famekoApi.loginDriver(LoginRequest(phone = phone, password = pass, role = role))
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Driver(
                     id = userId.toIntOrNull() ?: 0,
-                    fullName = response.name ?: "Driver",
+                    fullName = response.name ?: if (role == "OWNER") "Fleet Owner" else "Driver",
                     email = "",
                     phone = phone,
                     region = "",
                     licenseNumber = "",
                     vehicleType = response.vehicle_type ?: "Car",
                     vehicleNumber = "",
-                    status = response.status ?: "PENDING",
+                    status = response.status ?: "APPROVED",
                     isOnline = false,
                     rating = 5.0,
                     serviceType = ServiceType.RIDE_HAILING,
-                    userRole = response.user_role ?: "DRIVER",
-                    companyName = response.company_name
+                    userRole = response.user_role ?: role,
+                    companyName = response.company_name,
+                    profilePicture = response.profile_picture
                 ))
             } else {
-                Result.success(null)
+                Result.failure(Exception(response.message ?: "Login failed"))
             }
         } catch (e: Exception) {
             Log.e("FamekoRepo", "API Login failed", e)

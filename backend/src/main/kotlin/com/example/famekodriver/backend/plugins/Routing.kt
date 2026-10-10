@@ -959,11 +959,22 @@ fun Application.configureRouting() {
 
         get("/driver/profile/{id}") {
             val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val profile = DatabaseRepository.getDriverProfile(id)
+            val role = call.request.queryParameters["role"]
+            val profile = DatabaseRepository.getDriverProfile(id, role)
             if (profile != null) {
                 call.respond(profile)
             } else {
                 call.respond(HttpStatusCode.NotFound, mapOf("success" to false, "message" to "Driver not found"))
+            }
+        }
+
+        get("/fleet/profile/{id}") {
+            val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+            val profile = DatabaseRepository.getFleetOwnerProfile(id)
+            if (profile != null) {
+                call.respond(profile)
+            } else {
+                call.respond(HttpStatusCode.NotFound, mapOf("success" to false, "message" to "Fleet Owner profile not found"))
             }
         }
 

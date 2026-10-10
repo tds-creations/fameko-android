@@ -15,7 +15,8 @@ data class LoginRequest(
     val phone: String? = null,
     val email: String? = null,
     val password: String? = null,
-    val googleToken: String? = null
+    val googleToken: String? = null,
+    val role: String? = null
 )
 
 data class OtpRequest(

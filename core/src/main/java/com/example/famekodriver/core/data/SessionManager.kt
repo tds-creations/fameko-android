@@ -96,7 +96,7 @@ class SessionManager(context: Context) {
     fun getDriverRole(): String = getUserRole()
     fun getCompanyName(): String? = prefs.getString(KEY_COMPANY_NAME, null)
     fun getVehicleType(): String? = prefs.getString(KEY_VEHICLE_TYPE, null)
-    
+
     fun setUserRole(role: String) {
         prefs.edit().putString(KEY_USER_ROLE, role).apply()
     }
