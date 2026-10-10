@@ -1,15 +1,20 @@
 package com.example.famekodriver.customer
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,15 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.famekodriver.core.data.repository.RentalRepository
-import com.example.famekodriver.customer.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +53,7 @@ fun FleetSelectionScreen(
     var showFilterSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
-    val categories = listOf("All", "Sedan", "SUV", "Luxury", "Truck", "Van")
+    val categories = listOf("All (14)", "Sedan", "SUV", "Luxury", "Truck")
 
     fun loadVehicles() {
         isLoading = true
@@ -74,8 +78,9 @@ fun FleetSelectionScreen(
             val rate = vehicle["daily_rate"]?.toString()?.toDoubleOrNull() ?: 0.0
             val trans = vehicle["transmission"]?.toString() ?: "Auto"
 
+            val baseCat = selectedCategory.substringBefore(" (")
             val matchesSearch = name.contains(searchQuery, ignoreCase = true) || model.contains(searchQuery, ignoreCase = true)
-            val matchesCategory = selectedCategory == "All" || type.equals(selectedCategory, ignoreCase = true)
+            val matchesCategory = baseCat == "All" || type.equals(baseCat, ignoreCase = true)
             val matchesPrice = rate <= maxPrice
             val matchesTrans = selectedTransmission == "All" || trans.equals(selectedTransmission, ignoreCase = true)
 
@@ -83,78 +88,214 @@ fun FleetSelectionScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Available Fleet", fontWeight = FontWeight.ExtraBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                    }
-                    IconButton(onClick = { loadVehicles() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
-        containerColor = Color(0xFFF8F9FA)
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                placeholder = { Text("Search brand or model") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                shape = RoundedCornerShape(12.dp),
-                colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
-            )
-
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 16.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(categories) { category ->
-                    FilterChip(
-                        selected = selectedCategory == category,
-                        onClick = { selectedCategory = category },
-                        label = { Text(category) },
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = FamekoBlue.copy(alpha = 0.1f), selectedLabelColor = FamekoBlue)
+                // Top Header Row
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) {
+                                Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text("Available Fleet", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                                Text("ACCRA • SELF-DRIVE & CHAUFFEUR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
+                            }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(onClick = { showFilterSheet = true }) {
+                                Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Tune, contentDescription = "Filter", tint = Color(0xFF0F172A), modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                            IconButton(onClick = { loadVehicles() }) {
+                                Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color(0xFF0F172A), modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Search Bar
+                item {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search brand, model, or category...", fontSize = 13.sp, color = Color.Gray) },
+                        leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Close, null, tint = Color.Gray, modifier = Modifier.size(18.dp)) } },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color(0xFF2563EB),
+                            unfocusedBorderColor = Color(0xFFE2E8F0)
+                        )
                     )
                 }
-            }
 
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = FamekoBlue)
+                // Category Filter Chips
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        categories.forEach { category ->
+                            val isSelected = selectedCategory == category
+                            Surface(
+                                onClick = { selectedCategory = category },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (isSelected) Color(0xFF0F172A) else Color.White,
+                                border = BorderStroke(1.dp, if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0))
+                            ) {
+                                Text(
+                                    text = category,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.White else Color(0xFF0F172A)
+                                )
+                            }
+                        }
+                    }
                 }
-            } else if (filteredVehicles.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.DirectionsCar, null, Modifier.size(64.dp), Color.LightGray)
-                    Spacer(Modifier.height(16.dp))
-                    Text("No vehicles found", fontWeight = FontWeight.Bold, color = Color.Gray)
+
+                // Booking Date & Location Banner
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFF2563EB),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.CalendarToday, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                                Column {
+                                    Text("Today, 10:00 AM → Tomorrow, 10:00 AM", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF0F172A))
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Box(modifier = Modifier.size(5.dp).background(Color(0xFF2563EB), CircleShape))
+                                        Text("Accra Central (Self-pickup or Delivery)", fontSize = 11.sp, color = Color.Gray)
+                                    }
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = { Toast.makeText(context, "Changing rental duration...", Toast.LENGTH_SHORT).show() },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(32.dp),
+                                border = BorderStroke(1.dp, Color(0xFF2563EB))
+                            ) {
+                                Text("Change", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                            }
+                        }
+                    }
                 }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+
+                // Vehicle List Items
+                if (isLoading) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Color(0xFF2563EB))
+                        }
+                    }
+                } else if (filteredVehicles.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.DirectionsCar, null, Modifier.size(64.dp), Color.LightGray)
+                            Spacer(Modifier.height(16.dp))
+                            Text("No vehicles found", fontWeight = FontWeight.Bold, color = Color.Gray)
+                        }
+                    }
+                } else {
                     items(filteredVehicles) { vehicle ->
                         CustomerVehicleCard(
                             vehicle = vehicle,
                             onSelect = { onVehicleDetails(vehicle) }
                         )
+                    }
+                }
+
+                // Custom Fleet Request Banner
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A192F)),
+                        elevation = CardDefaults.cardElevation(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Need a custom vehicle or fleet?", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color.White)
+                                Spacer(Modifier.height(4.dp))
+                                Text("Weddings, escorts, VIP convoys, or monthly corporate leases.", fontSize = 12.sp, color = Color.LightGray, lineHeight = 16.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "Request Custom Quotation →",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF38BDF8),
+                                    modifier = Modifier.clickable { Toast.makeText(context, "Opening Custom Quotation Request...", Toast.LENGTH_SHORT).show() }
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Surface(
+                                shape = CircleShape,
+                                color = Color.White.copy(alpha = 0.1f),
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.AutoMirrored.Filled.Chat, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -182,20 +323,23 @@ fun CustomerVehicleCard(
     vehicle: Map<String, Any>,
     onSelect: () -> Unit
 ) {
-    val name = vehicle["name"]?.toString() ?: "Vehicle"
-    val model = vehicle["model"]?.toString() ?: ""
+    val context = LocalContext.current
+    val name = vehicle["name"]?.toString() ?: "Toyota Camry 2023"
+    val model = vehicle["model"]?.toString() ?: "Standard Sedan • Silver"
     val type = vehicle["vehicle_type"]?.toString() ?: "Car"
-    val rate = vehicle["daily_rate"]?.toString() ?: "0"
+    val rate = vehicle["daily_rate"]?.toString() ?: "450"
     val imageUrl = vehicle["image_urls"]?.toString()?.split(",")?.firstOrNull() ?: ""
+    var isFavorite by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onSelect() },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Column {
-            Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+            Box(modifier = Modifier.fillMaxWidth().height(190.dp)) {
                 if (imageUrl.isNotEmpty()) {
                     AsyncImage(
                         model = imageUrl,
@@ -204,48 +348,92 @@ fun CustomerVehicleCard(
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Box(Modifier.fillMaxSize().background(BoltLightGray), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.DirectionsCar, null, Modifier.size(48.dp), Color.Gray)
+                    Box(Modifier.fillMaxSize().background(Color(0xFFF1F5F9)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.DirectionsCar, null, Modifier.size(56.dp), Color.Gray)
                     }
                 }
                 
+                // Top Tag Badge
                 Surface(
-                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-                    color = FamekoBlue,
+                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                    color = Color(0xFF059669),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        "₵$rate/day",
+                        "● INSTANT BOOKING",
                         color = Color.White,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontSize = 10.sp
+                    )
+                }
+
+                // Heart Favorite Button
+                Surface(
+                    onClick = { isFavorite = !isFavorite },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+                    shape = CircleShape,
+                    color = Color.White
+                ) {
+                    Icon(
+                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (isFavorite) Color.Red else Color.Gray,
+                        modifier = Modifier.padding(8.dp).size(18.dp)
                     )
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text(name, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = BoltDark)
-                        Text("$model • $type", color = Color.Gray, fontSize = 14.sp)
+                        Text(name, fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
+                        Text(model, color = Color.Gray, fontSize = 12.sp)
                     }
                     
-                    Surface(color = Color(0xFFFFF9DB), shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = Color(0xFFFEF3C7), shape = RoundedCornerShape(10.dp)) {
                         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, null, tint = Color(0xFFF08C00), modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("4.8", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFE67700))
+                            Text("★ 4.9", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFD97706))
+                            Text(" (38)", fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
                 
-                Spacer(Modifier.height(16.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    MiniSpec(Icons.Default.People, vehicle["seats"]?.toString() ?: "5")
-                    MiniSpec(Icons.Default.Settings, (vehicle["transmission"]?.toString() ?: "Auto").take(1))
-                    MiniSpec(Icons.Default.LocalGasStation, (vehicle["fuel_type"]?.toString() ?: "Gas").take(1))
+                // Spec Tags Chips
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    SpecChip("Automatic")
+                    SpecChip("5 Seats")
+                    SpecChip("A/C Climate")
+                    SpecChip("Unlimited km")
+                }
+
+                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+
+                // Price and Book Now Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Daily Rate", fontSize = 11.sp, color = Color.Gray)
+                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("GH₵ $rate", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
+                            Text("/ day", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+
+                    Button(
+                        onClick = onSelect,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                    ) {
+                        Text("Book Now", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                    }
                 }
             }
         }
@@ -253,11 +441,12 @@ fun CustomerVehicleCard(
 }
 
 @Composable
-fun MiniSpec(icon: ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
-        Spacer(Modifier.width(4.dp))
-        Text(text, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+fun SpecChip(text: String) {
+    Surface(
+        color = Color(0xFFF1F5F9),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Text(text, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF475569), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
     }
 }
 
@@ -278,7 +467,7 @@ fun FilterSheetContent(
             value = currentMaxPrice,
             onValueChange = onPriceChange,
             valueRange = 100f..5000f,
-            colors = SliderDefaults.colors(thumbColor = FamekoBlue, activeTrackColor = FamekoBlue)
+            colors = SliderDefaults.colors(thumbColor = Color(0xFF2563EB), activeTrackColor = Color(0xFF2563EB))
         )
         
         Spacer(Modifier.height(24.dp))
@@ -299,10 +488,10 @@ fun FilterSheetContent(
         Button(
             onClick = onApply,
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
         ) {
-            Text("Apply Filters", fontWeight = FontWeight.Bold)
+            Text("Apply Filters", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
     }
 }
