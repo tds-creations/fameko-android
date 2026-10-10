@@ -344,7 +344,10 @@ interface FamekoApiService {
     ): AuthResponse
 
     @GET("driver/profile/{id}")
-    suspend fun getDriverProfile(@Path("id") id: String): Map<String, Any>
+    suspend fun getDriverProfile(
+        @Path("id") id: String,
+        @Query("role") role: String? = null
+    ): Map<String, Any>
 
     @POST("rentals/cancel/{id}")
     suspend fun cancelRental(@Path("id") id: Int): Map<String, Any>

@@ -1080,9 +1080,9 @@ class DriverRepository private constructor() {
         }
     }
 
-    suspend fun getDriverProfile(id: String): Result<Map<String, Any>> = withContext(Dispatchers.IO) {
+    suspend fun getDriverProfile(id: String, role: String? = null): Result<Map<String, Any>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.getDriverProfile(id)
+            val response = NetworkClient.famekoApi.getDriverProfile(id, role)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)

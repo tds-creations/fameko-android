@@ -101,7 +101,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         isLoading = true
-        repository.getDriverProfile(driverId).onSuccess { profile ->
+        repository.getDriverProfile(driverId, userRole).onSuccess { profile ->
             if (profile["success"] == true) {
                 driverName = profile["name"]?.toString() ?: driverName
                 driverEmail = profile["email"]?.toString() ?: driverEmail

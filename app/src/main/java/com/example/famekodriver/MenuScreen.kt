@@ -55,8 +55,9 @@ fun MenuScreen(
 
     LaunchedEffect(Unit) {
         if (driverId.isNotEmpty()) {
+            val userRole = sessionManager.getUserRole()
             repository.getDriverStats(driverId).onSuccess { stats -> driverStats = stats }
-            repository.getDriverProfile(driverId).onSuccess { profile ->
+            repository.getDriverProfile(driverId, userRole).onSuccess { profile ->
                 if (profile["success"] == true) {
                     profilePicUrl = profile["profile_picture"]?.toString()
                 }
