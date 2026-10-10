@@ -39,6 +39,22 @@ object DatabaseRepository {
         return "+233$cleaned"
     }
 
+    fun getPhoneVariations(phone: String?): List<String> {
+        if (phone.isNullOrBlank()) return emptyList()
+        val trimmed = phone.trim().replace(" ", "").replace("-", "")
+        val digits = trimmed.removePrefix("+").removePrefix("233").let {
+            if (it.startsWith("0")) it.substring(1) else it
+        }
+        if (digits.isEmpty()) return listOf(phone)
+
+        return listOf(
+            "+233$digits",
+            "233$digits",
+            "0$digits",
+            digits
+        ).distinct()
+    }
+
     fun getPricingConfig(): PricingConfig {
         val cached = RedisManager.get("config:pricing")
         if (cached != null) {
@@ -1936,11 +1952,18 @@ object DatabaseRepository {
     }
 
     fun loginDriver(phone: String, password: String): AuthResponse {
-        val normalizedPhone = normalizePhone(phone)
+        val variations = getPhoneVariations(phone)
+        val cleanInput = phone.trim().lowercase()
+
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE TRIM(phone) = ?"
+            // 1. Try drivers table first
+            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE TRIM(phone) IN (?, ?, ?, ?) OR LOWER(TRIM(email)) = ?"
             val stmt = conn.prepareStatement(sql)
-            stmt.setString(1, normalizedPhone)
+            for (i in 1..4) {
+                stmt.setString(i, variations.getOrElse(i - 1) { cleanInput })
+            }
+            stmt.setString(5, cleanInput)
+
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 val dbPass = rs.getString("password")
@@ -1978,7 +2001,7 @@ object DatabaseRepository {
                         name = rs.getString("full_name"), 
                         status = rs.getString("status"), 
                         profile_picture = rs.getString("profile_picture"),
-                        user_role = rs.getString("user_role"),
+                        user_role = rs.getString("user_role") ?: "DRIVER",
                         company_name = rs.getString("company_name"),
                         vehicle_type = rs.getString("vehicle_type")
                     )
@@ -1986,9 +2009,14 @@ object DatabaseRepository {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
             } else {
-                val sqlOwner = "SELECT id, full_name, status, profile_picture, password FROM fleet_owners WHERE TRIM(phone) = ?"
+                // 2. Try fleet_owners table
+                val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE TRIM(phone) IN (?, ?, ?, ?) OR LOWER(TRIM(email)) = ?"
                 val stmtOwner = conn.prepareStatement(sqlOwner)
-                stmtOwner.setString(1, normalizedPhone)
+                for (i in 1..4) {
+                    stmtOwner.setString(i, variations.getOrElse(i - 1) { cleanInput })
+                }
+                stmtOwner.setString(5, cleanInput)
+
                 val rsOwner = stmtOwner.executeQuery()
                 if (rsOwner.next()) {
                     val dbPass = rsOwner.getString("password")
@@ -2026,13 +2054,14 @@ object DatabaseRepository {
                             name = rsOwner.getString("full_name"),
                             status = rsOwner.getString("status"),
                             profile_picture = rsOwner.getString("profile_picture"),
-                            user_role = "OWNER"
+                            user_role = "OWNER",
+                            company_name = rsOwner.getString("company_name")
                         )
                     } else {
                         return AuthResponse(false, "Invalid password", null, null)
                     }
                 } else {
-                    return AuthResponse(false, "Driver not found with this phone number", null, null)
+                    return AuthResponse(false, "User not found with this phone number or email", null, null)
                 }
             }
         }
