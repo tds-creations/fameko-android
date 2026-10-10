@@ -1048,7 +1048,7 @@ fun MainMapContent(
                 val hasActiveOrder = viewModel.currentOrderId != null && viewModel.orderStatusData != null && !isTerminalStatus
 
                 if (!hasActiveOrder && !viewModel.isFullscreenMap) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 16.dp, end = 16.dp).statusBarsPadding()) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(top = 0.dp, start = 16.dp, end = 16.dp)) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
