@@ -431,7 +431,7 @@ fun CustomerMapScreen() {
                 }
                 CustomerScreen.Rentals -> {
                     RentalsScreen(
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
+                        onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Account) },
                         onNavigateToDetails = { rental -> mapViewModel.navigateTo(CustomerScreen.RentalDetails(rental)) },
                         onRebook = { }
                     )
@@ -439,14 +439,14 @@ fun CustomerMapScreen() {
                 is CustomerScreen.RentalDetails -> {
                     RentalDetailsScreen(
                         rental = screen.rental,
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.Rentals) },
+                        onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Rentals) },
                         onNavigateToMainMap = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
                         onStartNavigation = { rental -> mapViewModel.startNavigationForRental(rental) }
                     )
                 }
                 CustomerScreen.FleetBrowse -> {
                     FleetSelectionScreen(
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
+                        onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Account) },
                         onVehicleDetails = { vehicle ->
                             mapViewModel.navigateTo(CustomerScreen.VehicleDetails(vehicle))
                         }
@@ -455,7 +455,7 @@ fun CustomerMapScreen() {
                 is CustomerScreen.VehicleDetails -> {
                     VehicleDetailsScreen(
                         vehicle = screen.vehicle,
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.FleetBrowse) },
+                        onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.FleetBrowse) },
                         onBookNow = { vehicle ->
                             mapViewModel.navigateTo(CustomerScreen.RentalBooking(vehicle))
                         }
@@ -464,7 +464,7 @@ fun CustomerMapScreen() {
                 is CustomerScreen.RentalBooking -> {
                     RentalBookingScreen(
                         vehicle = screen.vehicle,
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.VehicleDetails(screen.vehicle)) },
+                        onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.VehicleDetails(screen.vehicle)) },
                         onConfirm = { days, vId, _, totalPrice, scheduledDate, tripNotes, stopsStr, isSelfDrive, pMethod ->
                             scope.launch {
                                 val cId = sessionManager.getCustomerId()?.toIntOrNull() ?: 1
@@ -501,24 +501,24 @@ fun CustomerMapScreen() {
                     CustomerHistoryScreen(
                         title = "Ride History",
                         emptyMessage = "No ride history yet",
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) }
+                        onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Account) }
                     )
                 }
                 CustomerScreen.Promotions -> {
-                    PromotionsScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) })
+                    PromotionsScreen(onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
                 CustomerScreen.Support -> {
-                    SupportScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) })
+                    SupportScreen(onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
                 CustomerScreen.Notifications -> {
                     NotificationsScreen(
                         notifications = mapViewModel.notifications,
                         onDelete = { id: Int -> mapViewModel.deleteNotification(id) },
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) }
+                        onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Account) }
                     )
                 }
                 CustomerScreen.NotificationSettings -> {
-                    CustomerNotificationSettingsScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) })
+                    CustomerNotificationSettingsScreen(onBack = { if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
                 is CustomerScreen.PaystackCheckout -> {
                     PaystackWebViewScreen(

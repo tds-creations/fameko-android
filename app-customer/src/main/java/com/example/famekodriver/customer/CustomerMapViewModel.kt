@@ -44,7 +44,7 @@ class CustomerMapViewModel(
     fun navigateTo(screen: CustomerScreen) {
         if (currentScreen != screen) {
             // Avoid pushing duplicate base screens to maintain clean history
-            if (screen == CustomerScreen.Landing || screen == CustomerScreen.MainMap || screen == CustomerScreen.Account) {
+            if (screen == CustomerScreen.Landing || screen == CustomerScreen.MainMap) {
                 _screenStack.clear()
             }
             _screenStack.add(screen)
