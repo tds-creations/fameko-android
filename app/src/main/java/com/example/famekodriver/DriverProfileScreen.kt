@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,11 +50,15 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     val repository = remember { DriverRepository.getInstance() }
     val driverId = sessionManager.getDriverId() ?: ""
 
+    var userRole by remember { mutableStateOf(sessionManager.getUserRole()) }
     var status by remember { mutableStateOf(sessionManager.getDriverStatus()) }
     var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Nii Odartei") }
     var driverEmail by remember { mutableStateOf("niiodartei24@gmail.com") }
     var driverPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "+233 53 818 8056") }
     var driverRegion by remember { mutableStateOf("Greater Accra, Ghana") }
+    var companyName by remember { mutableStateOf(sessionManager.getCompanyName() ?: "Fameko Fleet Operations") }
+    var regNumber by remember { mutableStateOf("REG-2024-8891") }
+    var fleetCount by remember { mutableStateOf(1) }
     var vehicleModel by remember { mutableStateOf("Toyota Vitz (2018) • Silver") }
     var vehiclePlate by remember { mutableStateOf("GT-4821-22") }
     var missingDocs by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -103,6 +109,16 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                 driverRegion = profile["region"]?.toString() ?: driverRegion
                 status = profile["status"]?.toString() ?: "APPROVED"
                 profilePicUrl = profile["profile_picture"]?.toString()
+
+                val fetchedRole = profile["user_role"]?.toString()
+                if (!fetchedRole.isNullOrEmpty()) {
+                    userRole = fetchedRole
+                    sessionManager.setUserRole(fetchedRole)
+                }
+
+                companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
+                regNumber = profile["registration_number"]?.toString()?.ifEmpty { regNumber } ?: regNumber
+                (profile["fleet_count"] as? Number)?.toInt()?.let { if (it > 0) fleetCount = it }
             }
             isLoading = false
         }.onFailure {
@@ -121,13 +137,15 @@ fun DriverProfileScreen(onBack: () -> Unit) {
         }
     }
 
+    val isFleetOwner = userRole == "OWNER" || userRole == "BOTH"
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { 
                     Column {
-                        Text("My Profile", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
-                        Text("Manage license, permit & account info", fontSize = 12.sp, color = Color.Gray)
+                        Text(if (isFleetOwner) "Fleet Partner Profile" else "My Profile", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                        Text(if (isFleetOwner) "Fleet & operator account details" else "Manage license, permit & account info", fontSize = 12.sp, color = Color.Gray)
                     }
                 },
                 navigationIcon = {
@@ -212,13 +230,22 @@ fun DriverProfileScreen(onBack: () -> Unit) {
 
                             Spacer(Modifier.height(14.dp))
 
-                            Text(driverName, fontWeight = FontWeight.Black, fontSize = 22.sp, color = Color.White)
+                            Text(
+                                text = if (isFleetOwner) companyName else driverName,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 22.sp,
+                                color = Color.White
+                            )
                             Spacer(Modifier.height(4.dp))
-                            Text("Partner ID: #FMK-${Math.abs(driverId.hashCode() % 90000) + 10000}", fontSize = 12.sp, color = Color.Gray)
+                            Text(
+                                text = if (isFleetOwner) "Fleet Partner ID: #FMK-FLEET-${Math.abs(driverId.hashCode() % 90000) + 10000}" else "Partner ID: #FMK-${Math.abs(driverId.hashCode() % 90000) + 10000}",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
 
                             Spacer(Modifier.height(12.dp))
 
-                            // Approved Status Badge Pill
+                            // Approved / Role Badge Pill
                             Surface(
                                 color = Color(0xFF065F46),
                                 shape = RoundedCornerShape(16.dp)
@@ -229,7 +256,12 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Box(modifier = Modifier.size(6.dp).background(Color(0xFF34D399), CircleShape))
-                                    Text(status.ifEmpty { "APPROVED" }, color = Color(0xFF34D399), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = if (isFleetOwner) "FLEET OWNER • $status" else status.ifEmpty { "APPROVED" },
+                                        color = Color(0xFF34D399),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
 
@@ -240,17 +272,25 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                ProfileStatCol("RATING", "${String.format(Locale.US, "%.2f", if (driverStats.rating > 0) driverStats.rating else 4.95)} ★", Modifier.weight(1f))
-                                Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
-                                ProfileStatCol("TRIPS", "${driverStats.totalDeliveries.takeIf { it > 0 } ?: 1240}+", Modifier.weight(1f))
-                                Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
-                                ProfileStatCol("ACCEPTANCE", "${if (driverStats.completionRate > 0) driverStats.completionRate else 98}%", Modifier.weight(1f))
+                                if (isFleetOwner) {
+                                    ProfileStatCol("FLEET SIZE", "$fleetCount Vehicles", Modifier.weight(1f))
+                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
+                                    ProfileStatCol("OPERATING ZONE", "Accra Urban", Modifier.weight(1f))
+                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
+                                    ProfileStatCol("STATUS", "Verified", Modifier.weight(1f))
+                                } else {
+                                    ProfileStatCol("RATING", "${String.format(Locale.US, "%.2f", if (driverStats.rating > 0) driverStats.rating else 4.95)} ★", Modifier.weight(1f))
+                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
+                                    ProfileStatCol("TRIPS", "${driverStats.totalDeliveries.takeIf { it > 0 } ?: 1240}+", Modifier.weight(1f))
+                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
+                                    ProfileStatCol("ACCEPTANCE", "${if (driverStats.completionRate > 0) driverStats.completionRate else 98}%", Modifier.weight(1f))
+                                }
                             }
                         }
                     }
                 }
 
-                // Section 1: PERSONAL DETAILS
+                // Section 1: DETAILS CARD
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
@@ -258,7 +298,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("PERSONAL DETAILS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                            Text(if (isFleetOwner) "FLEET & BUSINESS DETAILS" else "PERSONAL DETAILS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
                             Text("Tier 1 Verified", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
                         }
 
@@ -269,11 +309,32 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
                             Column {
+                                if (isFleetOwner) {
+                                    ProfileDetailRow(
+                                        icon = Icons.Default.Business,
+                                        label = "Company / Fleet Name",
+                                        value = companyName,
+                                        badgeText = "Fleet Partner",
+                                        onClick = {}
+                                    )
+                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                    ProfileDetailRow(
+                                        icon = Icons.Default.Description,
+                                        label = "Business Reg Number",
+                                        value = regNumber,
+                                        badgeText = "Verified",
+                                        badgeColor = Color(0xFFECFDF5),
+                                        badgeTextColor = Color(0xFF059669),
+                                        onClick = {}
+                                    )
+                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                }
+
                                 ProfileDetailRow(
                                     icon = Icons.Default.Person,
-                                    label = "Full Name",
+                                    label = if (isFleetOwner) "Fleet Representative" else "Full Name",
                                     value = driverName,
-                                    badgeText = "Primary",
+                                    badgeText = if (isFleetOwner) "Owner" else "Primary",
                                     onClick = {}
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
@@ -305,17 +366,20 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                     badgeText = "Urban Zone",
                                     onClick = {}
                                 )
-                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                ProfileDetailRow(
-                                    icon = Icons.Default.DirectionsCar,
-                                    label = "Registered Vehicle",
-                                    value = vehicleModel,
-                                    badgeText = vehiclePlate,
-                                    badgeColor = Color(0xFFEFF6FF),
-                                    badgeTextColor = Color(0xFF2563EB),
-                                    showChevron = true,
-                                    onClick = { Toast.makeText(context, "Vehicle management", Toast.LENGTH_SHORT).show() }
-                                )
+
+                                if (!isFleetOwner) {
+                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                    ProfileDetailRow(
+                                        icon = Icons.Default.DirectionsCar,
+                                        label = "Registered Vehicle",
+                                        value = vehicleModel,
+                                        badgeText = vehiclePlate,
+                                        badgeColor = Color(0xFFEFF6FF),
+                                        badgeTextColor = Color(0xFF2563EB),
+                                        showChevron = true,
+                                        onClick = { Toast.makeText(context, "Vehicle management", Toast.LENGTH_SHORT).show() }
+                                    )
+                                }
                             }
                         }
                     }
@@ -330,7 +394,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("VERIFICATION & COMPLIANCE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
-                            Text("5 of 5 Approved", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
+                            Text("All Verified", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
                         }
 
                         Card(
@@ -340,14 +404,17 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
                             Column {
-                                ComplianceRowItem(
-                                    title = "Driver's License (Class B)",
-                                    subtitle = "DVLA Ghana • Expires Dec 2026",
-                                    badge = "VERIFIED",
-                                    icon = Icons.Default.Badge,
-                                    onClick = { pendingDocType = "drivers_license"; pickImageLauncher.launch("image/*") }
-                                )
-                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                if (isFleetOwner) {
+                                    ComplianceRowItem(
+                                        title = "Business Certificate",
+                                        subtitle = "Registrar General • Approved",
+                                        badge = "VERIFIED",
+                                        icon = Icons.Default.Business,
+                                        onClick = { pendingDocType = "business_cert"; pickImageLauncher.launch("image/*") }
+                                    )
+                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                }
+
                                 ComplianceRowItem(
                                     title = "Ghana Card (National ID)",
                                     subtitle = "GHA-724194012-4 • Authenticated",
@@ -355,22 +422,33 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                     icon = Icons.Default.CreditCard,
                                     onClick = { pendingDocType = "ghana_card"; pickImageLauncher.launch("image/*") }
                                 )
-                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                ComplianceRowItem(
-                                    title = "Roadworthy Certificate",
-                                    subtitle = "Active • Valid till Oct 2026",
-                                    badge = "ACTIVE",
-                                    icon = Icons.Default.VerifiedUser,
-                                    onClick = { pendingDocType = "roadworthy_cert"; pickImageLauncher.launch("image/*") }
-                                )
-                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                ComplianceRowItem(
-                                    title = "Comprehensive Insurance",
-                                    subtitle = "Enterprise Insurance Ltd",
-                                    badge = "INSURED",
-                                    icon = Icons.Default.Security,
-                                    onClick = { pendingDocType = "insurance_cert"; pickImageLauncher.launch("image/*") }
-                                )
+
+                                if (!isFleetOwner) {
+                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                    ComplianceRowItem(
+                                        title = "Driver's License (Class B)",
+                                        subtitle = "DVLA Ghana • Expires Dec 2026",
+                                        badge = "VERIFIED",
+                                        icon = Icons.Default.Badge,
+                                        onClick = { pendingDocType = "drivers_license"; pickImageLauncher.launch("image/*") }
+                                    )
+                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                    ComplianceRowItem(
+                                        title = "Roadworthy Certificate",
+                                        subtitle = "Active • Valid till Oct 2026",
+                                        badge = "ACTIVE",
+                                        icon = Icons.Default.VerifiedUser,
+                                        onClick = { pendingDocType = "roadworthy_cert"; pickImageLauncher.launch("image/*") }
+                                    )
+                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                    ComplianceRowItem(
+                                        title = "Comprehensive Insurance",
+                                        subtitle = "Enterprise Insurance Ltd",
+                                        badge = "INSURED",
+                                        icon = Icons.Default.Security,
+                                        onClick = { pendingDocType = "insurance_cert"; pickImageLauncher.launch("image/*") }
+                                    )
+                                }
                             }
                         }
                     }
@@ -464,13 +542,13 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                         }
 
                         OutlinedButton(
-                            onClick = { Toast.makeText(context, "Downloading Driver Credential Pack (.PDF)...", Toast.LENGTH_SHORT).show() },
+                            onClick = { Toast.makeText(context, "Downloading Partner Credential Pack (.PDF)...", Toast.LENGTH_SHORT).show() },
                             modifier = Modifier.fillMaxWidth().height(54.dp),
                             shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0F172A))
                         ) {
-                            Text("Download Driver Credential Pack (.PDF)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Download Partner Credential Pack (.PDF)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                 }
