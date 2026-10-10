@@ -493,7 +493,10 @@ object DatabaseInitializer {
             "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'ELECTRONIC';",
             "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS is_self_drive BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS is_unlocked BOOLEAN DEFAULT FALSE;",
-            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'PENDING';"
+            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'PENDING';",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC(12, 2) DEFAULT 0.0;",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS rewards_points INTEGER DEFAULT 0;",
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION DEFAULT 4.90;"
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 

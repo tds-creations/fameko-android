@@ -41,22 +41,26 @@ fun CustomerAccountScreen(
     val userRepository = remember { UserRepository() }
     val customerId = sessionManager.getCustomerId() ?: sessionManager.getDriverId() ?: "1"
 
-    var userName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Joel Asare") }
+    var userName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Customer") }
     var userRating by remember { mutableStateOf("4.90") }
-    var ridesCount by remember { mutableStateOf("64") }
+    var ridesCount by remember { mutableStateOf("0") }
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
-    var famekoPayBalance by remember { mutableStateOf("142.50") }
-    var rewardsPoints by remember { mutableStateOf("350 Pts") }
+    var famekoPayBalance by remember { mutableStateOf("0.00") }
+    var rewardsPoints by remember { mutableStateOf("0 Pts") }
 
     LaunchedEffect(Unit) {
         userRepository.getCustomerProfile(customerId).onSuccess { profile ->
             if (profile.isNotEmpty()) {
                 userName = profile["name"]?.toString() ?: profile["username"]?.toString() ?: userName
-                userRating = profile["rating"]?.toString() ?: userRating
-                ridesCount = profile["rides_count"]?.toString() ?: profile["total_rides"]?.toString() ?: ridesCount
+                userRating = String.format(Locale.US, "%.2f", profile["rating"]?.toString()?.toDoubleOrNull() ?: 4.90)
+                ridesCount = profile["rides_count"]?.toString() ?: profile["total_rides"]?.toString() ?: "0"
                 profilePicUrl = profile["profile_picture"]?.toString()
-                profile["wallet_balance"]?.let { famekoPayBalance = String.format(Locale.US, "%.2f", it.toString().toDoubleOrNull() ?: 142.50) }
-                profile["rewards_points"]?.let { rewardsPoints = "$it Pts" }
+                
+                val balanceVal = profile["wallet_balance"]?.toString()?.toDoubleOrNull() ?: 0.0
+                famekoPayBalance = String.format(Locale.US, "%.2f", balanceVal)
+                
+                val ptsVal = profile["rewards_points"]?.toString()?.toIntOrNull() ?: 0
+                rewardsPoints = "$ptsVal Pts"
             }
         }.onFailure {
             // Fallback to session

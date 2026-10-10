@@ -929,20 +929,32 @@ object DatabaseRepository {
 
     fun getCustomerProfile(id: Int): Map<String, Any>? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, name, email, phone, region, default_address, profile_picture FROM customers WHERE id = ?"
+            val sql = "SELECT id, name, email, phone, region, default_address, profile_picture, COALESCE(wallet_balance, 0.0) as wallet_balance, COALESCE(rewards_points, 0) as rewards_points, COALESCE(rating, 4.90) as rating FROM customers WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, id)
             val rs = stmt.executeQuery()
             if (rs.next()) {
+                var totalRides = 0
+                try {
+                    val stmt2 = conn.prepareStatement("SELECT COUNT(*) FROM orders WHERE customer_id = ?")
+                    stmt2.setInt(1, id)
+                    val rs2 = stmt2.executeQuery()
+                    if (rs2.next()) totalRides = rs2.getInt(1)
+                } catch (_: Exception) {}
+
                 return mapOf(
                     "success" to true,
                     "id" to rs.getInt("id"),
                     "name" to rs.getString("name"),
                     "email" to rs.getString("email"),
                     "phone" to rs.getString("phone"),
-                    "region" to rs.getString("region"),
+                    "region" to (rs.getString("region") ?: ""),
                     "address" to (rs.getString("default_address") ?: ""),
-                    "profile_picture" to (rs.getString("profile_picture") ?: "")
+                    "profile_picture" to (rs.getString("profile_picture") ?: ""),
+                    "wallet_balance" to rs.getDouble("wallet_balance"),
+                    "rewards_points" to rs.getInt("rewards_points"),
+                    "rating" to rs.getDouble("rating"),
+                    "rides_count" to totalRides
                 )
             }
         }
