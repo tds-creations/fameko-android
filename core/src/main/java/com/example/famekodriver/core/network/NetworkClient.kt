@@ -3,10 +3,13 @@ package com.example.famekodriver.core.network
 import com.example.famekodriver.core.BuildConfig
 import okhttp3.Cookie
 import okhttp3.CookieJar
+import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.net.InetAddress
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -32,8 +35,24 @@ object NetworkClient {
     private val BASE_URL = PRODUCTION_URL
     private val ROUTING_URL = PRODUCTION_ROUTING_URL
 
+    private val resilientDns = object : Dns {
+        override fun lookup(hostname: String): List<InetAddress> {
+            return try {
+                Dns.SYSTEM.lookup(hostname)
+            } catch (e: UnknownHostException) {
+                try {
+                    val addresses = InetAddress.getAllByName(hostname)
+                    if (addresses.isNotEmpty()) addresses.toList() else throw e
+                } catch (_: Exception) {
+                    throw e
+                }
+            }
+        }
+    }
+
     val okHttpClient by lazy {
         OkHttpClient.Builder()
+            .dns(resilientDns)
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
@@ -44,6 +63,7 @@ object NetworkClient {
 
     private val routingHttpClient by lazy {
         OkHttpClient.Builder()
+            .dns(resilientDns)
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
@@ -52,6 +72,7 @@ object NetworkClient {
 
     private val osmHttpClient by lazy {
         OkHttpClient.Builder()
+            .dns(resilientDns)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
