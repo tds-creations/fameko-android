@@ -10,7 +10,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Singleton client for Retrofit services
+ * Singleton client for Retrofit services (Production Railway Cluster)
  */
 object NetworkClient {
     // In-memory cookie storage for sessions
@@ -26,32 +26,20 @@ object NetworkClient {
         }
     }
 
-    // TOGGLE THIS: true = Local Backend, false = Production
-    private const val USE_LOCAL_BACKEND = false
-
     private const val PRODUCTION_URL = "https://fameko-android-production.up.railway.app/"
     private const val PRODUCTION_ROUTING_URL = "https://go-routing-production.up.railway.app/"
 
-    // 10.0.2.2 is ONLY for Emulators. 
-    // YOUR PHONE is on 192.168.100.x
-    // Set this to your COMPUTER'S IP (from 'ipconfig')
-    private const val YOUR_COMPUTER_IP = "192.168.100.118"
-    private const val LOCAL_URL = "http://$YOUR_COMPUTER_IP:8080/"
-    private const val LOCAL_ROUTING_URL = "http://$YOUR_COMPUTER_IP:8012/"
-
-    private val BASE_URL = if (USE_LOCAL_BACKEND) LOCAL_URL else PRODUCTION_URL
-    private val ROUTING_URL = if (USE_LOCAL_BACKEND) LOCAL_ROUTING_URL else PRODUCTION_ROUTING_URL
+    private val BASE_URL = PRODUCTION_URL
+    private val ROUTING_URL = PRODUCTION_ROUTING_URL
 
     val okHttpClient by lazy {
-        val builder = OkHttpClient.Builder()
-            .connectTimeout(300, TimeUnit.SECONDS)
-            .readTimeout(300, TimeUnit.SECONDS)
-            .writeTimeout(300, TimeUnit.SECONDS)
-            .cookieJar(sessionCookieJar) // Enable session handling for simultaneous login
+        OkHttpClient.Builder()
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .cookieJar(sessionCookieJar)
             .retryOnConnectionFailure(true)
-        
-        // Log sensitive info only in debug/local mode if needed (Placeholder for interceptor)
-        builder.build()
+            .build()
     }
 
     private val routingHttpClient by lazy {
@@ -120,6 +108,6 @@ object NetworkClient {
         return base.replace("http", "ws") + "/ws/$userId"
     }
 
-    // Keep for backward compatibility until all calls are migrated
+    // Backward compatibility alias
     val geocodingService: FamekoApiService by lazy { famekoApi }
 }
