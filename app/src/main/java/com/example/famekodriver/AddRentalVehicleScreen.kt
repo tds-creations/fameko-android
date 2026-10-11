@@ -51,7 +51,7 @@ fun AddRentalVehicleScreen(
     val scope = rememberCoroutineScope()
     val sessionManager = remember { SessionManager(context) }
     val repository = remember { DriverRepository.getInstance() }
-    val ownerId = sessionManager.getDriverId()?.toIntOrNull() ?: 0
+    val ownerId = sessionManager.getDriverId() ?: "1"
     val userRole = sessionManager.getUserRole()
     val isEditing = vehicle != null
 
@@ -218,7 +218,7 @@ fun AddRentalVehicleScreen(
                                     onExpandedChange = { brandExpanded = !brandExpanded }
                                 ) {
                                     OutlinedTextField(
-                                        value = "$selectedBrand (Leading in Ghana Fleet)",
+                                        value = "$selectedBrand",
                                         onValueChange = {},
                                         readOnly = true,
                                         label = { Text("Vehicle Brand") },

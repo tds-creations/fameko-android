@@ -171,7 +171,7 @@ class RentalRepository {
 
     suspend fun getFleetVehicles(ownerId: Int): Result<List<Map<String, Any>>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.getFleetVehicles(ownerId)
+            val response = NetworkClient.famekoApi.getFleetVehicles(ownerId.toString())
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
@@ -186,7 +186,7 @@ class RentalRepository {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.addFleetVehicle(
-                ownerId, name, model, type, number, rate, description, features, imageUrls, location, lat, lng, seats, transmission, fuelType
+                ownerId.toString(), name, model, type, number, rate, description, features, imageUrls, location, lat, lng, seats, transmission, fuelType
             )
             if (response["success"] == true) Result.success(Unit)
             else Result.failure(Exception("Failed to add vehicle"))

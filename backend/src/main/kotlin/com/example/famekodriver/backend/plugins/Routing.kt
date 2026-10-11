@@ -1360,17 +1360,17 @@ fun Application.configureRouting() {
 
         route("/fleet") {
             get("/vehicles") {
-                val ownerId = call.parameters["owner_id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val ownerIdStr = call.parameters["owner_id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
                 val role = call.parameters["role"]
-                val vehicles = DatabaseRepository.getFleetVehicles(ownerId, role)
+                val vehicles = DatabaseRepository.getFleetVehiclesByOwnerIdStr(ownerIdStr, role)
                 call.respond(vehicles)
             }
             post("/add-vehicle") {
                 try {
                     val p = call.receiveParameters()
-                    val ownerId = p["owner_id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    val ownerIdStr = p["owner_id"] ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("success" to false, "message" to "Missing owner_id"))
                     DatabaseRepository.addVehicleToFleet(
-                        ownerId = ownerId,
+                        ownerIdStr = ownerIdStr,
                         name = p["name"] ?: "",
                         model = p["model"] ?: "",
                         type = p["type"] ?: "",

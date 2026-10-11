@@ -432,14 +432,14 @@ interface FamekoApiService {
 
     @GET("fleet/vehicles")
     suspend fun getFleetVehicles(
-        @Query("owner_id") ownerId: Int,
+        @Query("owner_id") ownerId: String,
         @Query("role") role: String? = null
     ): List<Map<String, Any>>
 
     @FormUrlEncoded
     @POST("fleet/add-vehicle")
     suspend fun addFleetVehicle(
-        @Field("owner_id") ownerId: Int,
+        @Field("owner_id") ownerId: String,
         @Field("name") name: String,
         @Field("model") model: String,
         @Field("type") type: String,

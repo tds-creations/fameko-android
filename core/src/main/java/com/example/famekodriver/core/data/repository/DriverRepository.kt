@@ -1481,9 +1481,9 @@ class DriverRepository private constructor() {
         }
     }
 
-    suspend fun getFleetVehicles(ownerId: Int, role: String? = null): Result<List<Map<String, Any>>> = withContext(Dispatchers.IO) {
+    suspend fun getFleetVehicles(ownerId: Any, role: String? = null): Result<List<Map<String, Any>>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.getFleetVehicles(ownerId, role)
+            val response = NetworkClient.famekoApi.getFleetVehicles(ownerId.toString(), role)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
@@ -1491,7 +1491,7 @@ class DriverRepository private constructor() {
     }
 
     suspend fun addFleetVehicle(
-        ownerId: Int, name: String, model: String, type: String, number: String, rate: Double,
+        ownerId: Any, name: String, model: String, type: String, number: String, rate: Double,
         description: String? = null, features: String? = null, imageUrls: String? = null,
         location: String? = null, lat: Double? = null, lng: Double? = null,
         seats: Int? = null, transmission: String? = null, fuelType: String? = null,
@@ -1499,7 +1499,7 @@ class DriverRepository private constructor() {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.addFleetVehicle(
-                ownerId, name, model, type, number, rate, description, features, imageUrls, location, lat, lng, seats, transmission, fuelType, ownerRole
+                ownerId.toString(), name, model, type, number, rate, description, features, imageUrls, location, lat, lng, seats, transmission, fuelType, ownerRole
             )
             if (response["success"] == true) Result.success(Unit)
             else Result.failure(Exception("Failed to add vehicle"))
