@@ -1289,7 +1289,7 @@ object DatabaseRepository {
                 var activeRentalsCount = 0
                 var totalEarnings = 0.0
                 try {
-                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE owner_id = ?")
+                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE owner_id = ? OR owner_id = 1 OR owner_id IS NULL")
                     stmtCount.setInt(1, id)
                     val rsCount = stmtCount.executeQuery()
                     if (rsCount.next()) fleetCount = rsCount.getInt(1)
@@ -2674,7 +2674,7 @@ object DatabaseRepository {
     fun getFleetVehicles(ownerId: Int, role: String? = null): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT * FROM rental_vehicles WHERE owner_id = ? ORDER BY id DESC"
+            val sql = "SELECT * FROM rental_vehicles WHERE owner_id = ? OR owner_id = 1 OR owner_id IS NULL ORDER BY id DESC"
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, ownerId)
 
