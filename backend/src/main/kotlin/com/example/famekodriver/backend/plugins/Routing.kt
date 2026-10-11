@@ -958,19 +958,20 @@ fun Application.configureRouting() {
         }
 
         get("/driver/profile/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+            val idStr = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
             val role = call.request.queryParameters["role"]
-            val profile = DatabaseRepository.getDriverProfile(id, role)
+            val profile = DatabaseRepository.getDriverProfileByPrefixedId(idStr, role)
             if (profile != null) {
                 call.respond(profile)
             } else {
-                call.respond(HttpStatusCode.NotFound, mapOf("success" to false, "message" to "Driver not found"))
+                call.respond(HttpStatusCode.NotFound, mapOf("success" to false, "message" to "Driver profile not found"))
             }
         }
 
         get("/fleet/profile/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val profile = DatabaseRepository.getFleetOwnerProfile(id)
+            val idStr = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+            val numericId = idStr.removePrefix("OWNER:").toIntOrNull() ?: idStr.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+            val profile = DatabaseRepository.getFleetOwnerProfile(numericId)
             if (profile != null) {
                 call.respond(profile)
             } else {
@@ -983,17 +984,38 @@ fun Application.configureRouting() {
                 val req = call.receive<LoginRequest>()
                 val phone = req.phone
                 val password = req.password
-                println("DEBUG: Driver Login Attempt for: '$phone'")
+                val role = req.role ?: "DRIVER"
+                println("DEBUG: Driver Login Attempt for: '$phone' (role=$role)")
                 if (phone.isNullOrBlank() || password.isNullOrBlank()) {
                     call.respond(AuthResponse(false, "Phone and password are required", null, null))
                     return@post
                 }
 
-                val resp = DatabaseRepository.loginDriver(phone, password)
+                val resp = DatabaseRepository.loginDriver(phone, password, role)
                 println("DEBUG: Driver Login Result for '$phone': success=${resp.success}, msg=${resp.message}")
                 call.respond(resp)
             } catch (e: Throwable) {
                 println("DEBUG: Driver Login Exception: ${e.localizedMessage}")
+                call.respond(AuthResponse(false, "Login error: ${e.localizedMessage}", null, null))
+            }
+        }
+
+        post("/fleet/login") {
+            try {
+                val req = call.receive<LoginRequest>()
+                val phone = req.phone
+                val password = req.password
+                println("DEBUG: Fleet Owner Login Attempt for: '$phone'")
+                if (phone.isNullOrBlank() || password.isNullOrBlank()) {
+                    call.respond(AuthResponse(false, "Phone and password are required", null, null))
+                    return@post
+                }
+
+                val resp = DatabaseRepository.loginFleetOwner(phone, password)
+                println("DEBUG: Fleet Owner Login Result for '$phone': success=${resp.success}, msg=${resp.message}")
+                call.respond(resp)
+            } catch (e: Throwable) {
+                println("DEBUG: Fleet Owner Login Exception: ${e.localizedMessage}")
                 call.respond(AuthResponse(false, "Login error: ${e.localizedMessage}", null, null))
             }
         }
