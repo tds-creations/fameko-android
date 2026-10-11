@@ -749,6 +749,24 @@ fun AddRentalVehicleScreen(
                                 }
 
                                 scope.launch {
+                                    isUploading = true
+                                    Toast.makeText(context, "Uploading vehicle photos to Cloudinary...", Toast.LENGTH_SHORT).show()
+
+                                    val uploadedUrls = mutableListOf<String>()
+                                    val imageUris = listOf(frontImage, sideImage, backImage, interiorImage).filterNotNull()
+
+                                    for (uri in imageUris) {
+                                        val file = uriToFile(context, uri)
+                                        if (file != null) {
+                                            val uploadRes = repository.uploadImage(file, preset = "fleet_vehicles", folder = "fleet_vehicles")
+                                            if (uploadRes.isSuccess) {
+                                                uploadRes.getOrNull()?.let { uploadedUrls.add(it) }
+                                            }
+                                        }
+                                    }
+
+                                    val imageUrlsStr = if (uploadedUrls.isNotEmpty()) uploadedUrls.joinToString(",") else vehicle?.get("image_urls")?.toString()
+
                                     if (isEditing && vehicle != null) {
                                         val vId = (vehicle["id"] as Number).toInt()
                                         repository.updateFleetVehicle(
@@ -760,6 +778,7 @@ fun AddRentalVehicleScreen(
                                             rate = dailyRate.toDoubleOrNull() ?: 280.0,
                                             description = descriptionText,
                                             features = featuresStr,
+                                            imageUrls = imageUrlsStr,
                                             seats = selectedSeats.filter { it.isDigit() }.toIntOrNull() ?: 5,
                                             transmission = selectedTransmission,
                                             fuelType = selectedFuelType
@@ -781,6 +800,7 @@ fun AddRentalVehicleScreen(
                                             rate = dailyRate.toDoubleOrNull() ?: 280.0,
                                             description = descriptionText,
                                             features = featuresStr,
+                                            imageUrls = imageUrlsStr,
                                             location = "Greater Accra",
                                             seats = selectedSeats.filter { it.isDigit() }.toIntOrNull() ?: 5,
                                             transmission = selectedTransmission,
@@ -788,7 +808,7 @@ fun AddRentalVehicleScreen(
                                             ownerRole = userRole
                                         ).onSuccess {
                                             isUploading = false
-                                            Toast.makeText(context, "Vehicle registered successfully!", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Vehicle registered with photos!", Toast.LENGTH_SHORT).show()
                                             onComplete()
                                         }.onFailure { err ->
                                             isUploading = false

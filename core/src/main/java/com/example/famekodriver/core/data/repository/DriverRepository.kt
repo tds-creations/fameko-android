@@ -580,23 +580,27 @@ class DriverRepository private constructor() {
         }
     }
 
-    suspend fun uploadImage(file: File, preset: String = "fameko_docs"): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun uploadImage(file: File, preset: String = "fameko_docs", folder: String? = null): Result<String> = withContext(Dispatchers.IO) {
         try {
-            // Both presets use the same cloud name 'df3jnubvy' as seen in Cloudinary dashboard
             val cloudName = "df3jnubvy"
             val cloudinaryUrl = "https://api.cloudinary.com/v1_1/$cloudName/image/upload"
             
-            Log.d("FamekoRepo", "Starting Cloudinary upload to $cloudName using preset $preset")
+            val presetName = if (preset == "fleet_vehicles") "fameko_docs" else preset
             
-            val requestBody = MultipartBody.Builder()
+            Log.d("FamekoRepo", "Starting Cloudinary upload to $cloudName using preset $presetName (folder=$folder)")
+            
+            val builder = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, file.asRequestBody("image/*".toMediaTypeOrNull()))
-                .addFormDataPart("upload_preset", preset)
-                .build()
+                .addFormDataPart("upload_preset", presetName)
+
+            if (!folder.isNullOrBlank()) {
+                builder.addFormDataPart("folder", folder)
+            }
 
             val request = Request.Builder()
                 .url(cloudinaryUrl)
-                .post(requestBody)
+                .post(builder.build())
                 .build()
 
             val response = NetworkClient.okHttpClient.newCall(request).execute()
