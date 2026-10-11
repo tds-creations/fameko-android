@@ -106,16 +106,17 @@ fun DriverLoginScreen(
                         modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text("Mobile Number or Email", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                        Text("Email Address", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
 
-                        // Phone or Email Input
+                        // Email Input
                         OutlinedTextField(
                             value = phoneInput,
                             onValueChange = { phoneInput = it },
-                            placeholder = { Text("024 123 4567 or email@domain.com", fontSize = 13.sp) },
-                            leadingIcon = { Icon(Icons.Default.Phone, null, tint = Color.Gray, modifier = Modifier.size(18.dp)) },
+                            placeholder = { Text("e.g. driver@example.com", fontSize = 13.sp) },
+                            leadingIcon = { Icon(Icons.Default.Email, null, tint = Color.Gray, modifier = Modifier.size(18.dp)) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF059669))
                         )

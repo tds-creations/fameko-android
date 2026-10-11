@@ -78,7 +78,13 @@ class DriverLoginActivity : ComponentActivity() {
         Toast.makeText(this, "Logging in as $roleTitle...", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch {
-            repository.login(cleanEmail, password, selectedRole)
+            val loginTask = if (selectedRole == "OWNER") {
+                repository.loginFleetOwner(cleanEmail, password)
+            } else {
+                repository.login(cleanEmail, password, "DRIVER")
+            }
+
+            loginTask
                 .onSuccess { driver ->
                     if (driver != null) {
                         sessionManager.saveSession(

@@ -318,7 +318,7 @@ class DriverRepository private constructor() {
     }
 
     /**
-     * Authenticates a driver or fleet owner by phone and password
+     * Authenticates a driver or fleet owner by phone/email and password
      */
     suspend fun login(phone: String, pass: String, role: String = "DRIVER"): Result<Driver?> = withContext(Dispatchers.IO) {
         try {
@@ -347,6 +347,37 @@ class DriverRepository private constructor() {
             }
         } catch (e: Exception) {
             Log.e("FamekoRepo", "API Login failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun loginFleetOwner(email: String, pass: String): Result<Driver?> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.loginFleetOwner(LoginRequest(phone = email, password = pass, role = "OWNER"))
+            val userId = response.user_id
+            if (response.success && userId != null) {
+                Result.success(Driver(
+                    id = 0,
+                    fullName = response.name ?: "Fleet Owner",
+                    email = email,
+                    phone = "",
+                    region = "",
+                    licenseNumber = "",
+                    vehicleType = "Fleet",
+                    vehicleNumber = "",
+                    status = response.status ?: "APPROVED",
+                    isOnline = false,
+                    rating = 5.0,
+                    serviceType = ServiceType.RIDE_HAILING,
+                    userRole = "OWNER",
+                    companyName = response.company_name,
+                    profilePicture = response.profile_picture
+                ))
+            } else {
+                Result.failure(Exception(response.message ?: "Login failed"))
+            }
+        } catch (e: Exception) {
+            Log.e("FamekoRepo", "Fleet Login failed", e)
             Result.failure(e)
         }
     }

@@ -2026,14 +2026,16 @@ object DatabaseRepository {
 
     fun loginFleetOwner(email: String, password: String): AuthResponse {
         val cleanEmail = email.trim().lowercase()
+        val rawInput = email.trim()
         val digitsOnly = email.filter { it.isDigit() }
         val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ?"
+            val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR TRIM(phone) = ?"
             val stmtOwner = conn.prepareStatement(sqlOwner)
             stmtOwner.setString(1, cleanEmail)
             stmtOwner.setString(2, last9Digits)
+            stmtOwner.setString(3, rawInput)
 
             val rsOwner = stmtOwner.executeQuery()
             if (rsOwner.next()) {
@@ -2081,21 +2083,27 @@ object DatabaseRepository {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
             } else {
-                return AuthResponse(false, "Fleet Owner account not found with this email", null, null)
+                return AuthResponse(false, "Fleet Owner account not found with this email or phone", null, null)
             }
         }
     }
 
     fun loginDriver(email: String, password: String, role: String = "DRIVER"): AuthResponse {
+        if (role.uppercase() == "OWNER") {
+            return loginFleetOwner(email, password)
+        }
+
         val cleanEmail = email.trim().lowercase()
+        val rawInput = email.trim()
         val digitsOnly = email.filter { it.isDigit() }
         val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ?"
+            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR TRIM(phone) = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, cleanEmail)
             stmt.setString(2, last9Digits)
+            stmt.setString(3, rawInput)
 
             val rs = stmt.executeQuery()
             if (rs.next()) {
@@ -2145,7 +2153,7 @@ object DatabaseRepository {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
             } else {
-                return AuthResponse(false, "Driver account not found with this email", null, null)
+                return AuthResponse(false, "Driver account not found with this email or phone", null, null)
             }
         }
     }

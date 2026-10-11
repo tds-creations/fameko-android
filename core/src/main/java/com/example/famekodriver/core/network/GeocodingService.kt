@@ -41,6 +41,11 @@ interface FamekoApiService {
         @Body request: LoginRequest
     ): AuthResponse
 
+    @POST("fleet/login")
+    suspend fun loginFleetOwner(
+        @Body request: LoginRequest
+    ): AuthResponse
+
     @POST("driver/google-login")
     suspend fun loginDriverGoogle(
         @Body request: LoginRequest
@@ -348,6 +353,9 @@ interface FamekoApiService {
         @Path("id") id: String,
         @Query("role") role: String? = null
     ): Map<String, Any>
+
+    @GET("fleet/profile/{id}")
+    suspend fun getFleetOwnerProfile(@Path("id") id: String): Map<String, Any>
 
     @POST("rentals/cancel/{id}")
     suspend fun cancelRental(@Path("id") id: Int): Map<String, Any>
