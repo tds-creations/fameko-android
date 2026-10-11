@@ -38,8 +38,11 @@ class DriverLoginActivity : ComponentActivity() {
                         onBack = { authStep = 0 },
                         onLogin = { phone, password -> performLogin(phone, password, "DRIVER") },
                         onSwitchToFleetLogin = { authStep = 2 },
-                        onContactSupport = {
-                            Toast.makeText(this@DriverLoginActivity, "Opening Accra Hub WhatsApp Support...", Toast.LENGTH_SHORT).show()
+                        onRegister = {
+                            val intent = Intent(this@DriverLoginActivity, DriverSignupActivity::class.java).apply {
+                                putExtra("role", "DRIVER")
+                            }
+                            startActivity(intent)
                         }
                     )
                 }
@@ -49,7 +52,9 @@ class DriverLoginActivity : ComponentActivity() {
                         onLogin = { phone, password -> performLogin(phone, password, "OWNER") },
                         onSwitchToDriverLogin = { authStep = 1 },
                         onRegisterFleet = {
-                            val intent = Intent(this@DriverLoginActivity, DriverSignupActivity::class.java)
+                            val intent = Intent(this@DriverLoginActivity, DriverSignupActivity::class.java).apply {
+                                putExtra("role", "OWNER")
+                            }
                             startActivity(intent)
                         }
                     )
