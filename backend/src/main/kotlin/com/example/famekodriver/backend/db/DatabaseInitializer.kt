@@ -485,6 +485,8 @@ object DatabaseInitializer {
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;",
             "ALTER TABLE rental_vehicles ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
+            "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
+            "CREATE INDEX IF NOT EXISTS idx_rentals_fleet_owner ON rentals(fleet_owner_id);",
             "CREATE INDEX IF NOT EXISTS idx_drivers_fleet_owner ON drivers(fleet_owner_id);",
             "CREATE INDEX IF NOT EXISTS idx_rental_vehicles_fleet_owner ON rental_vehicles(fleet_owner_id);",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
@@ -543,12 +545,7 @@ object DatabaseInitializer {
             
             // 4. For users who were strictly OWNER, we can keep them in drivers for now to avoid breaking FKs, 
             // but they will now primarily use the fleet_owners table for management.
-            conn.createStatement().execute("""
-                UPDATE fleet_owners SET profile_picture = NULL WHERE (profile_picture LIKE '%independence%' OR profile_picture LIKE '%saloon%' OR profile_picture LIKE '%car%') AND phone LIKE '%249712254%';
-                UPDATE drivers SET user_role = 'DRIVER' WHERE email LIKE '%niiodartei%';
-                UPDATE fleet_owners SET company_name = 'Sackey''s Rentals' WHERE phone LIKE '%249712254%';
-            """.trimIndent())
-            
+
             println("Migration: Fleet owner data migration complete.")
         } catch (e: Exception) {
             println("Migration error (migrateFleetOwners): ${e.message}")
