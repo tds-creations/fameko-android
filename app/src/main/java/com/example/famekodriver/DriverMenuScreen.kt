@@ -48,7 +48,7 @@ fun DriverMenuScreen(
     val repository = remember { DriverRepository.getInstance() }
     val driverId = sessionManager.getDriverId() ?: ""
 
-    var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Emmanuel Sackey") }
+    var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
     var cashTripsAccepted by remember { mutableStateOf(true) }

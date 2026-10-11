@@ -1263,19 +1263,23 @@ object DatabaseRepository {
                     if (rsEarn.next()) totalEarnings = rsEarn.getDouble(1)
                 } catch (_: Exception) {}
 
+                val fullName = rsOwner.getString("full_name") ?: ""
+                val dbCompany = rsOwner.getString("company_name")
+                val companyName = if (!dbCompany.isNullOrBlank()) dbCompany else if (fullName.isNotBlank()) "$fullName's Fleet" else ""
+
                 return mapOf(
                     "success" to true,
                     "id" to rsOwner.getInt("id"),
-                    "name" to rsOwner.getString("full_name"),
-                    "email" to rsOwner.getString("email"),
-                    "phone" to rsOwner.getString("phone"),
+                    "name" to fullName,
+                    "email" to (rsOwner.getString("email") ?: ""),
+                    "phone" to (rsOwner.getString("phone") ?: ""),
                     "region" to (rsOwner.getString("region") ?: ""),
                     "profile_picture" to (rsOwner.getString("profile_picture") ?: ""),
                     "vehicle_type" to "Fleet",
-                    "status" to rsOwner.getString("status"),
+                    "status" to (rsOwner.getString("status") ?: "APPROVED"),
                     "user_role" to "OWNER",
-                    "company_name" to (rsOwner.getString("company_name") ?: "Sackey's Rentals"),
-                    "registration_number" to (rsOwner.getString("registration_number") ?: "REG-2024-8891"),
+                    "company_name" to companyName,
+                    "registration_number" to (rsOwner.getString("registration_number") ?: ""),
                     "fleet_count" to fleetCount,
                     "active_rentals_count" to activeRentalsCount,
                     "total_earnings" to totalEarnings
@@ -1286,47 +1290,21 @@ object DatabaseRepository {
     }
 
     fun getDriverProfile(id: Int, role: String? = null): Map<String, Any>? {
+        if (role?.uppercase() == "OWNER") {
+            return getFleetOwnerProfile(id)
+        }
+
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            if (role?.uppercase() == "OWNER") {
-                val sqlOwner = "SELECT id, full_name, email, phone, region, profile_picture, status, company_name, registration_number FROM fleet_owners WHERE id = ?"
-                val stmtOwner = conn.prepareStatement(sqlOwner)
-                stmtOwner.setInt(1, id)
-                val rsOwner = stmtOwner.executeQuery()
-                if (rsOwner.next()) {
-                    var fleetCount = 0
-                    try {
-                        val countSql = "SELECT COUNT(*) FROM rental_vehicles WHERE fleet_owner_id = ?"
-                        val stmtCount = conn.prepareStatement(countSql)
-                        stmtCount.setInt(1, id)
-                        val rsCount = stmtCount.executeQuery()
-                        if (rsCount.next()) fleetCount = rsCount.getInt(1)
-                    } catch (_: Exception) {}
-
-                    return mapOf(
-                        "success" to true,
-                        "id" to rsOwner.getInt("id"),
-                        "name" to rsOwner.getString("full_name"),
-                        "email" to rsOwner.getString("email"),
-                        "phone" to rsOwner.getString("phone"),
-                        "region" to (rsOwner.getString("region") ?: ""),
-                        "profile_picture" to (rsOwner.getString("profile_picture") ?: ""),
-                        "vehicle_type" to "Fleet",
-                        "status" to rsOwner.getString("status"),
-                        "user_role" to "OWNER",
-                        "company_name" to (rsOwner.getString("company_name") ?: "Sackey's Rentals"),
-                        "registration_number" to (rsOwner.getString("registration_number") ?: "REG-2024-8891"),
-                        "fleet_count" to fleetCount
-                    )
-                }
-            }
-
-            // Try drivers first
             val sql = "SELECT id, full_name, email, phone, region, profile_picture, vehicle_type, vehicle_number, vehicle_model, status, COALESCE(user_role, 'DRIVER') as user_role, company_name, registration_number FROM drivers WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, id)
             val rs = stmt.executeQuery()
             if (rs.next()) {
                 val dbRole = rs.getString("user_role") ?: "DRIVER"
+                val fullName = rs.getString("full_name") ?: ""
+                val dbCompany = rs.getString("company_name")
+                val companyName = if (!dbCompany.isNullOrBlank()) dbCompany else if (fullName.isNotBlank()) "$fullName's Fleet" else ""
+
                 var fleetCount = 0
                 if (dbRole == "OWNER" || dbRole == "BOTH") {
                     try {
@@ -1342,55 +1320,23 @@ object DatabaseRepository {
                 return mapOf(
                     "success" to true,
                     "id" to rs.getInt("id"),
-                    "name" to rs.getString("full_name"),
-                    "email" to rs.getString("email"),
-                    "phone" to rs.getString("phone"),
+                    "name" to fullName,
+                    "email" to (rs.getString("email") ?: ""),
+                    "phone" to (rs.getString("phone") ?: ""),
                     "region" to (rs.getString("region") ?: ""),
                     "profile_picture" to (rs.getString("profile_picture") ?: ""),
                     "vehicle_type" to (rs.getString("vehicle_type") ?: "Car"),
                     "vehicle_number" to (rs.getString("vehicle_number") ?: ""),
                     "vehicle_model" to (rs.getString("vehicle_model") ?: ""),
-                    "status" to rs.getString("status"),
+                    "status" to (rs.getString("status") ?: "APPROVED"),
                     "user_role" to dbRole,
-                    "company_name" to (rs.getString("company_name") ?: "Sackey's Rentals"),
-                    "registration_number" to (rs.getString("registration_number") ?: "REG-2024-8891"),
-                    "fleet_count" to fleetCount
-                )
-            }
-
-            // Try fleet_owners fallback
-            val sqlOwner = "SELECT id, full_name, email, phone, region, profile_picture, status, company_name, registration_number FROM fleet_owners WHERE id = ?"
-            val stmtOwner = conn.prepareStatement(sqlOwner)
-            stmtOwner.setInt(1, id)
-            val rsOwner = stmtOwner.executeQuery()
-            if (rsOwner.next()) {
-                var fleetCount = 0
-                try {
-                    val countSql = "SELECT COUNT(*) FROM rental_vehicles WHERE fleet_owner_id = ?"
-                    val stmtCount = conn.prepareStatement(countSql)
-                    stmtCount.setInt(1, id)
-                    val rsCount = stmtCount.executeQuery()
-                    if (rsCount.next()) fleetCount = rsCount.getInt(1)
-                } catch (_: Exception) {}
-
-                return mapOf(
-                    "success" to true,
-                    "id" to rsOwner.getInt("id"),
-                    "name" to rsOwner.getString("full_name"),
-                    "email" to rsOwner.getString("email"),
-                    "phone" to rsOwner.getString("phone"),
-                    "region" to (rsOwner.getString("region") ?: ""),
-                    "profile_picture" to (rsOwner.getString("profile_picture") ?: ""),
-                    "vehicle_type" to "Fleet",
-                    "status" to rsOwner.getString("status"),
-                    "user_role" to "OWNER",
-                    "company_name" to (rsOwner.getString("company_name") ?: "Sackey's Rentals"),
-                    "registration_number" to (rsOwner.getString("registration_number") ?: "REG-2024-8891"),
+                    "company_name" to companyName,
+                    "registration_number" to (rs.getString("registration_number") ?: ""),
                     "fleet_count" to fleetCount
                 )
             }
         }
-        return null
+        return getFleetOwnerProfile(id)
     }
 
     fun submitRating(driverId: Int, rating: Float): Boolean {

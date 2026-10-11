@@ -44,8 +44,8 @@ fun DriverSettingsScreen(
     val repository = remember { DriverRepository.getInstance() }
     val driverId = sessionManager.getDriverId() ?: ""
 
-    var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "Emmanuel Sackey") }
-    var driverPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "+233 24 971 2254") }
+    var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
+    var driverPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "") }
     var profilePicUrl by remember { mutableStateOf<String?>(null) }
     
     var voiceNavEnabled by remember { mutableStateOf(true) }
