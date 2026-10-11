@@ -2781,15 +2781,17 @@ object DatabaseRepository {
             
             if (role == "OWNER" || strVal.startsWith("OWNER:")) {
                 if (numericId > 0) {
-                    actualFleetOwnerId = numericId
-                    actualDriverId = numericId
+                    val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
+                    if (ownerRs.next()) {
+                        actualFleetOwnerId = numericId
+                    }
                 }
             } else if (role == "DRIVER" || strVal.startsWith("DRIVER:")) {
                 if (numericId > 0) {
-                    actualDriverId = numericId
-                    val rs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
-                    if (rs.next()) {
-                        val fid = rs.getInt("fleet_owner_id")
+                    val driverRs = conn.prepareStatement("SELECT id, fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
+                    if (driverRs.next()) {
+                        actualDriverId = numericId
+                        val fid = driverRs.getInt("fleet_owner_id")
                         if (fid > 0) actualFleetOwnerId = fid
                     }
                 }
@@ -2797,9 +2799,8 @@ object DatabaseRepository {
                 val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
                 if (ownerRs.next()) {
                     actualFleetOwnerId = numericId
-                    actualDriverId = numericId
                 } else {
-                    val driverRs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
+                    val driverRs = conn.prepareStatement("SELECT id, fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
                     if (driverRs.next()) {
                         actualDriverId = numericId
                         val fid = driverRs.getInt("fleet_owner_id")
@@ -2808,11 +2809,20 @@ object DatabaseRepository {
                 }
             }
 
-            if (actualFleetOwnerId == null || actualFleetOwnerId == 0) {
-                actualFleetOwnerId = 1
+            // Fallback: If fleet_owner_id is unassigned, use first fleet owner in DB
+            if (actualFleetOwnerId == null) {
+                val firstOwnerRs = conn.createStatement().executeQuery("SELECT id FROM fleet_owners LIMIT 1")
+                if (firstOwnerRs.next()) {
+                    actualFleetOwnerId = firstOwnerRs.getInt(1)
+                }
             }
-            if (actualDriverId == null || actualDriverId == 0) {
-                actualDriverId = actualFleetOwnerId
+
+            // Strictly verify actualDriverId exists in drivers table before setting owner_id FK
+            if (actualDriverId != null) {
+                val checkDriver = conn.prepareStatement("SELECT id FROM drivers WHERE id = ?").apply { setInt(1, actualDriverId!!) }.executeQuery()
+                if (!checkDriver.next()) {
+                    actualDriverId = null
+                }
             }
 
             val sql = """
