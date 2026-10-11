@@ -161,12 +161,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToFleetSettings = { currentScreen = Screen.Settings },
                             onNavigateToFleetInventory = { currentScreen = Screen.FleetManagement },
                             onNavigateToDriverRoster = { currentScreen = Screen.FleetManagement },
-                            onNavigateToWallet = { currentScreen = Screen.Earnings },
-                            onSwitchToDriverMode = {
-                                sessionManager.setUserRole("DRIVER")
-                                userRole = "DRIVER"
-                                currentScreen = Screen.DriverMap
-                            }
+                            onNavigateToWallet = { currentScreen = Screen.Earnings }
                         )
                     } else {
                         DriverMenuScreen(
@@ -193,11 +188,6 @@ class MainActivity : ComponentActivity() {
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 startActivity(intent)
                                 finish()
-                            },
-                            onSwitchToDriverMode = {
-                                sessionManager.setUserRole("DRIVER")
-                                userRole = "DRIVER"
-                                currentScreen = Screen.DriverMap
                             }
                         )
                     } else {

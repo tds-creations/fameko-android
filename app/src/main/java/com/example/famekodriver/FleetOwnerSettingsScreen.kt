@@ -8,13 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -38,8 +36,7 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 @Composable
 fun FleetOwnerSettingsScreen(
     onBack: () -> Unit,
-    onLogout: () -> Unit,
-    onSwitchToDriverMode: () -> Unit
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
@@ -493,22 +490,9 @@ fun FleetOwnerSettingsScreen(
                 }
             }
 
-            // Action Buttons: Switch to Driver Mode & Logout
+            // Logout Button
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = onSwitchToDriverMode,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF), contentColor = Color(0xFF2563EB)),
-                        border = BorderStroke(1.dp, Color(0xFFBFDBFE))
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.DirectionsCar, null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
-                            Text("Switch to Driver Mode", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF2563EB))
-                        }
-                    }
-
                     Button(
                         onClick = onLogout,
                         modifier = Modifier.fillMaxWidth().height(52.dp),

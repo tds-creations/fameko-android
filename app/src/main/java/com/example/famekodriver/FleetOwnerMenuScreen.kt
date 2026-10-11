@@ -37,8 +37,7 @@ fun FleetOwnerMenuScreen(
     onNavigateToFleetSettings: () -> Unit,
     onNavigateToFleetInventory: () -> Unit,
     onNavigateToDriverRoster: () -> Unit,
-    onNavigateToWallet: () -> Unit,
-    onSwitchToDriverMode: () -> Unit
+    onNavigateToWallet: () -> Unit
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
@@ -421,35 +420,6 @@ fun FleetOwnerMenuScreen(
                             badgeText = "Audit CSV",
                             onClick = { Toast.makeText(context, "Exporting CSV Reports...", Toast.LENGTH_SHORT).show() }
                         )
-                    }
-                }
-            }
-
-            // Switch Mode Card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
-                    border = BorderStroke(1.dp, Color(0xFFBFDBFE))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Drive One of Your Units?", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
-                            Text("Switch to Personal Driver Mode instantly", fontSize = 12.sp, color = Color.Gray)
-                        }
-
-                        Button(
-                            onClick = onSwitchToDriverMode,
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A192F))
-                        ) {
-                            Text("Switch Mode", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
-                        }
                     }
                 }
             }
