@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,8 +39,7 @@ fun DriverMenuScreen(
     onNavigateToRentals: () -> Unit,
     onNavigateToRideHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToSupport: () -> Unit,
-    onSwitchToFleetConsole: () -> Unit
+    onNavigateToSupport: () -> Unit
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
@@ -49,7 +47,7 @@ fun DriverMenuScreen(
     val driverId = sessionManager.getDriverId() ?: ""
 
     var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
-    var profilePicUrl by remember { mutableStateOf<String?>(null) }
+    var profilePicUrl by remember { mutableStateOf<String?>(sessionManager.getProfilePicture()) }
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
     var cashTripsAccepted by remember { mutableStateOf(true) }
 
@@ -67,7 +65,7 @@ fun DriverMenuScreen(
 
     val driverStatus = sessionManager.getDriverStatus().ifEmpty { "APPROVED" }
     val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz • GT-4421-23" }
-    val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "ES" }
+    val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "DR" }
 
     Scaffold(
         topBar = {
@@ -79,7 +77,6 @@ fun DriverMenuScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
-                            onClick = onSwitchToFleetConsole,
                             shape = RoundedCornerShape(20.dp),
                             color = Color(0xFF0A192F),
                             border = BorderStroke(1.dp, Color(0xFF1E293B))
@@ -89,7 +86,7 @@ fun DriverMenuScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(Icons.Default.SwapHoriz, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.DirectionsCar, null, tint = Color.White, modifier = Modifier.size(16.dp))
                                 Text("Driver Mode ($initials)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
@@ -243,9 +240,9 @@ fun DriverMenuScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            DriverStatBox("TODAY'S NET", "GH₵ ${String.format(Locale.getDefault(), "%.0f", driverStats.earningsToday.takeIf { it > 0 } ?: 240.0)}", "8.2 hrs active", Modifier.weight(1f))
-                            DriverStatBox("DRIVER RATING", "4.92 ★", "Top 5% Accra", Modifier.weight(1f))
-                            DriverStatBox("SHIFT TRIPS", "${driverStats.completedToday.takeIf { it > 0 } ?: 9} done", "100% accepted", Modifier.weight(1f))
+                            DriverStatBox("TODAY'S NET", "GH₵ ${String.format(Locale.getDefault(), "%.0f", driverStats.earningsToday.takeIf { it > 0 } ?: 0.0)}", "Active Shift", Modifier.weight(1f))
+                            DriverStatBox("DRIVER RATING", "5.0 ★", "Accra Metro", Modifier.weight(1f))
+                            DriverStatBox("SHIFT TRIPS", "${driverStats.completedToday} done", "Accepted", Modifier.weight(1f))
                         }
 
                         // Daily Access Pass Banner
@@ -262,7 +259,7 @@ fun DriverMenuScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(modifier = Modifier.size(6.dp).background(Color(0xFF34D399), CircleShape))
-                                    Text("Daily Access Pass: Paid", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("Daily Access Pass: Active", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
                                 Text("VALID TILL 23:59", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                             }
@@ -295,8 +292,8 @@ fun DriverMenuScreen(
                                     Text("SURGE ALERT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                 }
                                 Spacer(Modifier.height(2.dp))
-                                Text("Airport City • 1.4x", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color.White)
-                                Text("+GH₵ 18 avg extra per trip • High Ter...", fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f))
+                                Text("Airport City Corridor", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color.White)
+                                Text("High Demand Area", fontSize = 11.sp, color = Color.White.copy(alpha = 0.85f))
                             }
                         }
 
@@ -422,7 +419,7 @@ fun DriverMenuScreen(
                             icon = Icons.Default.History,
                             iconColor = Color(0xFF2563EB),
                             title = "Ride History & Shift Logs",
-                            subtitle = "9 trips completed today • Accra Central",
+                            subtitle = "${driverStats.totalDeliveries} completed trips",
                             onClick = onNavigateToRideHistory
                         )
                         HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
@@ -431,7 +428,7 @@ fun DriverMenuScreen(
                             iconColor = Color(0xFF059669),
                             title = "Fameko Rental Jobs",
                             subtitle = "Assigned vehicle rentals & chauffeur requests",
-                            badgeText = "2 Available",
+                            badgeText = "Available",
                             badgeColor = Color(0xFFECFDF5),
                             badgeTextColor = Color(0xFF059669),
                             onClick = onNavigateToRentals
@@ -453,45 +450,6 @@ fun DriverMenuScreen(
                             showGreenDot = true,
                             onClick = onNavigateToSupport
                         )
-                    }
-                }
-            }
-
-            // Switch to Fleet Console Banner Card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
-                    border = BorderStroke(1.dp, Color(0xFFBFDBFE))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFF2563EB), modifier = Modifier.size(40.dp)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Domain, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                                }
-                            }
-                            Column {
-                                Text("Manage Additional Vehicles?", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
-                                Text("Switch to Fleet Owner Console", fontSize = 12.sp, color = Color.Gray)
-                            }
-                        }
-
-                        Button(
-                            onClick = onSwitchToFleetConsole,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A192F))
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Icon(Icons.Default.SwapHoriz, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Text("Switch to Fleet Owner Console", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
-                            }
-                        }
                     }
                 }
             }

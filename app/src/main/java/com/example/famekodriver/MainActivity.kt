@@ -179,12 +179,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToRentals = { currentScreen = Screen.Rentals },
                             onNavigateToRideHistory = { currentScreen = Screen.RideHistory },
                             onNavigateToSettings = { currentScreen = Screen.Settings },
-                            onNavigateToSupport = { currentScreen = Screen.SupportChat },
-                            onSwitchToFleetConsole = {
-                                sessionManager.setUserRole("OWNER")
-                                userRole = "OWNER"
-                                currentScreen = Screen.FleetManagement
-                            }
+                            onNavigateToSupport = { currentScreen = Screen.SupportChat }
                         )
                     }
                 }
@@ -214,11 +209,6 @@ class MainActivity : ComponentActivity() {
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 startActivity(intent)
                                 finish()
-                            },
-                            onSwitchToFleetConsole = {
-                                sessionManager.setUserRole("OWNER")
-                                userRole = "OWNER"
-                                currentScreen = Screen.FleetManagement
                             },
                             onNavigateToTerms = { currentScreen = Screen.TermsAndConditions },
                             onNavigateToPrivacy = { currentScreen = Screen.PrivacyPolicy }

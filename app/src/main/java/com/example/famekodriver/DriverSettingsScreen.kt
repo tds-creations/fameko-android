@@ -8,10 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,7 +36,6 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 fun DriverSettingsScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
-    onSwitchToFleetConsole: () -> Unit,
     onNavigateToTerms: () -> Unit,
     onNavigateToPrivacy: () -> Unit
 ) {
@@ -46,7 +46,7 @@ fun DriverSettingsScreen(
 
     var driverName by remember { mutableStateOf(sessionManager.getDriverName() ?: "") }
     var driverPhone by remember { mutableStateOf(sessionManager.getDriverPhone() ?: "") }
-    var profilePicUrl by remember { mutableStateOf<String?>(null) }
+    var profilePicUrl by remember { mutableStateOf<String?>(sessionManager.getProfilePicture()) }
     
     var voiceNavEnabled by remember { mutableStateOf(true) }
     var autoAcceptTrips by remember { mutableStateOf(false) }
@@ -65,8 +65,8 @@ fun DriverSettingsScreen(
         }
     }
 
-    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz (GW-4129-22)" }
-    val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "ES" }
+    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz" }
+    val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "DR" }
 
     Scaffold(
         topBar = {
@@ -153,18 +153,13 @@ fun DriverSettingsScreen(
 
                             Column(Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(driverName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                                    Text(driverName.ifEmpty { "Driver Partner" }, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                                     Surface(color = Color(0xFF065F46), shape = RoundedCornerShape(6.dp)) {
                                         Text("PRO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                     }
                                 }
                                 Spacer(Modifier.height(2.dp))
-                                Text("$driverPhone • ⭐ 4.92 • Top Tier Partner", fontSize = 12.sp, color = Color.LightGray)
-                            }
-
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("SHIFT TIME", fontSize = 9.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                                Text("5h 42m", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color.White)
+                                Text("$driverPhone • ⭐ 5.0 • Driver Partner", fontSize = 12.sp, color = Color.LightGray)
                             }
                         }
 
@@ -212,7 +207,7 @@ fun DriverSettingsScreen(
                     ) {
                         Column {
                             DriverToggleRow(
-                                icon = Icons.Default.VolumeUp,
+                                icon = Icons.AutoMirrored.Filled.VolumeUp,
                                 iconColor = Color(0xFF059669),
                                 title = "Voice Navigation Audio",
                                 subtitle = "Read turn directions at max volume",
@@ -395,7 +390,7 @@ fun DriverSettingsScreen(
                                 icon = Icons.Default.Badge,
                                 iconColor = Color(0xFF059669),
                                 title = "Ghana Card Verification",
-                                subtitle = "Linked & Active (GHA-71928491-3)",
+                                subtitle = "Linked & Active Verification",
                                 showCheck = true,
                                 onClick = { Toast.makeText(context, "Ghana Card Verified", Toast.LENGTH_SHORT).show() }
                             )
@@ -406,7 +401,7 @@ fun DriverSettingsScreen(
                                 icon = Icons.Default.AccountBalanceWallet,
                                 iconColor = Color(0xFFD97706),
                                 title = "MTN MoMo Disbursement",
-                                subtitle = "•••• 9812 (Instant Settlement)",
+                                subtitle = "Instant Settlement Account",
                                 onClick = { Toast.makeText(context, "MoMo Settlement active", Toast.LENGTH_SHORT).show() }
                             )
                         }
@@ -414,26 +409,9 @@ fun DriverSettingsScreen(
                 }
             }
 
-            // Action Buttons: Switch to Fleet Owner Mode & Logout
+            // Logout Button
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = onSwitchToFleetConsole,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A192F))
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Domain, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Column {
-                                Text("Switch to Fleet Owner Mode", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
-                                Text("Manage 3 registered vehicles", fontSize = 10.sp, color = Color.LightGray)
-                            }
-                            Spacer(Modifier.weight(1f))
-                            Icon(Icons.Default.SwapHoriz, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        }
-                    }
-
                     OutlinedButton(
                         onClick = onLogout,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -481,7 +459,7 @@ fun DriverNavRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             color = iconColor.copy(alpha = 0.1f),
             modifier = Modifier.size(40.dp)
         ) {
