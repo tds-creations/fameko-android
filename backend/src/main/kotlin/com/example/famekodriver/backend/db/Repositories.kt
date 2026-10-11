@@ -1289,7 +1289,7 @@ object DatabaseRepository {
                 var activeRentalsCount = 0
                 var totalEarnings = 0.0
                 try {
-                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ?")
+                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ? OR fleet_owner_id IS NULL")
                     stmtCount.setInt(1, id)
                     stmtCount.setInt(2, id)
                     val rsCount = stmtCount.executeQuery()
@@ -2670,7 +2670,7 @@ object DatabaseRepository {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = if (role?.uppercase() == "OWNER") {
-                "SELECT * FROM rental_vehicles WHERE fleet_owner_id = ? ORDER BY id DESC"
+                "SELECT * FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ? OR fleet_owner_id IS NULL ORDER BY id DESC"
             } else if (role?.uppercase() == "DRIVER") {
                 """
                     SELECT * FROM rental_vehicles 
@@ -2685,6 +2685,7 @@ object DatabaseRepository {
                     WHERE owner_id = ? 
                        OR fleet_owner_id = ? 
                        OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
+                       OR fleet_owner_id IS NULL
                     ORDER BY id DESC
                 """.trimIndent()
             }
@@ -2692,6 +2693,7 @@ object DatabaseRepository {
             val stmt = conn.prepareStatement(sql)
             if (role?.uppercase() == "OWNER") {
                 stmt.setInt(1, ownerId)
+                stmt.setInt(2, ownerId)
             } else if (role?.uppercase() == "DRIVER") {
                 stmt.setInt(1, ownerId)
                 stmt.setInt(2, ownerId)

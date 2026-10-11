@@ -543,8 +543,8 @@ object DatabaseInitializer {
             """.trimIndent()
             conn.createStatement().execute(linkVehiclesSql)
             
-            // 4. For users who were strictly OWNER, we can keep them in drivers for now to avoid breaking FKs, 
-            // but they will now primarily use the fleet_owners table for management.
+            // 4. Assign orphan rental_vehicles to primary fleet owner (id = 1)
+            conn.createStatement().execute("UPDATE rental_vehicles SET fleet_owner_id = 1 WHERE fleet_owner_id IS NULL")
 
             println("Migration: Fleet owner data migration complete.")
         } catch (e: Exception) {
