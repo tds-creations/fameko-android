@@ -2707,6 +2707,8 @@ object DatabaseRepository {
             while (rs.next()) {
                 list.add(mapOf(
                     "id" to rs.getInt("id"),
+                    "owner_id" to rs.getInt("owner_id"),
+                    "fleet_owner_id" to rs.getInt("fleet_owner_id"),
                     "name" to rs.getString("name"),
                     "model" to (rs.getString("model") ?: ""),
                     "vehicle_type" to rs.getString("vehicle_type"),
@@ -2772,7 +2774,10 @@ object DatabaseRepository {
             val role = ownerRole?.uppercase()
             
             if (role == "OWNER" || strVal.startsWith("OWNER:")) {
-                if (numericId > 0) actualFleetOwnerId = numericId
+                if (numericId > 0) {
+                    actualFleetOwnerId = numericId
+                    actualDriverId = numericId
+                }
             } else if (role == "DRIVER" || strVal.startsWith("DRIVER:")) {
                 if (numericId > 0) {
                     actualDriverId = numericId
@@ -2786,6 +2791,7 @@ object DatabaseRepository {
                 val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
                 if (ownerRs.next()) {
                     actualFleetOwnerId = numericId
+                    actualDriverId = numericId
                 } else {
                     val driverRs = conn.prepareStatement("SELECT fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
                     if (driverRs.next()) {
@@ -2794,6 +2800,13 @@ object DatabaseRepository {
                         if (fid > 0) actualFleetOwnerId = fid
                     }
                 }
+            }
+
+            if (actualFleetOwnerId == null || actualFleetOwnerId == 0) {
+                actualFleetOwnerId = 1
+            }
+            if (actualDriverId == null || actualDriverId == 0) {
+                actualDriverId = actualFleetOwnerId
             }
 
             val sql = """

@@ -543,8 +543,8 @@ object DatabaseInitializer {
             """.trimIndent()
             conn.createStatement().execute(linkVehiclesSql)
             
-            // 4. Assign orphan rental_vehicles to primary fleet owner (id = 1)
-            conn.createStatement().execute("UPDATE rental_vehicles SET fleet_owner_id = 1 WHERE fleet_owner_id IS NULL")
+            // 4. Assign orphan rental_vehicles to primary fleet owner (id = 1) and attach owner_id
+            conn.createStatement().execute("UPDATE rental_vehicles SET fleet_owner_id = 1 WHERE fleet_owner_id IS NULL OR fleet_owner_id = 0; UPDATE rental_vehicles SET owner_id = fleet_owner_id WHERE owner_id IS NULL OR owner_id = 0;")
 
             println("Migration: Fleet owner data migration complete.")
         } catch (e: Exception) {
