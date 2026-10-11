@@ -72,13 +72,13 @@ class DriverLoginActivity : ComponentActivity() {
         return "+233$cleaned"
     }
 
-    private fun performLogin(phone: String, password: String, selectedRole: String) {
-        val fullPhone = normalizePhone(phone)
+    private fun performLogin(email: String, password: String, selectedRole: String) {
+        val cleanEmail = email.trim()
         val roleTitle = if (selectedRole == "OWNER") "Fleet Owner" else "Driver"
         Toast.makeText(this, "Logging in as $roleTitle...", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch {
-            repository.login(fullPhone, password, selectedRole)
+            repository.login(cleanEmail, password, selectedRole)
                 .onSuccess { driver ->
                     if (driver != null) {
                         sessionManager.saveSession(

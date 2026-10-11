@@ -2024,17 +2024,16 @@ object DatabaseRepository {
         return null
     }
 
-    fun loginFleetOwner(phone: String, password: String): AuthResponse {
-        val cleanInput = phone.trim().lowercase()
-        val digitsOnly = phone.filter { it.isDigit() }
+    fun loginFleetOwner(email: String, password: String): AuthResponse {
+        val cleanEmail = email.trim().lowercase()
+        val digitsOnly = email.filter { it.isDigit() }
         val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
+            val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ?"
             val stmtOwner = conn.prepareStatement(sqlOwner)
-            stmtOwner.setString(1, last9Digits)
-            stmtOwner.setString(2, cleanInput)
-            stmtOwner.setString(3, phone.trim())
+            stmtOwner.setString(1, cleanEmail)
+            stmtOwner.setString(2, last9Digits)
 
             val rsOwner = stmtOwner.executeQuery()
             if (rsOwner.next()) {
@@ -2082,22 +2081,21 @@ object DatabaseRepository {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
             } else {
-                return AuthResponse(false, "Fleet Owner account not found with this phone number or email", null, null)
+                return AuthResponse(false, "Fleet Owner account not found with this email", null, null)
             }
         }
     }
 
-    fun loginDriver(phone: String, password: String, role: String = "DRIVER"): AuthResponse {
-        val cleanInput = phone.trim().lowercase()
-        val digitsOnly = phone.filter { it.isDigit() }
+    fun loginDriver(email: String, password: String, role: String = "DRIVER"): AuthResponse {
+        val cleanEmail = email.trim().lowercase()
+        val digitsOnly = email.filter { it.isDigit() }
         val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR LOWER(TRIM(email)) = ? OR TRIM(phone) = ?"
+            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ?"
             val stmt = conn.prepareStatement(sql)
-            stmt.setString(1, last9Digits)
-            stmt.setString(2, cleanInput)
-            stmt.setString(3, phone.trim())
+            stmt.setString(1, cleanEmail)
+            stmt.setString(2, last9Digits)
 
             val rs = stmt.executeQuery()
             if (rs.next()) {
@@ -2130,7 +2128,7 @@ object DatabaseRepository {
                         }
                     }
                     val name = rs.getString("full_name") ?: ""
-                    val role = rs.getString("user_role") ?: "DRIVER"
+                    val dbRole = rs.getString("user_role") ?: "DRIVER"
                     val company = rs.getString("company_name")
                     return AuthResponse(
                         success = true, 
@@ -2139,7 +2137,7 @@ object DatabaseRepository {
                         name = name, 
                         status = rs.getString("status") ?: "APPROVED", 
                         profile_picture = rs.getString("profile_picture"),
-                        user_role = role,
+                        user_role = dbRole,
                         company_name = company,
                         vehicle_type = rs.getString("vehicle_type")
                     )
@@ -2147,7 +2145,7 @@ object DatabaseRepository {
                     return AuthResponse(false, "Invalid password", null, null)
                 }
             } else {
-                return AuthResponse(false, "Driver account not found with this phone number or email", null, null)
+                return AuthResponse(false, "Driver account not found with this email", null, null)
             }
         }
     }
