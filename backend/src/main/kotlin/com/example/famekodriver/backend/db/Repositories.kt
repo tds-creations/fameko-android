@@ -2527,7 +2527,7 @@ object DatabaseRepository {
 
         if (column != null) {
             DatabaseInitializer.getDataSource().connection.use { conn ->
-                val id = driverId.toInt()
+                val id = driverId.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: 0
                 // Try drivers
                 val sql = "UPDATE drivers SET $column = ?, status = CASE WHEN status = 'PENDING' THEN 'PENDING_DOCS' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
                 val stmt = conn.prepareStatement(sql)
@@ -2555,8 +2555,7 @@ object DatabaseRepository {
 
         val h3Index = H3Helper.getIndex(lat, lng)
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            // Ensure is_online is true if receiving location updates (and daily fee is paid)
-            val driverId = id.toIntOrNull() ?: 0
+            val driverId = id.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: 0
             val shouldBeOnline = if (driverId != 0) isDailyFeePaid(driverId) else false
 
             val sql = """
@@ -2590,7 +2589,7 @@ object DatabaseRepository {
             
             val logSql = "INSERT INTO movement_logs (entity_id, entity_type, latitude, longitude) VALUES (?, 'DRIVER', ?, ?)"
             conn.prepareStatement(logSql).apply {
-                setInt(1, id.toInt())
+                setInt(1, driverId)
                 setDouble(2, lat)
                 setDouble(3, lng)
                 executeUpdate()
@@ -2612,7 +2611,7 @@ object DatabaseRepository {
 
     fun updateEmergencyContacts(driverId: String, c1: String, c2: String) {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val id = driverId.toInt()
+            val id = driverId.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: 0
             // Try updating drivers
             val sql = "UPDATE drivers SET emergency_contact_1 = ?, emergency_contact_2 = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
@@ -2654,13 +2653,14 @@ object DatabaseRepository {
 
     fun updateDriverVehicle(id: String, type: String, number: String, model: String, service: String) {
         DatabaseInitializer.getDataSource().connection.use { conn ->
+            val numericId = id.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: 0
             val sql = "UPDATE drivers SET vehicle_type = ?, vehicle_number = ?, vehicle_model = ?, service_types = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, type)
             stmt.setString(2, number)
             stmt.setString(3, model)
             stmt.setString(4, service)
-            stmt.setInt(5, id.toInt())
+            stmt.setInt(5, numericId)
             stmt.executeUpdate()
         }
     }

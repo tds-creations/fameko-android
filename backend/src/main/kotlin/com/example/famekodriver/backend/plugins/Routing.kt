@@ -1687,13 +1687,15 @@ fun Application.configureRouting() {
                 }
             }
             get("/status/{id}") {
-                val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-                val status = DatabaseRepository.getDriverStatus(id)
+                val idStr = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val numericId = idStr.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val status = DatabaseRepository.getDriverStatus(numericId)
                 if (status != null) call.respond(status) else call.respond(HttpStatusCode.NotFound)
             }
             get("/stats/{id}") {
-                val id = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-                val stats = DatabaseRepository.getDriverStats(id)
+                val idStr = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val numericId = idStr.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val stats = DatabaseRepository.getDriverStats(numericId)
                 if (stats != null) call.respond(stats) else call.respond(HttpStatusCode.NotFound)
             }
             post("/upload-document") {
