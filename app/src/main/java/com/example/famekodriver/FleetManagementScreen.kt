@@ -1,16 +1,16 @@
 package com.example.famekodriver
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,23 +28,25 @@ import coil.compose.AsyncImage
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FleetManagementScreen(
+    viewModel: FleetManagementViewModel = viewModel(),
     onNavigateToMenu: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onNavigateToAddVehicle: () -> Unit = {},
-    onEditVehicle: (Map<String, Any>) -> Unit = {},
-    viewModel: FleetManagementViewModel = viewModel()
+    onNavigateToAddVehicle: () -> Unit,
+    onEditVehicle: (Map<String, Any>) -> Unit
 ) {
+    val context = LocalContext.current
+
     LaunchedEffect(Unit) {
         viewModel.loadVehicles()
     }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Fleet Management", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text(viewModel.companyName, fontSize = 12.sp, color = Color.Gray)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text("Fleet Management", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text(viewModel.companyName, fontSize = 14.sp, color = Color.Gray)
                     }
                 },
                 navigationIcon = {
@@ -53,44 +56,69 @@ fun FleetManagementScreen(
                 },
                 actions = {
                     IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Default.DirectionsCar, contentDescription = "Profile")
+                        Icon(Icons.Default.Person, contentDescription = "Profile")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onNavigateToAddVehicle,
-                icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("Add Vehicle") },
                 containerColor = Color(0xFF004E89),
-                contentColor = Color.White
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Add Vehicle", fontWeight = FontWeight.Bold) }
             )
         }
     ) { padding ->
-        when {
-            viewModel.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF004E89))
-                }
-            }
-
-            viewModel.vehicles.isEmpty() -> {
-                EmptyFleetView(padding)
-            }
-
-            else -> {
-                LazyColumn(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(Color(0xFFF8FAFC))
+        ) {
+            if (viewModel.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color(0xFF004E89)
+                )
+            } else if (viewModel.vehicles.isEmpty()) {
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .background(Color(0xFFF8F9FA)),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .align(Alignment.Center)
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        contentDescription = null,
+                        modifier = Modifier.size(72.dp),
+                        tint = Color.LightGray
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "No vehicles in your fleet yet",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Add your first vehicle to start renting",
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(viewModel.vehicles) { vehicle ->
-                        VehicleCard(
+                        FleetVehicleCard(
                             vehicle = vehicle,
                             onEdit = { onEditVehicle(vehicle) }
                         )
@@ -102,56 +130,60 @@ fun FleetManagementScreen(
 }
 
 @Composable
-fun EmptyFleetView(padding: PaddingValues) {
-    Box(
-        Modifier.fillMaxSize().padding(padding),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.DirectionsCar, null, Modifier.size(64.dp), Color.LightGray)
-            Spacer(Modifier.height(16.dp))
-            Text("No vehicles in your fleet yet", color = Color.Gray)
-            Text("Add your first vehicle to start renting", color = Color.Gray, fontSize = 12.sp)
-        }
-    }
-}
-
-@Composable
-fun VehicleCard(
+fun FleetVehicleCard(
     vehicle: Map<String, Any>,
     onEdit: () -> Unit
 ) {
-    val statusLabel = resolveStatusLabel(vehicle)
-    val statusColor = resolveStatusColor(vehicle)
+    val status = vehicle["status"]?.toString() ?: "AVAILABLE"
+    val isAvailable = vehicle["is_available"] as? Boolean ?: true
+
+    val statusColor = when {
+        status == "AVAILABLE" && isAvailable -> Color(0xFF2B8A3E)
+        status == "RENTED" -> Color(0xFF004E89)
+        else -> Color(0xFFD9480F)
+    }
+
+    val statusLabel = when {
+        status == "AVAILABLE" && isAvailable -> "AVAILABLE"
+        status == "RENTED" -> "RENTED"
+        else -> "MAINTENANCE"
+    }
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header: Name & Status Badge
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(vehicle["name"].toString(), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                     Text(
-                        "${vehicle["model"]} • ${vehicle["vehicle_number"]}",
-                        color = Color.Gray,
-                        fontSize = 13.sp
+                        text = vehicle["name"]?.toString() ?: "Vehicle",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                    Text(
+                        text = "${vehicle["model"] ?: ""} • ${vehicle["vehicle_number"] ?: ""}",
+                        fontSize = 13.sp,
+                        color = Color.Gray
                     )
                 }
 
                 Surface(
                     color = statusColor,
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
@@ -164,7 +196,7 @@ fun VehicleCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Payments, null, modifier = Modifier.size(16.dp), tint = Color(0xFF004E89))
                 Spacer(Modifier.width(4.dp))
-                Text("₵${vehicle["daily_rate"]}", fontWeight = FontWeight.Bold, color = Color(0xFF004E89))
+                Text("₵${vehicle["daily_rate"]}", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF004E89))
                 Text(" / day", fontSize = 12.sp, color = Color.Gray)
 
                 Spacer(Modifier.width(16.dp))
@@ -180,57 +212,71 @@ fun VehicleCard(
 
             val description = vehicle["description"]?.toString()
             if (!description.isNullOrBlank()) {
-                Spacer(Modifier.height(12.dp))
-                Text(description, fontSize = 13.sp, color = Color.DarkGray, lineHeight = 18.sp)
+                Spacer(Modifier.height(10.dp))
+                Text(description, fontSize = 12.sp, color = Color.DarkGray, lineHeight = 16.sp)
             }
 
             val features = vehicle["features"]?.toString()
             if (!features.isNullOrBlank()) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    features.split(",").take(4).forEach { feature ->
+                    features.split(",").take(3).forEach { feature ->
                         Surface(
-                            color = Color.LightGray.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(4.dp)
+                            color = Color(0xFFF1F5F9),
+                            shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
                                 feature.trim(),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
                             )
                         }
                     }
                 }
             }
 
-            val imageUrls = vehicle["image_urls"]?.toString()
+            // Image Display Row (Uploaded Cloudinary photos or Type-based fallback photo)
+            val rawImageUrls = vehicle["image_urls"]?.toString()
                 ?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
-            if (imageUrls.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                androidx.compose.foundation.lazy.LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(imageUrls) { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(width = 120.dp, height = 80.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+
+            val displayImages = if (rawImageUrls.isNotEmpty()) rawImageUrls else {
+                val vType = vehicle["vehicle_type"]?.toString() ?: "Sedan"
+                listOf(
+                    when {
+                        vType.contains("SUV", ignoreCase = true) -> "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800"
+                        vType.contains("Luxury", ignoreCase = true) -> "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800"
+                        vType.contains("Van", ignoreCase = true) -> "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800"
+                        else -> "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800"
                     }
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(displayImages) { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .clip(RoundedCornerShape(14.dp)),
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+            Spacer(Modifier.height(14.dp))
+            HorizontalDivider(color = Color(0xFFF1F5F9))
 
             Row(
                 modifier = Modifier
@@ -238,36 +284,12 @@ fun VehicleCard(
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(
-                    onClick = onEdit,
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF004E89))
-                ) {
-                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Edit Details")
+                TextButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Edit Details", fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
-
-private fun resolveVehicleStatus(vehicle: Map<String, Any>): String =
-    vehicle["status"]?.toString()?.uppercase()?.trim() ?: "UNKNOWN"
-
-private fun resolveStatusLabel(vehicle: Map<String, Any>): String =
-    when (resolveVehicleStatus(vehicle)) {
-        "AVAILABLE"              -> "AVAILABLE"
-        "BOOKED"                 -> "BOOKED"
-        "OCCUPIED", "IN_USE"     -> "ON TRIP"
-        "MAINTENANCE"            -> "MAINTENANCE"
-        else                     -> resolveVehicleStatus(vehicle)
-    }
-
-private fun resolveStatusColor(vehicle: Map<String, Any>): Color =
-    when (resolveVehicleStatus(vehicle)) {
-        "AVAILABLE"              -> Color(0xFF28A745)
-        "BOOKED"                 -> Color(0xFFF08C00)
-        "OCCUPIED", "IN_USE"     -> Color(0xFF004E89)
-        "MAINTENANCE"            -> Color(0xFF868E96)
-        else                     -> Color.Red
-    }
