@@ -1289,9 +1289,8 @@ object DatabaseRepository {
                 var activeRentalsCount = 0
                 var totalEarnings = 0.0
                 try {
-                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ? OR fleet_owner_id IS NULL")
+                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE owner_id = ?")
                     stmtCount.setInt(1, id)
-                    stmtCount.setInt(2, id)
                     val rsCount = stmtCount.executeQuery()
                     if (rsCount.next()) fleetCount = rsCount.getInt(1)
 
@@ -2675,49 +2674,15 @@ object DatabaseRepository {
     fun getFleetVehicles(ownerId: Int, role: String? = null): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = if (role?.uppercase() == "OWNER") {
-                "SELECT * FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ? ORDER BY id DESC"
-            } else if (role?.uppercase() == "DRIVER") {
-                """
-                    SELECT * FROM rental_vehicles 
-                    WHERE owner_id = ? 
-                       OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
-                    ORDER BY id DESC
-                """.trimIndent()
-            } else {
-                """
-                    SELECT * FROM rental_vehicles 
-                    WHERE owner_id = ? 
-                       OR fleet_owner_id = ? 
-                       OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
-                    ORDER BY id DESC
-                """.trimIndent()
-            }
-
+            val sql = "SELECT * FROM rental_vehicles WHERE owner_id = ? ORDER BY id DESC"
             val stmt = conn.prepareStatement(sql)
-            if (role?.uppercase() == "OWNER") {
-                stmt.setInt(1, ownerId)
-                stmt.setInt(2, ownerId)
-            } else if (role?.uppercase() == "DRIVER") {
-                stmt.setInt(1, ownerId)
-                stmt.setInt(2, ownerId)
-            } else {
-                stmt.setInt(1, ownerId)
-                stmt.setInt(2, ownerId)
-                stmt.setInt(3, ownerId)
-            }
+            stmt.setInt(1, ownerId)
 
             val rs = stmt.executeQuery()
             while (rs.next()) {
-                val vehicleOwnerId = rs.getObject("owner_id") as? Int ?: rs.getInt("fleet_owner_id")
-                val fleetOwnerId = rs.getInt("fleet_owner_id")
                 list.add(mapOf(
                     "id" to rs.getInt("id"),
-                    "owner_id" to vehicleOwnerId,
-                    "fleet_owner_id" to fleetOwnerId,
-                    "name" to rs.getString("name"),
                     "owner_id" to rs.getInt("owner_id"),
-                    "fleet_owner_id" to rs.getInt("fleet_owner_id"),
                     "name" to rs.getString("name"),
                     "model" to (rs.getString("model") ?: ""),
                     "vehicle_type" to rs.getString("vehicle_type"),
@@ -2774,84 +2739,33 @@ object DatabaseRepository {
         ownerRole: String? = null
     ) {
         val strVal = ownerIdStr.toString()
-        val numericId = strVal.removePrefix("OWNER:").removePrefix("DRIVER:").toIntOrNull() ?: 0
+        var numericId = strVal.removePrefix("OWNER:").removePrefix("DRIVER:").toIntOrNull() ?: 1
+        if (numericId <= 0) numericId = 1
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            var actualDriverId: Int? = null
-            var actualFleetOwnerId: Int? = null
-            
-            val role = ownerRole?.uppercase()
-            
-            if (role == "OWNER" || strVal.startsWith("OWNER:")) {
-                if (numericId > 0) {
-                    val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
-                    if (ownerRs.next()) {
-                        actualFleetOwnerId = numericId
-                    }
-                }
-            } else if (role == "DRIVER" || strVal.startsWith("DRIVER:")) {
-                if (numericId > 0) {
-                    val driverRs = conn.prepareStatement("SELECT id, fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
-                    if (driverRs.next()) {
-                        actualDriverId = numericId
-                        val fid = driverRs.getInt("fleet_owner_id")
-                        if (fid > 0) actualFleetOwnerId = fid
-                    }
-                }
-            } else if (numericId > 0) {
-                val ownerRs = conn.prepareStatement("SELECT id FROM fleet_owners WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
-                if (ownerRs.next()) {
-                    actualFleetOwnerId = numericId
-                } else {
-                    val driverRs = conn.prepareStatement("SELECT id, fleet_owner_id FROM drivers WHERE id = ?").apply { setInt(1, numericId) }.executeQuery()
-                    if (driverRs.next()) {
-                        actualDriverId = numericId
-                        val fid = driverRs.getInt("fleet_owner_id")
-                        if (fid > 0) actualFleetOwnerId = fid
-                    }
-                }
-            }
-
-            // Fallback: If fleet_owner_id is unassigned, use first fleet owner in DB
-            if (actualFleetOwnerId == null) {
-                val firstOwnerRs = conn.createStatement().executeQuery("SELECT id FROM fleet_owners LIMIT 1")
-                if (firstOwnerRs.next()) {
-                    actualFleetOwnerId = firstOwnerRs.getInt(1)
-                }
-            }
-
-            // Strictly verify actualDriverId exists in drivers table before setting owner_id FK
-            if (actualDriverId != null) {
-                val checkDriver = conn.prepareStatement("SELECT id FROM drivers WHERE id = ?").apply { setInt(1, actualDriverId!!) }.executeQuery()
-                if (!checkDriver.next()) {
-                    actualDriverId = null
-                }
-            }
-
             val sql = """
                 INSERT INTO rental_vehicles (
-                    owner_id, fleet_owner_id, name, model, vehicle_type, vehicle_number, daily_rate, 
+                    owner_id, name, model, vehicle_type, vehicle_number, daily_rate, 
                     description, features, image_urls, location, latitude, longitude,
                     seats, transmission, fuel_type
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """.trimIndent()
             conn.prepareStatement(sql).apply {
-                if (actualDriverId != null && actualDriverId!! > 0) setInt(1, actualDriverId!!) else setNull(1, java.sql.Types.INTEGER)
-                if (actualFleetOwnerId != null && actualFleetOwnerId!! > 0) setInt(2, actualFleetOwnerId!!) else setNull(2, java.sql.Types.INTEGER)
-                setString(3, name)
-                setString(4, model)
-                setString(5, type)
-                setString(6, number)
-                setDouble(7, rate)
-                setString(8, description)
-                setString(9, features)
-                setString(10, imageUrls)
-                setString(11, location)
-                if (lat != null) setDouble(12, lat) else setNull(12, java.sql.Types.DOUBLE)
-                if (lng != null) setDouble(13, lng) else setNull(13, java.sql.Types.DOUBLE)
-                setInt(14, seats ?: 5)
-                setString(15, transmission ?: "Automatic")
-                setString(16, fuelType ?: "Petrol")
+                setInt(1, numericId)
+                setString(2, name)
+                setString(3, model)
+                setString(4, type)
+                setString(5, number)
+                setDouble(6, rate)
+                setString(7, description)
+                setString(8, features)
+                setString(9, imageUrls)
+                setString(10, location)
+                if (lat != null) setDouble(11, lat) else setNull(11, java.sql.Types.DOUBLE)
+                if (lng != null) setDouble(12, lng) else setNull(12, java.sql.Types.DOUBLE)
+                setInt(13, seats ?: 5)
+                setString(14, transmission ?: "Automatic")
+                setString(15, fuelType ?: "Petrol")
                 executeUpdate()
             }
         }

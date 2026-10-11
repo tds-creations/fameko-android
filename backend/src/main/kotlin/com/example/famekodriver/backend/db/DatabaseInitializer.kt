@@ -180,7 +180,7 @@ object DatabaseInitializer {
             """
             CREATE TABLE IF NOT EXISTS rental_vehicles (
                 id SERIAL PRIMARY KEY,
-                owner_id INTEGER REFERENCES drivers(id),
+                owner_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 model TEXT,
                 vehicle_type TEXT NOT NULL,
@@ -543,8 +543,8 @@ object DatabaseInitializer {
             """.trimIndent()
             conn.createStatement().execute(linkVehiclesSql)
             
-            // 4. Synchronize owner_id and fleet_owner_id across rental_vehicles
-            conn.createStatement().execute("UPDATE rental_vehicles SET fleet_owner_id = owner_id WHERE fleet_owner_id IS NULL AND owner_id IS NOT NULL; UPDATE rental_vehicles SET owner_id = fleet_owner_id WHERE owner_id IS NULL AND fleet_owner_id IS NOT NULL; UPDATE rental_vehicles SET fleet_owner_id = 1, owner_id = 1 WHERE fleet_owner_id IS NULL AND owner_id IS NULL;")
+            // 4. Drop rigid FK constraints and normalize rental_vehicles to single owner_id column
+            conn.createStatement().execute("ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_owner_id_fkey; ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_fleet_owner_id_fkey; UPDATE rental_vehicles SET owner_id = fleet_owner_id WHERE owner_id IS NULL AND fleet_owner_id IS NOT NULL; UPDATE rental_vehicles SET owner_id = 1 WHERE owner_id IS NULL OR owner_id = 0;")
 
             println("Migration: Fleet owner data migration complete.")
         } catch (e: Exception) {
