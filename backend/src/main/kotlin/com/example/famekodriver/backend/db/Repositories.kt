@@ -2676,7 +2676,7 @@ object DatabaseRepository {
         val list = mutableListOf<Map<String, Any>>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = if (role?.uppercase() == "OWNER") {
-                "SELECT * FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ? OR fleet_owner_id IS NULL ORDER BY id DESC"
+                "SELECT * FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ? ORDER BY id DESC"
             } else if (role?.uppercase() == "DRIVER") {
                 """
                     SELECT * FROM rental_vehicles 
@@ -2685,13 +2685,11 @@ object DatabaseRepository {
                     ORDER BY id DESC
                 """.trimIndent()
             } else {
-                // Backward compatibility / ambiguous role
                 """
                     SELECT * FROM rental_vehicles 
                     WHERE owner_id = ? 
                        OR fleet_owner_id = ? 
                        OR fleet_owner_id = (SELECT fleet_owner_id FROM drivers WHERE id = ?)
-                       OR fleet_owner_id IS NULL
                     ORDER BY id DESC
                 """.trimIndent()
             }
@@ -2711,8 +2709,13 @@ object DatabaseRepository {
 
             val rs = stmt.executeQuery()
             while (rs.next()) {
+                val vehicleOwnerId = rs.getObject("owner_id") as? Int ?: rs.getInt("fleet_owner_id")
+                val fleetOwnerId = rs.getInt("fleet_owner_id")
                 list.add(mapOf(
                     "id" to rs.getInt("id"),
+                    "owner_id" to vehicleOwnerId,
+                    "fleet_owner_id" to fleetOwnerId,
+                    "name" to rs.getString("name"),
                     "owner_id" to rs.getInt("owner_id"),
                     "fleet_owner_id" to rs.getInt("fleet_owner_id"),
                     "name" to rs.getString("name"),

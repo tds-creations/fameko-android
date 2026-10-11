@@ -18,7 +18,7 @@ class FleetManagementViewModel(application: Application) : AndroidViewModel(appl
         private set
     
     val companyName = sessionManager.getCompanyName() ?: "My Fleet"
-    private val ownerId = sessionManager.getDriverId()?.toIntOrNull() ?: 0
+    val ownerIdStr = sessionManager.getDriverId() ?: ""
     private val userRole = sessionManager.getUserRole()
 
     init {
@@ -26,13 +26,13 @@ class FleetManagementViewModel(application: Application) : AndroidViewModel(appl
     }
 
     fun loadVehicles() {
-        if (ownerId <= 0) {
+        if (ownerIdStr.isBlank()) {
             isLoading = false
             return
         }
         isLoading = true
         viewModelScope.launch {
-            repository.getFleetVehicles(ownerId, userRole).onSuccess {
+            repository.getFleetVehicles(ownerIdStr, userRole).onSuccess {
                 vehicles = it
                 isLoading = false
             }.onFailure {
