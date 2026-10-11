@@ -8,9 +8,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,16 +61,16 @@ fun FleetOwnerSettingsScreen(
             repository.getDriverProfile(ownerId, "OWNER").onSuccess { profile ->
                 if (profile["success"] == true) {
                     profilePicUrl = profile["profile_picture"]?.toString()
-                    ownerName = profile["name"]?.toString() ?: ownerName
-                    companyName = profile["company_name"]?.toString() ?: companyName
-                    ownerPhone = profile["phone"]?.toString() ?: ownerPhone
+                    ownerName = profile["name"]?.toString()?.ifEmpty { ownerName } ?: ownerName
+                    companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
+                    ownerPhone = profile["phone"]?.toString()?.ifEmpty { ownerPhone } ?: ownerPhone
                     (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
                 }
             }
         }
     }
 
-    val initials = ownerName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "NO" }
+    val initials = ownerName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "FO" }
 
     Scaffold(
         topBar = {
@@ -177,14 +182,14 @@ fun FleetOwnerSettingsScreen(
 
                             Column(Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(ownerName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                                    Text(ownerName.ifEmpty { "Fleet Partner" }, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                                     Surface(color = Color(0xFF2563EB), shape = RoundedCornerShape(6.dp)) {
                                         Text("PRO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                     }
                                 }
                                 Spacer(Modifier.height(2.dp))
-                                Text("Verified Fleet Partner • Accra Metro", fontSize = 11.sp, color = Color.LightGray)
-                                Text("ID: FK-ACC-8821 • $ownerPhone", fontSize = 11.sp, color = Color.Gray)
+                                Text(companyName.ifEmpty { "Verified Fleet Partner • Accra Metro" }, fontSize = 11.sp, color = Color.LightGray)
+                                Text("ID: FK-ACC-$ownerId • $ownerPhone", fontSize = 11.sp, color = Color.Gray)
                             }
                         }
 
@@ -194,7 +199,7 @@ fun FleetOwnerSettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             FleetOwnerMetricBox("Active Fleet", "$fleetCount Cars", Modifier.weight(1f))
-                            FleetOwnerMetricBox("Fleet Health", "98.2%", Modifier.weight(1f))
+                            FleetOwnerMetricBox("Fleet Health", "100%", Modifier.weight(1f))
                             FleetOwnerMetricBox("Compliance", "100%", Modifier.weight(1f))
                         }
                     }
@@ -317,7 +322,7 @@ fun FleetOwnerSettingsScreen(
                     ) {
                         Column {
                             FleetOwnerNavRow(
-                                icon = Icons.Default.Assignment,
+                                icon = Icons.AutoMirrored.Filled.Assignment,
                                 iconColor = Color(0xFF059669),
                                 title = "DVLA Expiry Alerts",
                                 subtitle = "Notify 30 days before Roadworthy or Insurance expiration date",
@@ -393,8 +398,8 @@ fun FleetOwnerSettingsScreen(
                                                 }
                                             }
                                             Column {
-                                                Text("Stanbic Bank Ghana", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                                                Text("Corporate Acct •••• 4410", fontSize = 11.sp, color = Color.Gray)
+                                                Text("Bank & MoMo Payout Account", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                                                Text("Linked Phone: $ownerPhone", fontSize = 11.sp, color = Color.Gray)
                                             }
                                         }
 
@@ -403,40 +408,12 @@ fun FleetOwnerSettingsScreen(
                                         }
                                     }
                                 }
-
-                                Card(
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(32.dp)) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(Icons.Default.Smartphone, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-                                            Column {
-                                                Text("MTN Mobile Money Merchant", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                                                Text("$ownerPhone (Fameko Ent)", fontSize = 11.sp, color = Color.Gray)
-                                            }
-                                        }
-
-                                        Surface(color = Color(0xFFF1F5F9), shape = RoundedCornerShape(6.dp)) {
-                                            Text("Secondary", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                        }
-                                    }
-                                }
                             }
 
                             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
 
                             FleetOwnerToggleRow(
-                                icon = Icons.Default.ReceiptLong,
+                                icon = Icons.AutoMirrored.Filled.ReceiptLong,
                                 iconColor = Color(0xFF059669),
                                 title = "GRA Withholding Tax",
                                 subtitle = "Automatic withholding calculation deducted per driver cycle",
@@ -450,7 +427,7 @@ fun FleetOwnerSettingsScreen(
                                 icon = Icons.Default.Mail,
                                 iconColor = Color(0xFF2563EB),
                                 title = "Weekly CSV Audit Invoices",
-                                subtitle = "Auto-dispatched to ${sessionManager.getDriverPhone()}",
+                                subtitle = "Auto-dispatched to registered email",
                                 onClick = { Toast.makeText(context, "Audit invoices active", Toast.LENGTH_SHORT).show() }
                             )
                         }
@@ -474,7 +451,7 @@ fun FleetOwnerSettingsScreen(
                                 icon = Icons.Default.Group,
                                 iconColor = Color(0xFF2563EB),
                                 title = "Sub-Managers & Dispatchers",
-                                subtitle = "2 Dispatchers Authorized (Osu & Tema Hubs)",
+                                subtitle = "Authorized Dispatchers & Hub Access",
                                 onClick = { Toast.makeText(context, "Dispatcher permissions active", Toast.LENGTH_SHORT).show() }
                             )
 
@@ -492,12 +469,12 @@ fun FleetOwnerSettingsScreen(
                                 Spacer(Modifier.width(14.dp))
                                 Column(Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text("VIP Fleet Executive", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                                        Text("VIP Fleet Executive Support", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
                                         Surface(color = Color(0xFF059669), shape = RoundedCornerShape(6.dp)) {
                                             Text("Direct", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                         }
                                     }
-                                    Text("Dedicated Account Manager (Kwame Mensah - Ridge HQ)", fontSize = 11.sp, color = Color.Gray)
+                                    Text("Dedicated Fameko Account Manager Support", fontSize = 11.sp, color = Color.Gray)
                                 }
                                 Button(
                                     onClick = { Toast.makeText(context, "Calling VIP Account Manager...", Toast.LENGTH_SHORT).show() },
@@ -540,7 +517,7 @@ fun FleetOwnerSettingsScreen(
                         border = BorderStroke(1.dp, Color(0xFFFECDD3))
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Logout, null, tint = Color(0xFFDC2626), modifier = Modifier.size(18.dp))
+                            Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Color(0xFFDC2626), modifier = Modifier.size(18.dp))
                             Text("Log Out of Fleet Enterprise", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFFDC2626))
                         }
                     }
@@ -551,7 +528,7 @@ fun FleetOwnerSettingsScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Text("FAMEKO MOBILITY OS • ENTERPRISE V4.12.0", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Text("FAMEKO MOBILITY OS • ENTERPRISE", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                         Text("Ghana Cyber Security Authority Compliant • DVLA API v3", fontSize = 9.sp, color = Color.LightGray)
                     }
                 }
@@ -564,7 +541,7 @@ fun FleetOwnerSettingsScreen(
 fun FleetOwnerMetricBox(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = Color.White.copy(alpha = 0.08f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
     ) {
@@ -598,7 +575,7 @@ fun FleetOwnerNavRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             color = iconColor.copy(alpha = 0.1f),
             modifier = Modifier.size(40.dp)
         ) {
@@ -618,7 +595,7 @@ fun FleetOwnerNavRow(
             }
             Spacer(Modifier.width(6.dp))
         }
-        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(12.dp))
+        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
     }
 }
 

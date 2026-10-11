@@ -59,8 +59,8 @@ fun FleetOwnerMenuScreen(
             repository.getDriverProfile(ownerId, "OWNER").onSuccess { profile ->
                 if (profile["success"] == true) {
                     profilePicUrl = profile["profile_picture"]?.toString()
-                    ownerName = profile["name"]?.toString() ?: ownerName
-                    companyName = profile["company_name"]?.toString() ?: companyName
+                    ownerName = profile["name"]?.toString()?.ifEmpty { ownerName } ?: ownerName
+                    companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
                     (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
                     (profile["active_rentals_count"] as? Number)?.toInt()?.let { activeDriversCount = it }
                     (profile["total_earnings"] as? Number)?.toDouble()?.let { todayGross = it }
@@ -69,14 +69,14 @@ fun FleetOwnerMenuScreen(
         }
     }
 
-    val initials = ownerName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "NO" }
+    val initials = ownerName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "FO" }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Fleet Vehicle Detail", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
+                        Text("Fleet Console Menu", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
                             Text("FLEET OWNER CONSOLE • ENTERPRISE", fontSize = 11.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Bold)
@@ -183,17 +183,17 @@ fun FleetOwnerMenuScreen(
 
                             Column(Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(ownerName, fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.White)
+                                    Text(ownerName.ifEmpty { "Fleet Partner" }, fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.White)
                                     Icon(Icons.Default.Verified, null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
                                 }
                                 Spacer(Modifier.height(2.dp))
-                                Text("Verified Fleet Enterprise Partner", fontSize = 11.sp, color = Color.LightGray)
+                                Text(companyName.ifEmpty { "Verified Fleet Enterprise Partner" }, fontSize = 11.sp, color = Color.LightGray)
                             }
 
                             Surface(color = Color(0xFF1E293B), shape = RoundedCornerShape(12.dp)) {
                                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(12.dp))
-                                    Text("4.98", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("5.0", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
                             }
                         }
@@ -203,9 +203,9 @@ fun FleetOwnerMenuScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            FleetMetricBox("FLEET SIZE", "$fleetCount Units", "● 100% Active", Modifier.weight(1f))
-                            FleetMetricBox("ASSIGNED", "$activeDriversCount Drivers", "⟳ All Paired", Modifier.weight(1f))
-                            FleetMetricBox("DISPATCHES", "$totalDispatches Trips", "↗ +14.2% Rev", Modifier.weight(1f))
+                            FleetMetricBox("FLEET SIZE", "$fleetCount Units", "● Active", Modifier.weight(1f))
+                            FleetMetricBox("ASSIGNED", "$activeDriversCount Drivers", "⟳ Paired", Modifier.weight(1f))
+                            FleetMetricBox("DISPATCHES", "$totalDispatches Trips", "↗ Live", Modifier.weight(1f))
                         }
 
                         // Fleet Pass Banner
@@ -222,7 +222,7 @@ fun FleetOwnerMenuScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Icon(Icons.Default.Shield, null, tint = Color(0xFF34D399), modifier = Modifier.size(14.dp))
-                                    Text("Fleet Pass: $fleetCount Units Active (Bulk Paid)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text("Fleet Pass: $fleetCount Units Active", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
                                 Surface(color = Color(0xFF065F46), shape = RoundedCornerShape(6.dp)) {
                                     Text("ACCRA METRO", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
@@ -275,13 +275,11 @@ fun FleetOwnerMenuScreen(
                             Column {
                                 Text("TODAY'S GROSS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF047857), letterSpacing = 0.5.sp)
                                 Text("GH₵ ${String.format(Locale.getDefault(), "%.2f", todayGross)}", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF065F46))
-                                Text("36 cash • 12 GhanaPay", fontSize = 11.sp, color = Color(0xFF047857))
                             }
 
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("WEEKLY ROLLING GROSS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF047857), letterSpacing = 0.5.sp)
                                 Text("GH₵ ${String.format(Locale.getDefault(), "%.2f", weeklyGross)}", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF065F46))
-                                Text("↗ On track (+8.4%)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
                             }
                         }
 
@@ -334,8 +332,8 @@ fun FleetOwnerMenuScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("● 70% Driver Shift Share: GH₵ 1,295.00", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
-                            Text("● 30% Net Owner: GH₵ 555.00", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                            Text("● 70% Driver Shift Share", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
+                            Text("● 30% Net Owner Share", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
                         }
                     }
                 }
@@ -349,7 +347,7 @@ fun FleetOwnerMenuScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Enterprise Asset Governance", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
-                    Text("7 MANAGEMENT HUBS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
+                    Text("MANAGEMENT HUBS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
                 }
             }
 
@@ -366,7 +364,7 @@ fun FleetOwnerMenuScreen(
                             icon = Icons.Default.DirectionsCar,
                             iconColor = Color(0xFF2563EB),
                             title = "Fleet Vehicles Inventory",
-                            subtitle = "Toyota Vitz, Corolla (2), Camry (2), Tucson",
+                            subtitle = "$fleetCount vehicles registered in fleet",
                             badgeText = "$fleetCount Cars",
                             onClick = onNavigateToFleetInventory
                         )
@@ -375,7 +373,7 @@ fun FleetOwnerMenuScreen(
                             icon = Icons.Default.People,
                             iconColor = Color(0xFF059669),
                             title = "Assigned Driver Roster",
-                            subtitle = "E. Sackey, J. Asare, K. Mensah • Telemetry Active",
+                            subtitle = "$activeDriversCount active drivers linked",
                             badgeText = "$activeDriversCount Active",
                             badgeColor = Color(0xFFECFDF5),
                             badgeTextColor = Color(0xFF059669),
@@ -386,8 +384,8 @@ fun FleetOwnerMenuScreen(
                             icon = Icons.Default.VerifiedUser,
                             iconColor = Color(0xFF2563EB),
                             title = "DVLA Compliance & Insurance",
-                            subtitle = "Roadworthiness certs • Comprehensive Policy",
-                            badgeText = "100% Up To Date",
+                            subtitle = "Roadworthiness certs & insurance compliance",
+                            badgeText = "Verified",
                             badgeColor = Color(0xFFEFF6FF),
                             badgeTextColor = Color(0xFF2563EB),
                             onClick = onNavigateToFleetSettings
@@ -409,7 +407,7 @@ fun FleetOwnerMenuScreen(
                             iconColor = Color(0xFF059669),
                             title = "Fleet Daily Access Passes",
                             subtitle = "Bulk payment discounts & auto-renewals",
-                            badgeText = "Bulk Discount",
+                            badgeText = "Bulk Pass",
                             badgeColor = Color(0xFFECFDF5),
                             badgeTextColor = Color(0xFF059669),
                             onClick = { Toast.makeText(context, "Bulk Pass Management", Toast.LENGTH_SHORT).show() }
@@ -420,19 +418,8 @@ fun FleetOwnerMenuScreen(
                             iconColor = Color(0xFF2563EB),
                             title = "Tax, GRA & Audit CSV Reports",
                             subtitle = "Weekly withholding tax statements, MoMo CSV",
-                            badgeText = "Weekly",
+                            badgeText = "Audit CSV",
                             onClick = { Toast.makeText(context, "Exporting CSV Reports...", Toast.LENGTH_SHORT).show() }
-                        )
-                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                        FleetHubRow(
-                            icon = Icons.Default.CarCrash,
-                            iconColor = Color(0xFFDC2626),
-                            title = "Fleet SOS & Breakdown Dispatch",
-                            subtitle = "Roadside towing assistance, certified mechanics",
-                            badgeText = "24/7 Rapid",
-                            badgeColor = Color(0xFFFEF2F2),
-                            badgeTextColor = Color(0xFFDC2626),
-                            onClick = { Toast.makeText(context, "Fleet Rapid SOS Active", Toast.LENGTH_SHORT).show() }
                         )
                     }
                 }
@@ -476,7 +463,7 @@ fun FleetOwnerMenuScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Default.Verified, null, tint = Color(0xFF059669), modifier = Modifier.size(12.dp))
-                        Text("FAMEKO FLEET ENTERPRISE v1.2.0 • DVLA & GRA CERTIFIED PARTNER", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Text("FAMEKO FLEET ENTERPRISE • DVLA & GRA CERTIFIED PARTNER", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                     }
                     Text("Republic of Ghana Mobility • Greater Accra Operational Hub", fontSize = 10.sp, color = Color.LightGray)
                 }
