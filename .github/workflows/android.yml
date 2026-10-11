@@ -2,7 +2,7 @@ name: Android CI/CD
 
 on:
   push:
-    branches: [ "main" ] # If your primary branch is named 'master', change "main" to "master"
+    branches: [ "main" ] # Change to "master" if your repository primary branch is named master
 
 jobs:
   build:
@@ -22,14 +22,44 @@ jobs:
     - name: Grant Execute Permission for Gradlew
       run: chmod +x ./gradlew
 
-    - name: Create local.properties and Inject Placeholder Keys
+    - name: Create local.properties and Inject All Keys
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
-        echo "MAPS_API_KEY=AIzaSyFakeKey_ForGitHubActionsDebugBuildsOnly" >> local.properties
+        echo "MAPS_API_KEY=AIzaSyB87GQft4tk7-ZdIQB7FpM12ZOjmRggOIY" >> local.properties
+        echo "TOMTOM_API_KEY=hHWkdbEaHXN26BzptZvmEPwHFg6ymVTg" >> local.properties
+        echo "BASE_URL=https://railway.app" >> local.properties
+        echo "GO_URL=https://railway.app" >> local.properties
+        echo "ROUTING_SERVICE_URL=https://railway.app" >> local.properties
+        echo "OPENWEATHER_API_KEY=b03dab643348ea7b4c96676da9190314" >> local.properties
+        echo "GOOGLE_CLIENT_ID=://googleusercontent.com" >> local.properties
+        echo "PAYSTACK_SECRET=sk_live_fa79dddb7b3932780be24e6171e62dffc4a94d41" >> local.properties
+        echo "CLOUDINARY_CLOUD_NAME=df3jnubvy" >> local.properties
+        echo "CLOUDINARY_API_KEY_DOCS=716666832139318" >> local.properties
+        echo "CLOUDINARY_API_KEY_RENTALS=711193931864162" >> local.properties
+        echo "CLOUDINARY_API_SECRET_DOCS=uZm9yxHmATGTfMNU04ErW6d8WBk" >> local.properties
+        echo "CLOUDINARY_API_SECRET_RENTALS=VZXRO8h52MV1bBQ5FSz1PKihOLI" >> local.properties
+        echo "APP_PASSWORD=jgrjdazptkpmlsui" >> local.properties
+        echo "DATABASE_URL=postgresql://postgres:qxGjhxnZkzHKuwtYnXySIzbLLXKPTyKA@postgres.railway.internal:5432/railway" >> local.properties
+        echo "REDIS_URL=redis://default:TjNFGNRTxpPKbFwuzdIIODJkNjgbjspH@redis.railway.internal:6379" >> local.properties
 
     - name: Build Debug APK
       env:
-        MAPS_API_KEY: "AIzaSyFakeKey_ForGitHubActionsDebugBuildsOnly"
+        MAPS_API_KEY: "AIzaSyB87GQft4tk7-ZdIQB7FpM12ZOjmRggOIY"
+        TOMTOM_API_KEY: "hHWkdbEaHXN26BzptZvmEPwHFg6ymVTg"
+        BASE_URL: "https://railway.app"
+        GO_URL: "https://railway.app"
+        ROUTING_SERVICE_URL: "https://railway.app"
+        OPENWEATHER_API_KEY: "b03dab643348ea7b4c96676da9190314"
+        GOOGLE_CLIENT_ID: "://googleusercontent.com"
+        PAYSTACK_SECRET: "sk_live_fa79dddb7b3932780be24e6171e62dffc4a94d41"
+        CLOUDINARY_CLOUD_NAME: "df3jnubvy"
+        CLOUDINARY_API_KEY_DOCS: "716666832139318"
+        CLOUDINARY_API_KEY_RENTALS: "711193931864162"
+        CLOUDINARY_API_SECRET_DOCS: "uZm9yxHmATGTfMNU04ErW6d8WBk"
+        CLOUDINARY_API_SECRET_RENTALS: "VZXRO8h52MV1bBQ5FSz1PKihOLI"
+        APP_PASSWORD: "jgrjdazptkpmlsui"
+        DATABASE_URL: "postgresql://postgres:qxGjhxnZkzHKuwtYnXySIzbLLXKPTyKA@postgres.railway.internal:5432/railway"
+        REDIS_URL: "redis://default:TjNFGNRTxpPKbFwuzdIIODJkNjgbjspH@redis.railway.internal:6379"
       run: ./gradlew assembleDebug
 
     - name: Upload APK Artifact
