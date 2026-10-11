@@ -1116,22 +1116,37 @@ fun Application.configureRouting() {
                 multipart.forEachPart { part ->
                     when (part) {
                         is PartData.FormItem -> {
-                            data[part.name ?: ""] = part.value
+                            val key = part.name ?: ""
+                            if (key.isNotBlank()) {
+                                data[key] = part.value
+                            }
                         }
                         else -> {}
                     }
                     part.dispose()
                 }
                 val driverId = DatabaseRepository.registerDriver(data)
-                if (driverId != null) call.respond(AuthResponse(
-                    success = true, 
-                    message = "Success", 
-                    user_id = driverId.toString(), 
-                    name = data["full_name"]
-                ))
-                else call.respond(AuthResponse(false, "Registration failed", null, null))
-            } catch (e: Exception) {
-                call.respond(AuthResponse(false, e.message ?: "Error", null, null))
+                if (driverId != null) {
+                    call.respond(AuthResponse(
+                        success = true, 
+                        message = "Success", 
+                        user_id = driverId.toString(), 
+                        name = data["full_name"]
+                    ))
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, AuthResponse(false, "Registration failed. Please check details.", null, null))
+                }
+            } catch (e: Throwable) {
+                println("Error registering user: ${e.message}")
+                e.printStackTrace()
+                val msg = when {
+                    e.message?.contains("duplicate key") == true && e.message?.contains("email") == true -> "Email address is already registered."
+                    e.message?.contains("duplicate key") == true && e.message?.contains("phone") == true -> "Phone number is already registered."
+                    e.message?.contains("duplicate key") == true && e.message?.contains("license") == true -> "License number is already registered."
+                    e.message?.contains("duplicate key") == true -> "Account with these details already exists."
+                    else -> e.message ?: "Registration failed"
+                }
+                call.respond(HttpStatusCode.BadRequest, AuthResponse(false, msg, null, null))
             }
         }
 

@@ -2316,6 +2316,8 @@ object DatabaseRepository {
     fun registerDriver(data: Map<String, String>): Int? {
         val role = data["user_role"]?.trim()?.uppercase() ?: "DRIVER"
         val email = data["email"]?.trim()?.lowercase() ?: ""
+        val fullName = data["full_name"]?.trim() ?: ""
+        val phone = normalizePhone(data["phone"])
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
             conn.autoCommit = false
@@ -2324,21 +2326,22 @@ object DatabaseRepository {
                 var fleetOwnerId: Int? = null
 
                 if (role == "OWNER" || role == "BOTH") {
+                    val company = data["company_name"]?.trim()?.ifEmpty { null } ?: if (fullName.isNotBlank()) "$fullName's Fleet" else "My Fleet"
                     val sql = "INSERT INTO fleet_owners (full_name, email, phone, password, company_name, registration_number, region, status, firebase_uid, emergency_contact_1, emergency_contact_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                     val stmt = conn.prepareStatement(sql)
-                    stmt.setString(1, data["full_name"]?.trim() ?: "")
+                    stmt.setString(1, fullName)
                     stmt.setString(2, email)
-                    stmt.setString(3, normalizePhone(data["phone"]))
+                    stmt.setString(3, phone)
                     val password = data["password"]?.trim() ?: ""
                     val hashedPassword = if (password == "GOOGLE_AUTH") "GOOGLE_AUTH" else BCrypt.hashpw(password, BCrypt.gensalt())
                     stmt.setString(4, hashedPassword)
-                    stmt.setString(5, data["company_name"]?.trim() ?: "My Fleet")
-                    stmt.setString(6, data["registration_number"]?.trim())
-                    stmt.setString(7, data["region"]?.trim() ?: "")
-                    stmt.setString(8, "PENDING")
-                    stmt.setString(9, data["firebase_uid"])
-                    stmt.setString(10, data["emergency_contact_1"]?.trim())
-                    stmt.setString(11, data["emergency_contact_2"]?.trim())
+                    stmt.setString(5, company)
+                    stmt.setString(6, data["registration_number"]?.trim()?.ifEmpty { null })
+                    stmt.setString(7, data["region"]?.trim()?.ifEmpty { "Greater Accra" } ?: "Greater Accra")
+                    stmt.setString(8, "APPROVED")
+                    stmt.setString(9, data["firebase_uid"]?.ifEmpty { null })
+                    stmt.setString(10, data["emergency_contact_1"]?.trim()?.ifEmpty { null })
+                    stmt.setString(11, data["emergency_contact_2"]?.trim()?.ifEmpty { null })
                     val rs = stmt.executeQuery()
                     if (rs.next()) {
                         fleetOwnerId = rs.getInt(1)
@@ -2347,32 +2350,33 @@ object DatabaseRepository {
                 }
 
                 if (role == "DRIVER" || role == "BOTH") {
+                    val licenseNo = data["license_number"]?.trim()?.ifEmpty { null } ?: ("DL-2024-" + (10000..99999).random())
                     val sql = "INSERT INTO drivers (full_name, email, phone, region, password, license_number, vehicle_type, vehicle_number, service_types, user_role, company_name, registration_number, emergency_contact_1, emergency_contact_2, fleet_owner_id, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                     val stmt = conn.prepareStatement(sql)
-                    stmt.setString(1, data["full_name"]?.trim() ?: "")
+                    stmt.setString(1, fullName)
                     stmt.setString(2, email)
-                    stmt.setString(3, normalizePhone(data["phone"]))
-                    stmt.setString(4, data["region"]?.trim() ?: "")
+                    stmt.setString(3, phone)
+                    stmt.setString(4, data["region"]?.trim()?.ifEmpty { "Greater Accra" } ?: "Greater Accra")
                     val password = data["password"]?.trim() ?: ""
                     val hashedPassword = if (password == "GOOGLE_AUTH") "GOOGLE_AUTH" else BCrypt.hashpw(password, BCrypt.gensalt())
                     stmt.setString(5, hashedPassword)
-                    stmt.setString(6, data["license_number"]?.trim() ?: "")
-                    stmt.setString(7, data["vehicle_type"]?.trim() ?: "")
-                    stmt.setString(8, data["vehicle_number"]?.trim() ?: "")
-                    stmt.setString(9, data["service_type"]?.trim()?.uppercase() ?: "BOTH")
+                    stmt.setString(6, licenseNo)
+                    stmt.setString(7, data["vehicle_type"]?.trim()?.ifEmpty { "Car" } ?: "Car")
+                    stmt.setString(8, data["vehicle_number"]?.trim()?.ifEmpty { null })
+                    stmt.setString(9, data["service_type"]?.trim()?.uppercase()?.ifEmpty { "BOTH" } ?: "BOTH")
                     stmt.setString(10, role)
-                    stmt.setString(11, data["company_name"]?.trim())
-                    stmt.setString(12, data["registration_number"]?.trim())
-                    stmt.setString(13, data["emergency_contact_1"]?.trim())
-                    stmt.setString(14, data["emergency_contact_2"]?.trim())
+                    stmt.setString(11, data["company_name"]?.trim()?.ifEmpty { null })
+                    stmt.setString(12, data["registration_number"]?.trim()?.ifEmpty { null })
+                    stmt.setString(13, data["emergency_contact_1"]?.trim()?.ifEmpty { null })
+                    stmt.setString(14, data["emergency_contact_2"]?.trim()?.ifEmpty { null })
                     if (fleetOwnerId != null) stmt.setInt(15, fleetOwnerId) else stmt.setNull(15, java.sql.Types.INTEGER)
-                    stmt.setString(16, data["firebase_uid"])
+                    stmt.setString(16, data["firebase_uid"]?.ifEmpty { null })
 
                     val rs = stmt.executeQuery()
                     if (rs.next()) {
                         val driverId = rs.getInt(1)
                         primaryId = driverId
-                        conn.prepareStatement("INSERT INTO driver_stats (driver_id) VALUES (?)").apply {
+                        conn.prepareStatement("INSERT INTO driver_stats (driver_id) VALUES (?) ON CONFLICT (driver_id) DO NOTHING").apply {
                             setInt(1, driverId)
                             executeUpdate()
                         }
@@ -2386,6 +2390,8 @@ object DatabaseRepository {
                 conn.rollback()
             } catch (e: Exception) {
                 conn.rollback()
+                println("Error in registerDriver: ${e.message}")
+                e.printStackTrace()
                 throw e
             }
         }
