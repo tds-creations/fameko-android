@@ -483,10 +483,8 @@ object DatabaseInitializer {
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS emergency_contact_1 TEXT;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS emergency_contact_2 TEXT;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;",
-            "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS fleet_owner_id INTEGER REFERENCES fleet_owners(id);",
             "CREATE INDEX IF NOT EXISTS idx_rentals_fleet_owner ON rentals(fleet_owner_id);",
-            "CREATE INDEX IF NOT EXISTS idx_drivers_fleet_owner ON drivers(fleet_owner_id);",
             "ALTER TABLE drivers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
             "ALTER TABLE fleet_owners ADD COLUMN IF NOT EXISTS firebase_uid TEXT UNIQUE;",
@@ -541,8 +539,8 @@ object DatabaseInitializer {
             """.trimIndent()
             conn.createStatement().execute(linkVehiclesSql)
             
-            // 4. Drop fleet_owner_id column from rental_vehicles so owner_id is the single owner column
-            conn.createStatement().execute("ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_owner_id_fkey; ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_fleet_owner_id_fkey; ALTER TABLE rental_vehicles DROP COLUMN IF EXISTS fleet_owner_id CASCADE; UPDATE rental_vehicles SET owner_id = 1 WHERE owner_id IS NULL OR owner_id = 0;")
+            // 4. Drop fleet_owner_id column from rental_vehicles & drivers
+            conn.createStatement().execute("ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_owner_id_fkey; ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_fleet_owner_id_fkey; ALTER TABLE rental_vehicles DROP COLUMN IF EXISTS fleet_owner_id CASCADE; ALTER TABLE drivers DROP COLUMN IF EXISTS fleet_owner_id CASCADE; UPDATE rental_vehicles SET owner_id = 1 WHERE owner_id IS NULL OR owner_id = 0;")
 
             println("Migration: Fleet owner data migration complete.")
         } catch (e: Exception) {

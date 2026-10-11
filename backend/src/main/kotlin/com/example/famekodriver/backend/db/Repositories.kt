@@ -2349,8 +2349,8 @@ object DatabaseRepository {
                 }
 
                 if (role == "DRIVER" || role == "BOTH") {
-                    val licenseNo = data["license_number"]?.trim()?.ifEmpty { null } ?: ("DL-2024-" + (10000..99999).random())
-                    val sql = "INSERT INTO drivers (full_name, email, phone, region, password, license_number, vehicle_type, vehicle_number, service_types, user_role, company_name, registration_number, emergency_contact_1, emergency_contact_2, fleet_owner_id, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                    val licenseNo = data["license_number"]?.trim()?.ifEmpty { null } ?: ("DL-2025-" + (10000..99999).random())
+                    val sql = "INSERT INTO drivers (full_name, email, phone, region, password, license_number, vehicle_type, vehicle_number, vehicle_model, service_types, user_role, company_name, registration_number, emergency_contact_1, emergency_contact_2, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                     val stmt = conn.prepareStatement(sql)
                     stmt.setString(1, fullName)
                     stmt.setString(2, email)
@@ -2362,13 +2362,13 @@ object DatabaseRepository {
                     stmt.setString(6, licenseNo)
                     stmt.setString(7, data["vehicle_type"]?.trim()?.ifEmpty { "Car" } ?: "Car")
                     stmt.setString(8, data["vehicle_number"]?.trim()?.ifEmpty { null })
-                    stmt.setString(9, data["service_type"]?.trim()?.uppercase()?.ifEmpty { "BOTH" } ?: "BOTH")
-                    stmt.setString(10, role)
-                    stmt.setString(11, data["company_name"]?.trim()?.ifEmpty { null })
-                    stmt.setString(12, data["registration_number"]?.trim()?.ifEmpty { null })
-                    stmt.setString(13, data["emergency_contact_1"]?.trim()?.ifEmpty { null })
-                    stmt.setString(14, data["emergency_contact_2"]?.trim()?.ifEmpty { null })
-                    if (fleetOwnerId != null) stmt.setInt(15, fleetOwnerId) else stmt.setNull(15, java.sql.Types.INTEGER)
+                    stmt.setString(9, data["vehicle_model"]?.trim()?.ifEmpty { null })
+                    stmt.setString(10, data["service_type"]?.trim()?.uppercase()?.ifEmpty { "BOTH" } ?: "BOTH")
+                    stmt.setString(11, role)
+                    stmt.setString(12, data["company_name"]?.trim()?.ifEmpty { null })
+                    stmt.setString(13, data["registration_number"]?.trim()?.ifEmpty { null })
+                    stmt.setString(14, data["emergency_contact_1"]?.trim()?.ifEmpty { null })
+                    stmt.setString(15, data["emergency_contact_2"]?.trim()?.ifEmpty { null })
                     stmt.setString(16, data["firebase_uid"]?.ifEmpty { null })
 
                     val rs = stmt.executeQuery()

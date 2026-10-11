@@ -75,6 +75,7 @@ interface FamekoApiService {
         @Part("vehicle_type") vehicleType: RequestBody,
         @Part("service_type") serviceType: RequestBody,
         @Part("vehicle_number") vehicleNumber: RequestBody,
+        @Part("vehicle_model") vehicleModel: RequestBody?,
         @Part("emergency_contact_1") emergency1: RequestBody,
         @Part("emergency_contact_2") emergency2: RequestBody,
         @Part("user_role") userRole: RequestBody,

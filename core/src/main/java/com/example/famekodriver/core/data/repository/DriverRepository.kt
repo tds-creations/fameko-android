@@ -528,6 +528,7 @@ class DriverRepository private constructor() {
         vehicleType: String,
         serviceType: String,
         vehicleNumber: String,
+        vehicleModel: String = "",
         emergencyContact1: String,
         emergencyContact2: String,
         docs: Map<String, File> = emptyMap(),
@@ -546,6 +547,7 @@ class DriverRepository private constructor() {
             val vTypeBody = vehicleType.toRequestBody(MultipartBody.FORM)
             val sTypeBody = serviceType.toRequestBody(MultipartBody.FORM)
             val vNumBody = vehicleNumber.toRequestBody(MultipartBody.FORM)
+            val vModelBody = vehicleModel.toRequestBody(MultipartBody.FORM)
             val e1Body = emergencyContact1.toRequestBody(MultipartBody.FORM)
             val e2Body = emergencyContact2.toRequestBody(MultipartBody.FORM)
             val roleBody = userRole.toRequestBody(MultipartBody.FORM)
@@ -560,7 +562,7 @@ class DriverRepository private constructor() {
             }
 
             val response = NetworkClient.famekoApi.registerDriver(
-                nameBody, emailBody, phoneBody, passBody, licenseBody, regionBody, vTypeBody, sTypeBody, vNumBody,
+                nameBody, emailBody, phoneBody, passBody, licenseBody, regionBody, vTypeBody, sTypeBody, vNumBody, vModelBody,
                 e1Body, e2Body, roleBody, companyBody, regNumBody, uidBody,
                 fileToPart("profile_pic"),
                 fileToPart("drivers_license"),

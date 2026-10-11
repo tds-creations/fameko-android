@@ -126,8 +126,10 @@ class UserRepository {
                 return MultipartBody.Part.createFormData(key, file.name, reqFile)
             }
 
+            val vModelBody = "".toRequestBody(MultipartBody.FORM)
+
             val response = NetworkClient.famekoApi.registerDriver(
-                nameBody, emailBody, phoneBody, passBody, licenseBody, regionBody, vTypeBody, sTypeBody, vNumBody,
+                nameBody, emailBody, phoneBody, passBody, licenseBody, regionBody, vTypeBody, sTypeBody, vNumBody, vModelBody,
                 e1Body, e2Body, roleBody, companyBody, regNumBody, uidBody,
                 fileToPart("profile_pic"),
                 fileToPart("drivers_license"),
