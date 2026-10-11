@@ -2062,7 +2062,7 @@ object DatabaseRepository {
         val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sqlOwner = "SELECT id, full_name, status, profile_picture, password, company_name FROM fleet_owners WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR TRIM(phone) = ?"
+            val sqlOwner = "SELECT id, full_name, email, phone, status, profile_picture, password, company_name FROM fleet_owners WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR TRIM(phone) = ?"
             val stmtOwner = conn.prepareStatement(sqlOwner)
             stmtOwner.setString(1, cleanEmail)
             stmtOwner.setString(2, last9Digits)
@@ -2100,11 +2100,15 @@ object DatabaseRepository {
                     }
                     val name = rsOwner.getString("full_name") ?: ""
                     val company = rsOwner.getString("company_name")
+                    val dbEmail = rsOwner.getString("email") ?: ""
+                    val dbPhone = rsOwner.getString("phone") ?: ""
                     return AuthResponse(
                         success = true,
                         message = "Success",
                         user_id = "OWNER:$ownerId",
                         name = name,
+                        email = dbEmail,
+                        phone = dbPhone,
                         status = rsOwner.getString("status") ?: "APPROVED",
                         profile_picture = rsOwner.getString("profile_picture"),
                         user_role = "OWNER",
@@ -2130,7 +2134,7 @@ object DatabaseRepository {
         val last9Digits = if (digitsOnly.length >= 9) digitsOnly.takeLast(9) else "NON_MATCHABLE_DUMMY"
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, full_name, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR TRIM(phone) = ?"
+            val sql = "SELECT id, full_name, email, phone, status, profile_picture, user_role, company_name, vehicle_type, password FROM drivers WHERE LOWER(TRIM(email)) = ? OR RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 9) = ? OR TRIM(phone) = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, cleanEmail)
             stmt.setString(2, last9Digits)
@@ -2169,11 +2173,15 @@ object DatabaseRepository {
                     val name = rs.getString("full_name") ?: ""
                     val dbRole = rs.getString("user_role") ?: "DRIVER"
                     val company = rs.getString("company_name")
+                    val dbEmail = rs.getString("email") ?: ""
+                    val dbPhone = rs.getString("phone") ?: ""
                     return AuthResponse(
                         success = true, 
                         message = "Success", 
                         user_id = "DRIVER:$driverId", 
                         name = name, 
+                        email = dbEmail,
+                        phone = dbPhone,
                         status = rs.getString("status") ?: "APPROVED", 
                         profile_picture = rs.getString("profile_picture"),
                         user_role = dbRole,

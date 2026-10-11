@@ -326,10 +326,10 @@ class DriverRepository private constructor() {
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Driver(
-                    id = userId.toIntOrNull() ?: 0,
+                    id = userId.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: 0,
                     fullName = response.name ?: if (role == "OWNER") "Fleet Owner" else "Driver",
-                    email = "",
-                    phone = phone,
+                    email = response.email ?: "",
+                    phone = response.phone ?: phone,
                     region = "",
                     licenseNumber = "",
                     vehicleType = response.vehicle_type ?: "Car",
@@ -357,10 +357,10 @@ class DriverRepository private constructor() {
             val userId = response.user_id
             if (response.success && userId != null) {
                 Result.success(Driver(
-                    id = 0,
+                    id = userId.removePrefix("OWNER:").removePrefix("DRIVER:").toIntOrNull() ?: 0,
                     fullName = response.name ?: "Fleet Owner",
-                    email = email,
-                    phone = "",
+                    email = response.email ?: email,
+                    phone = response.phone ?: "",
                     region = "",
                     licenseNumber = "",
                     vehicleType = "Fleet",
