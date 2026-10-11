@@ -979,6 +979,50 @@ fun Application.configureRouting() {
             }
         }
 
+        post("/driver/profile/update") {
+            try {
+                val req = call.receive<Map<String, String>>()
+                val idStr = req["id"] ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("success" to false, "message" to "Missing ID"))
+                val name = req["name"] ?: ""
+                val email = req["email"] ?: ""
+                val phone = req["phone"] ?: ""
+                val companyName = req["company_name"] ?: ""
+                val regNumber = req["registration_number"] ?: ""
+                val region = req["region"] ?: "Greater Accra"
+
+                var success = false
+                if (idStr.startsWith("OWNER:")) {
+                    val numericId = idStr.removePrefix("OWNER:").toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    success = DatabaseRepository.updateFleetOwnerProfile(numericId, name, email, phone, companyName, regNumber, region)
+                } else if (idStr.startsWith("DRIVER:")) {
+                    val numericId = idStr.removePrefix("DRIVER:").toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    val vehicleType = req["vehicle_type"]
+                    val vehicleNumber = req["vehicle_number"]
+                    val vehicleModel = req["vehicle_model"]
+                    success = DatabaseRepository.updateDriverProfile(numericId, name, email, phone, region, vehicleType, vehicleNumber, vehicleModel, companyName)
+                } else {
+                    val numericId = idStr.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
+                    val role = req["user_role"]
+                    if (role?.uppercase() == "OWNER") {
+                        success = DatabaseRepository.updateFleetOwnerProfile(numericId, name, email, phone, companyName, regNumber, region)
+                    } else {
+                        val vehicleType = req["vehicle_type"]
+                        val vehicleNumber = req["vehicle_number"]
+                        val vehicleModel = req["vehicle_model"]
+                        success = DatabaseRepository.updateDriverProfile(numericId, name, email, phone, region, vehicleType, vehicleNumber, vehicleModel, companyName)
+                    }
+                }
+
+                if (success) {
+                    call.respond(mapOf("success" to true, "message" to "Profile updated successfully"))
+                } else {
+                    call.respond(HttpStatusCode.InternalServerError, mapOf("success" to false, "message" to "Failed to update profile"))
+                }
+            } catch (e: Throwable) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("success" to false, "message" to e.localizedMessage))
+            }
+        }
+
         post("/driver/login") {
             try {
                 val req = call.receive<LoginRequest>()

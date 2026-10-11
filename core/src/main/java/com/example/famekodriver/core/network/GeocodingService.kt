@@ -46,6 +46,11 @@ interface FamekoApiService {
         @Body request: LoginRequest
     ): AuthResponse
 
+    @POST("driver/profile/update")
+    suspend fun updateDriverProfile(
+        @Body data: Map<String, String>
+    ): Map<String, Any>
+
     @POST("driver/google-login")
     suspend fun loginDriverGoogle(
         @Body request: LoginRequest

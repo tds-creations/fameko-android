@@ -1224,6 +1224,38 @@ object DatabaseRepository {
         }
     }
 
+    fun updateFleetOwnerProfile(id: Int, name: String, email: String, phone: String, companyName: String, regNumber: String, region: String): Boolean {
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val sql = "UPDATE fleet_owners SET full_name = ?, email = ?, phone = ?, company_name = ?, registration_number = ?, region = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            val stmt = conn.prepareStatement(sql)
+            stmt.setString(1, name)
+            stmt.setString(2, email)
+            stmt.setString(3, phone)
+            stmt.setString(4, companyName)
+            stmt.setString(5, regNumber)
+            stmt.setString(6, region)
+            stmt.setInt(7, id)
+            return stmt.executeUpdate() > 0
+        }
+    }
+
+    fun updateDriverProfile(id: Int, name: String, email: String, phone: String, region: String, vehicleType: String? = null, vehicleNumber: String? = null, vehicleModel: String? = null, companyName: String? = null): Boolean {
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val sql = "UPDATE drivers SET full_name = ?, email = ?, phone = ?, region = ?, vehicle_type = COALESCE(NULLIF(?, ''), vehicle_type), vehicle_number = COALESCE(NULLIF(?, ''), vehicle_number), vehicle_model = COALESCE(NULLIF(?, ''), vehicle_model), company_name = COALESCE(NULLIF(?, ''), company_name), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            val stmt = conn.prepareStatement(sql)
+            stmt.setString(1, name)
+            stmt.setString(2, email)
+            stmt.setString(3, phone)
+            stmt.setString(4, region)
+            stmt.setString(5, vehicleType ?: "")
+            stmt.setString(6, vehicleNumber ?: "")
+            stmt.setString(7, vehicleModel ?: "")
+            stmt.setString(8, companyName ?: "")
+            stmt.setInt(9, id)
+            return stmt.executeUpdate() > 0
+        }
+    }
+
     fun deleteSavedPlace(id: String): Boolean {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = "DELETE FROM saved_places WHERE id = ?"

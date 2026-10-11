@@ -1121,6 +1121,19 @@ class DriverRepository private constructor() {
         }
     }
 
+    suspend fun updateProfile(data: Map<String, String>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.updateDriverProfile(data)
+            if (response["success"] == true) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response["message"]?.toString() ?: "Failed to update profile"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun submitRating(driverId: String, orderId: Int, rating: Float, comment: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.submitRating(driverId, orderId, rating, comment)

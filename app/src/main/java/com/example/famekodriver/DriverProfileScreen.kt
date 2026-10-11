@@ -63,9 +63,10 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     var vehiclePlate by remember { mutableStateOf("") }
     var missingDocs by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
-    var profilePicUrl by remember { mutableStateOf<String?>(null) }
+    var profilePicUrl by remember { mutableStateOf<String?>(sessionManager.getProfilePicture()) }
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
 
+    var isEditDialogVisible by remember { mutableStateOf(false) }
     var pendingDocType by remember { mutableStateOf<String?>(null) }
 
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -85,6 +86,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             sessionManager.updateStatus(resp.status)
                             if (docType == "profile_pic") {
                                 profilePicUrl = resp.profilePicture
+                                sessionManager.updateProfilePicture(resp.profilePicture)
                             }
                         }
                     }.onFailure { err ->
@@ -108,7 +110,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                 driverPhone = profile["phone"]?.toString() ?: driverPhone
                 driverRegion = profile["region"]?.toString() ?: driverRegion
                 status = profile["status"]?.toString() ?: "APPROVED"
-                profilePicUrl = profile["profile_picture"]?.toString()
+                profilePicUrl = profile["profile_picture"]?.toString() ?: profilePicUrl
 
                 val fetchedRole = profile["user_role"]?.toString()
                 if (!fetchedRole.isNullOrEmpty()) {
@@ -118,7 +120,9 @@ fun DriverProfileScreen(onBack: () -> Unit) {
 
                 companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
                 regNumber = profile["registration_number"]?.toString()?.ifEmpty { regNumber } ?: regNumber
-                (profile["fleet_count"] as? Number)?.toInt()?.let { if (it > 0) fleetCount = it }
+                (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
+                vehicleModel = profile["vehicle_model"]?.toString() ?: vehicleModel
+                vehiclePlate = profile["vehicle_number"]?.toString() ?: vehiclePlate
             }
             isLoading = false
         }.onFailure {
@@ -144,7 +148,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
             TopAppBar(
                 title = { 
                     Column {
-                        Text(if (isFleetOwner) "Fleet Partner Profile" else "My Profile", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                        Text(if (isFleetOwner) "Fleet Owner Profile" else "My Profile", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
                         Text(if (isFleetOwner) "Fleet & operator account details" else "Manage license, permit & account info", fontSize = 12.sp, color = Color.Gray)
                     }
                 },
@@ -158,10 +162,10 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { Toast.makeText(context, "Edit profile mode active", Toast.LENGTH_SHORT).show() }) {
-                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                    IconButton(onClick = { isEditDialogVisible = true }) {
+                        Surface(shape = CircleShape, color = Color(0xFFEFF6FF), modifier = Modifier.size(40.dp)) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFF0F172A), modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Profile", tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
                             }
                         }
                     }
@@ -228,69 +232,86 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                 }
                             }
 
-                            Spacer(Modifier.height(14.dp))
-
-                            Text(
-                                text = if (isFleetOwner) companyName else driverName,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 22.sp,
-                                color = Color.White
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = if (isFleetOwner) "Fleet Partner ID: #FMK-FLEET-${Math.abs(driverId.hashCode() % 90000) + 10000}" else "Partner ID: #FMK-${Math.abs(driverId.hashCode() % 90000) + 10000}",
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-
                             Spacer(Modifier.height(12.dp))
 
-                            // Approved / Role Badge Pill
-                            Surface(
-                                color = Color(0xFF065F46),
-                                shape = RoundedCornerShape(16.dp)
+                            Text(
+                                text = driverName,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 20.sp,
+                                color = Color.White
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                Surface(
+                                    color = Color(0xFF065F46),
+                                    shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF34D399), CircleShape))
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(modifier = Modifier.size(6.dp).background(Color(0xFF34D399), CircleShape))
+                                        Text(status, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
+                                    }
+                                }
+
+                                Surface(
+                                    color = Color(0xFF2563EB),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
                                     Text(
-                                        text = if (isFleetOwner) "FLEET OWNER • $status" else status.ifEmpty { "APPROVED" },
-                                        color = Color(0xFF34D399),
+                                        text = if (isFleetOwner) "Fleet Enterprise Partner" else "Verified Pro",
                                         fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                     )
                                 }
                             }
 
-                            Spacer(Modifier.height(24.dp))
+                            Spacer(Modifier.height(16.dp))
 
-                            // 3 Stats Columns
-                            Row(
+                            Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.White.copy(alpha = 0.08f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
                             ) {
-                                if (isFleetOwner) {
-                                    ProfileStatCol("FLEET SIZE", "$fleetCount Vehicles", Modifier.weight(1f))
-                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
-                                    ProfileStatCol("OPERATING ZONE", "Accra Urban", Modifier.weight(1f))
-                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
-                                    ProfileStatCol("STATUS", "Verified", Modifier.weight(1f))
-                                } else {
-                                    ProfileStatCol("RATING", "${String.format(Locale.US, "%.2f", if (driverStats.rating > 0) driverStats.rating else 4.95)} ★", Modifier.weight(1f))
-                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
-                                    ProfileStatCol("TRIPS", "${driverStats.totalDeliveries.takeIf { it > 0 } ?: 1240}+", Modifier.weight(1f))
-                                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
-                                    ProfileStatCol("ACCEPTANCE", "${if (driverStats.completionRate > 0) driverStats.completionRate else 98}%", Modifier.weight(1f))
+                                Row(
+                                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(if (isFleetOwner) "FLEET SIZE" else "RATING", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(if (isFleetOwner) "$fleetCount Cars" else String.format(Locale.US, "%.2f ★", if (driverStats.rating > 0) driverStats.rating else 4.95), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                    }
+                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.White.copy(alpha = 0.2f)))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("REGION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(driverRegion.take(12), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                    }
+                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color.White.copy(alpha = 0.2f)))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("STATUS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(status.take(8), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF34D399))
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // Section 1: DETAILS CARD
+                // Section 1: PERSONAL & COMPANY INFORMATION
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
@@ -298,8 +319,8 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(if (isFleetOwner) "FLEET & BUSINESS DETAILS" else "PERSONAL DETAILS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
-                            Text("Tier 1 Verified", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
+                            Text(if (isFleetOwner) "ENTERPRISE DETAILS" else "PERSONAL INFORMATION", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                            Text("Edit", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB), modifier = Modifier.clickable { isEditDialogVisible = true })
                         }
 
                         Card(
@@ -314,38 +335,40 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                         icon = Icons.Default.Business,
                                         label = "Company / Fleet Name",
                                         value = companyName,
-                                        badgeText = "Fleet Partner",
-                                        onClick = {}
+                                        badgeText = "Verified Fleet",
+                                        badgeColor = Color(0xFFECFDF5),
+                                        badgeTextColor = Color(0xFF059669),
+                                        onClick = { isEditDialogVisible = true }
                                     )
                                     HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                     ProfileDetailRow(
                                         icon = Icons.Default.Description,
-                                        label = "Business Reg Number",
+                                        label = "RGD Reg Number",
                                         value = regNumber,
-                                        badgeText = "Verified",
-                                        badgeColor = Color(0xFFECFDF5),
-                                        badgeTextColor = Color(0xFF059669),
-                                        onClick = {}
+                                        badgeText = "RGD Valid",
+                                        badgeColor = Color(0xFFEFF6FF),
+                                        badgeTextColor = Color(0xFF2563EB),
+                                        onClick = { isEditDialogVisible = true }
                                     )
                                     HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 }
 
                                 ProfileDetailRow(
                                     icon = Icons.Default.Person,
-                                    label = if (isFleetOwner) "Fleet Representative" else "Full Name",
+                                    label = if (isFleetOwner) "Principal Owner" else "Full Name",
                                     value = driverName,
-                                    badgeText = if (isFleetOwner) "Owner" else "Primary",
-                                    onClick = {}
+                                    badgeText = if (isFleetOwner) "Principal" else "Primary",
+                                    onClick = { isEditDialogVisible = true }
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 ProfileDetailRow(
                                     icon = Icons.Default.Email,
                                     label = "Email Address",
                                     value = driverEmail,
-                                    badgeText = "✓ Active",
+                                    badgeText = "Active",
                                     badgeColor = Color(0xFFECFDF5),
                                     badgeTextColor = Color(0xFF059669),
-                                    onClick = {}
+                                    onClick = { isEditDialogVisible = true }
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 ProfileDetailRow(
@@ -356,46 +379,17 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                     badgeColor = Color(0xFFFEF3C7),
                                     badgeTextColor = Color(0xFFD97706),
                                     showChevron = true,
-                                    onClick = { Toast.makeText(context, "Phone number settings", Toast.LENGTH_SHORT).show() }
+                                    onClick = { isEditDialogVisible = true }
                                 )
-                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                ProfileDetailRow(
-                                    icon = Icons.Default.LocationOn,
-                                    label = "Operating Region",
-                                    value = driverRegion,
-                                    badgeText = "Urban Zone",
-                                    onClick = {}
-                                )
-
-                                if (!isFleetOwner) {
-                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                    ProfileDetailRow(
-                                        icon = Icons.Default.DirectionsCar,
-                                        label = "Registered Vehicle",
-                                        value = vehicleModel,
-                                        badgeText = vehiclePlate,
-                                        badgeColor = Color(0xFFEFF6FF),
-                                        badgeTextColor = Color(0xFF2563EB),
-                                        showChevron = true,
-                                        onClick = { Toast.makeText(context, "Vehicle management", Toast.LENGTH_SHORT).show() }
-                                    )
-                                }
                             }
                         }
                     }
                 }
 
-                // Section 2: VERIFICATION & COMPLIANCE
+                // Section 2: PROFILE PHOTO UPLOAD
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("VERIFICATION & COMPLIANCE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
-                            Text("All Verified", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
-                        }
+                        Text("PROFILE PHOTO & IDENTIFICATION", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp))
 
                         Card(
                             shape = RoundedCornerShape(24.dp),
@@ -404,186 +398,194 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
                             Column {
-                                if (isFleetOwner) {
-                                    ComplianceRowItem(
-                                        title = "Business Certificate",
-                                        subtitle = "Registrar General • Approved",
-                                        badge = "VERIFIED",
-                                        icon = Icons.Default.Business,
-                                        onClick = { pendingDocType = "business_cert"; pickImageLauncher.launch("image/*") }
-                                    )
-                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                }
-
-                                ComplianceRowItem(
-                                    title = "Ghana Card (National ID)",
-                                    subtitle = "GHA-724194012-4 • Authenticated",
-                                    badge = "VERIFIED",
-                                    icon = Icons.Default.CreditCard,
-                                    onClick = { pendingDocType = "ghana_card"; pickImageLauncher.launch("image/*") }
+                                DocumentUploadRow(
+                                    title = "Profile Photo",
+                                    subtitle = "Official avatar displayed to partners & clients",
+                                    isUploaded = !profilePicUrl.isNullOrEmpty(),
+                                    onClick = {
+                                        pendingDocType = "profile_pic"
+                                        pickImageLauncher.launch("image/*")
+                                    }
                                 )
-
-                                if (!isFleetOwner) {
-                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                    ComplianceRowItem(
-                                        title = "Driver's License (Class B)",
-                                        subtitle = "DVLA Ghana • Expires Dec 2026",
-                                        badge = "VERIFIED",
-                                        icon = Icons.Default.Badge,
-                                        onClick = { pendingDocType = "drivers_license"; pickImageLauncher.launch("image/*") }
-                                    )
-                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                    ComplianceRowItem(
-                                        title = "Roadworthy Certificate",
-                                        subtitle = "Active • Valid till Oct 2026",
-                                        badge = "ACTIVE",
-                                        icon = Icons.Default.VerifiedUser,
-                                        onClick = { pendingDocType = "roadworthy_cert"; pickImageLauncher.launch("image/*") }
-                                    )
-                                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
-                                    ComplianceRowItem(
-                                        title = "Comprehensive Insurance",
-                                        subtitle = "Enterprise Insurance Ltd",
-                                        badge = "INSURED",
-                                        icon = Icons.Default.Security,
-                                        onClick = { pendingDocType = "insurance_cert"; pickImageLauncher.launch("image/*") }
-                                    )
-                                }
+                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                DocumentUploadRow(
+                                    title = "Ghana Card Verification",
+                                    subtitle = "National Identification Authority (NIA) Card",
+                                    isUploaded = !missingDocs.contains("ghana_card"),
+                                    onClick = {
+                                        pendingDocType = "ghana_card"
+                                        pickImageLauncher.launch("image/*")
+                                    }
+                                )
                             }
-                        }
-                    }
-                }
-
-                // Section 3: SAFETY & EMERGENCY CONTACTS
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("SAFETY & EMERGENCY CONTACTS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
-                            Text("Manage", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
-                        }
-
-                        Card(
-                            shape = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            elevation = CardDefaults.cardElevation(2.dp),
-                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = Color(0xFFFEF2F2),
-                                        modifier = Modifier.size(40.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text("MO", color = Color(0xFFDC2626), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                        }
-                                    }
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text("Mary Odartei", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
-                                        Text("Spouse • +233 24 123 4567", fontSize = 12.sp, color = Color.Gray)
-                                    }
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = Color(0xFFF1F5F9),
-                                        modifier = Modifier.size(38.dp).clickable { Toast.makeText(context, "Calling emergency contact...", Toast.LENGTH_SHORT).show() }
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.Phone, null, tint = Color(0xFF0F172A), modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                }
-
-                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
-                                        Text("Fameko 24/7 Rapid SOS Support", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                                    }
-                                    Surface(
-                                        color = Color(0xFFFEF2F2),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text("Connected", color = Color(0xFFDC2626), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Action Buttons
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
-                            onClick = { Toast.makeText(context, "Edit Profile mode active", Toast.LENGTH_SHORT).show() },
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A192F))
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                Icon(Icons.Default.Edit, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Edit Profile Details", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
-                            }
-                        }
-
-                        OutlinedButton(
-                            onClick = { Toast.makeText(context, "Downloading Partner Credential Pack (.PDF)...", Toast.LENGTH_SHORT).show() },
-                            modifier = Modifier.fillMaxWidth().height(54.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0F172A))
-                        ) {
-                            Text("Download Partner Credential Pack (.PDF)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                 }
             }
 
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(enabled = false) {},
-                    contentAlignment = Alignment.Center
+                Surface(
+                    color = Color.Black.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            CircularProgressIndicator(color = Color(0xFF0F172A))
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Processing...", fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                        }
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color.White)
                     }
                 }
             }
         }
     }
-}
 
-@Composable
-fun ProfileStatCol(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.White)
-        Spacer(Modifier.height(2.dp))
-        Text(label, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+    // Edit Profile Dialog
+    if (isEditDialogVisible) {
+        var editName by remember { mutableStateOf(driverName) }
+        var editEmail by remember { mutableStateOf(driverEmail) }
+        var editPhone by remember { mutableStateOf(driverPhone) }
+        var editCompany by remember { mutableStateOf(companyName) }
+        var editRegNum by remember { mutableStateOf(regNumber) }
+        var editRegion by remember { mutableStateOf(driverRegion) }
+        var editPlate by remember { mutableStateOf(vehiclePlate) }
+        var editModel by remember { mutableStateOf(vehicleModel) }
+        var isSubmitting by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { if (!isSubmitting) isEditDialogVisible = false },
+            title = {
+                Text(
+                    text = if (isFleetOwner) "Edit Fleet Owner Profile" else "Edit Driver Profile",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Full Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    if (isFleetOwner) {
+                        OutlinedTextField(
+                            value = editCompany,
+                            onValueChange = { editCompany = it },
+                            label = { Text("Company / Fleet Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = editRegNum,
+                            onValueChange = { editRegNum = it },
+                            label = { Text("RGD Registration Number") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = editEmail,
+                        onValueChange = { editEmail = it },
+                        label = { Text("Email Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = editPhone,
+                        onValueChange = { editPhone = it },
+                        label = { Text("Phone Number") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = editRegion,
+                        onValueChange = { editRegion = it },
+                        label = { Text("Operating Region") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    if (!isFleetOwner) {
+                        OutlinedTextField(
+                            value = editPlate,
+                            onValueChange = { editPlate = it },
+                            label = { Text("Vehicle Plate Number") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = editModel,
+                            onValueChange = { editModel = it },
+                            label = { Text("Vehicle Model") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isSubmitting = true
+                        val data = mutableMapOf(
+                            "id" to driverId,
+                            "name" to editName,
+                            "email" to editEmail,
+                            "phone" to editPhone,
+                            "region" to editRegion,
+                            "company_name" to editCompany,
+                            "registration_number" to editRegNum,
+                            "vehicle_number" to editPlate,
+                            "vehicle_model" to editModel,
+                            "user_role" to userRole
+                        )
+                        scope.launch {
+                            repository.updateProfile(data).onSuccess {
+                                isSubmitting = false
+                                isEditDialogVisible = false
+                                Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+
+                                sessionManager.saveSession(
+                                    driverId = driverId,
+                                    driverName = editName,
+                                    status = status,
+                                    phone = editPhone,
+                                    role = userRole,
+                                    company = editCompany,
+                                    vehicleType = if (isFleetOwner) "Fleet" else "Car",
+                                    profilePicture = profilePicUrl
+                                )
+                                driverName = editName
+                                driverEmail = editEmail
+                                driverPhone = editPhone
+                                companyName = editCompany
+                                regNumber = editRegNum
+                                driverRegion = editRegion
+                                vehiclePlate = editPlate
+                                vehicleModel = editModel
+                            }.onFailure { err ->
+                                isSubmitting = false
+                                Toast.makeText(context, "Update failed: ${err.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A192F))
+                ) {
+                    Text("Save Changes", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { if (!isSubmitting) isEditDialogVisible = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -593,8 +595,8 @@ fun ProfileDetailRow(
     label: String,
     value: String,
     badgeText: String? = null,
-    badgeColor: Color = Color(0xFFECFDF5),
-    badgeTextColor: Color = Color(0xFF059669),
+    badgeColor: Color = Color(0xFFF1F5F9),
+    badgeTextColor: Color = Color(0xFF475569),
     showChevron: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -615,40 +617,28 @@ fun ProfileDetailRow(
             }
         }
         Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(label, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(value, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            Text(value.ifEmpty { "Not set" }, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         badgeText?.let {
-            Surface(
-                color = badgeColor,
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                Text(
-                    text = it,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = badgeTextColor,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                )
+            Surface(color = badgeColor, shape = RoundedCornerShape(6.dp)) {
+                Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = badgeTextColor, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
             }
+            Spacer(Modifier.width(6.dp))
         }
         if (showChevron) {
-            Spacer(Modifier.width(6.dp))
-            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(12.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
         }
     }
 }
 
 @Composable
-fun ComplianceRowItem(
+fun DocumentUploadRow(
     title: String,
     subtitle: String,
-    badge: String,
-    icon: ImageVector,
+    isUploaded: Boolean,
     onClick: () -> Unit
 ) {
     Row(
@@ -660,47 +650,49 @@ fun ComplianceRowItem(
     ) {
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF10B981).copy(alpha = 0.1f),
+            color = if (isUploaded) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
             modifier = Modifier.size(40.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = if (isUploaded) Icons.Default.CheckCircle else Icons.Default.UploadFile,
+                    contentDescription = null,
+                    tint = if (isUploaded) Color(0xFF059669) else Color(0xFFDC2626),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
         Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
             Spacer(Modifier.height(2.dp))
             Text(subtitle, fontSize = 11.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(8.dp))
         Surface(
-            color = Color(0xFFECFDF5),
-            shape = RoundedCornerShape(6.dp)
+            color = if (isUploaded) Color(0xFFECFDF5) else Color(0xFFEFF6FF),
+            shape = RoundedCornerShape(8.dp)
         ) {
             Text(
-                text = badge,
-                fontSize = 10.sp,
+                text = if (isUploaded) "Verified" else "Upload",
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF059669),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                color = if (isUploaded) Color(0xFF059669) else Color(0xFF2563EB),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
-        Spacer(Modifier.width(6.dp))
-        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(12.dp))
     }
 }
 
 private fun uriToFile(context: android.content.Context, uri: Uri): File? {
     return try {
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-        val file = File(context.cacheDir, "upload_${System.currentTimeMillis()}.jpg")
-        val outputStream = FileOutputStream(file)
-        inputStream.use { input ->
-            outputStream.use { output ->
-                input.copyTo(output)
-            }
-        }
-        file
+        val tempFile = File.createTempFile("upload_", ".jpg", context.cacheDir)
+        val outputStream = FileOutputStream(tempFile)
+        inputStream.copyTo(outputStream)
+        inputStream.close()
+        outputStream.close()
+        tempFile
     } catch (e: Exception) {
         null
     }
