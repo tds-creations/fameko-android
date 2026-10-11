@@ -61,7 +61,7 @@ fun AddRentalVehicleScreen(
     var selectedBrand by remember { mutableStateOf("Toyota") }
     var brandExpanded by remember { mutableStateOf(false) }
 
-    var modelName by remember { mutableStateOf(vehicle?.get("model")?.toString() ?: "Vitz / Yaris") }
+    var modelName by remember { mutableStateOf(vehicle?.get("model")?.toString() ?: "") }
 
     var selectedModelYear by remember { mutableStateOf(Calendar.getInstance().get(Calendar.YEAR).toString()) }
     var yearExpanded by remember { mutableStateOf(false) }
@@ -77,14 +77,13 @@ fun AddRentalVehicleScreen(
     var selectedSeats by remember { mutableStateOf(vehicle?.get("seats")?.toString() ?: "5 Seats") }
     var seatsExpanded by remember { mutableStateOf(false) }
 
-    var numberPlate by remember { mutableStateOf(vehicle?.get("vehicle_number")?.toString() ?: "GT - 8892 - 24") }
-    var dailyRate by remember { mutableStateOf(vehicle?.get("daily_rate")?.toString() ?: "280") }
-    var descriptionText by remember { mutableStateOf(vehicle?.get("description")?.toString() ?: "Well-maintained, clean AC, serviced regularly with genuine Toyota parts. Fuel efficient and ready for active Accra metro rides or executive rental.") }
+    var numberPlate by remember { mutableStateOf(vehicle?.get("vehicle_number")?.toString() ?: "") }
+    var dailyRate by remember { mutableStateOf(vehicle?.get("daily_rate")?.toString() ?: "") }
+    var descriptionText by remember { mutableStateOf(vehicle?.get("description")?.toString() ?: "") }
 
-    val defaultFeatures = setOf("Air Conditioning", "GPS Navigation", "Bluetooth Audio", "Backup Camera", "USB Phone Charger", "Eco Mode (Fuel Saver)")
     var selectedFeatures by remember {
         mutableStateOf(
-            vehicle?.get("features")?.toString()?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: defaultFeatures
+            vehicle?.get("features")?.toString()?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
         )
     }
 

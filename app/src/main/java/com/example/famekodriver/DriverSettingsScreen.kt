@@ -65,7 +65,7 @@ fun DriverSettingsScreen(
         }
     }
 
-    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz" }
+    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Registered Vehicle" }
     val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "DR" }
 
     Scaffold(

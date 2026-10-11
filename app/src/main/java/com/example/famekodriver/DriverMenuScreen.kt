@@ -64,7 +64,7 @@ fun DriverMenuScreen(
     }
 
     val driverStatus = sessionManager.getDriverStatus().ifEmpty { "APPROVED" }
-    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Toyota Vitz • GT-4421-23" }
+    val vehicleInfo = (sessionManager.getVehicleType() ?: "").ifEmpty { "Registered Vehicle" }
     val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "DR" }
 
     Scaffold(
