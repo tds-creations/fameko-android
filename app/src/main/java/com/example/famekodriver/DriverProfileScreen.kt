@@ -123,6 +123,16 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                     (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
                     vehicleModel = profile["vehicle_model"]?.toString() ?: vehicleModel
                     vehiclePlate = profile["vehicle_number"]?.toString() ?: vehiclePlate
+
+                    docUrls = mapOf(
+                        "profile_pic" to (profile["profile_picture"]?.toString() ?: ""),
+                        "ghana_card" to (profile["id_front_image"]?.toString() ?: ""),
+                        "ghana_card_back" to (profile["id_back_image"]?.toString() ?: ""),
+                        "drivers_license" to (profile["license_image"]?.toString() ?: ""),
+                        "roadworthy_cert" to (profile["roadworthy_cert"]?.toString() ?: ""),
+                        "insurance_cert" to (profile["insurance_cert"]?.toString() ?: ""),
+                        "vehicle_image" to (profile["vehicle_image"]?.toString() ?: "")
+                    )
                 }
             }
 
