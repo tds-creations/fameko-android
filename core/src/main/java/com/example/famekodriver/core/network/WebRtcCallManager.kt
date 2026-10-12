@@ -343,6 +343,16 @@ class WebRtcCallManager(
         }
     }
 
+    var isSpeakerphoneOn = true
+        private set
+
+    fun toggleSpeakerphone(): Boolean {
+        isSpeakerphoneOn = !isSpeakerphoneOn
+        audioManager.isSpeakerphoneOn = isSpeakerphoneOn
+        Log.d("WebRtcCallManager", "Speakerphone toggled -> $isSpeakerphoneOn")
+        return isSpeakerphoneOn
+    }
+
     fun toggleMute(): Boolean {
         isMuted = !isMuted
         localAudioTrack?.setEnabled(!isMuted)

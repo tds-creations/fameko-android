@@ -27,6 +27,7 @@ fun WebRtcCallOverlay(
     if (callState is CallState.Idle) return
 
     var isMuted by remember { mutableStateOf(false) }
+    var isSpeakerOn by remember { mutableStateOf(callManager.isSpeakerphoneOn) }
 
     AnimatedVisibility(
         visible = callState !is CallState.Idle,
@@ -42,7 +43,7 @@ fun WebRtcCallOverlay(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0A192F)),
-                elevation = CardDefaults.cardElevation(8.dp),
+                elevation = CardDefaults.cardElevation(12.dp),
                 border = BorderStroke(1.5.dp, Color(0xFF2563EB))
             ) {
                 Column(
@@ -96,37 +97,10 @@ fun WebRtcCallOverlay(
                             }
                         }
 
-                        is CallState.Outgoing -> {
-                            Surface(color = Color(0xFF1E293B), shape = RoundedCornerShape(12.dp)) {
-                                Text("OUTGOING CALL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                            }
+                        is CallState.Outgoing, is CallState.Connected -> {
+                            val titleText = if (callState is CallState.Connected) "HD VOICE CONNECTED" else "OUTGOING CALL"
+                            val targetName = if (callState is CallState.Connected) callState.targetName else (callState as CallState.Outgoing).targetName
 
-                            Text(callState.targetName, fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color.White)
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                IconButton(
-                                    onClick = { isMuted = callManager.toggleMute() }
-                                ) {
-                                    Surface(shape = CircleShape, color = if (isMuted) Color(0xFFDC2626) else Color(0xFF1E293B), modifier = Modifier.size(44.dp)) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(if (isMuted) Icons.Default.MicOff else Icons.Default.Mic, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                                        }
-                                    }
-                                }
-
-                                IconButton(
-                                    onClick = { callManager.endCall() }
-                                ) {
-                                    Surface(shape = CircleShape, color = Color(0xFFDC2626), modifier = Modifier.size(44.dp)) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.CallEnd, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        is CallState.Connected -> {
                             Surface(color = Color(0xFF065F46), shape = RoundedCornerShape(12.dp)) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -134,29 +108,52 @@ fun WebRtcCallOverlay(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Box(modifier = Modifier.size(6.dp).background(Color(0xFF34D399), CircleShape))
-                                    Text("HD VOICE CONNECTED", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
+                                    Text(titleText, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
                                 }
                             }
 
-                            Text(callState.targetName, fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color.White)
+                            Text(targetName, fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color.White)
 
-                            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                                IconButton(
-                                    onClick = { isMuted = callManager.toggleMute() }
-                                ) {
-                                    Surface(shape = CircleShape, color = if (isMuted) Color(0xFFDC2626) else Color(0xFF1E293B), modifier = Modifier.size(48.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Mute Button
+                                IconButton(onClick = { isMuted = callManager.toggleMute() }) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isMuted) Color(0xFFDC2626) else Color(0xFF1E293B),
+                                        modifier = Modifier.size(52.dp)
+                                    ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Icon(if (isMuted) Icons.Default.MicOff else Icons.Default.Mic, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                                            Icon(if (isMuted) Icons.Default.MicOff else Icons.Default.Mic, contentDescription = "Mute", tint = Color.White, modifier = Modifier.size(24.dp))
                                         }
                                     }
                                 }
 
-                                IconButton(
-                                    onClick = { callManager.endCall() }
-                                ) {
-                                    Surface(shape = CircleShape, color = Color(0xFFDC2626), modifier = Modifier.size(48.dp)) {
+                                // Speakerphone Button
+                                IconButton(onClick = { isSpeakerOn = callManager.toggleSpeakerphone() }) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isSpeakerOn) Color(0xFF2563EB) else Color(0xFF1E293B),
+                                        modifier = Modifier.size(52.dp)
+                                    ) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.CallEnd, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                                            Icon(if (isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeOff, contentDescription = "Speaker", tint = Color.White, modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                }
+
+                                // End Call Button
+                                IconButton(onClick = { callManager.endCall() }) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFFDC2626),
+                                        modifier = Modifier.size(52.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.CallEnd, contentDescription = "End Call", tint = Color.White, modifier = Modifier.size(24.dp))
                                         }
                                     }
                                 }
