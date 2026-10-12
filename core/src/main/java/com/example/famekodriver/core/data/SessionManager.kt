@@ -29,118 +29,152 @@ class SessionManager(val context: Context) {
         private const val KEY_NOTIF_ACCOUNT = "notif_account"
     }
 
-    fun setNotificationPreference(key: String, enabled: Boolean) {
+    fun setNotificationEnabled(key: String, enabled: Boolean) {
         prefs.edit().putBoolean(key, enabled).apply()
     }
 
-    fun getNotificationPreference(key: String, default: Boolean = true): Boolean {
-        return prefs.getBoolean(key, default)
+    fun isNotificationEnabled(key: String): Boolean {
+        return prefs.getBoolean(key, true)
     }
 
-    fun getTripUpdatesEnabled(): Boolean = getNotificationPreference(KEY_NOTIF_TRIP_UPDATES)
-    fun setTripUpdatesEnabled(enabled: Boolean) = setNotificationPreference(KEY_NOTIF_TRIP_UPDATES, enabled)
+    fun getTripUpdatesEnabled(): Boolean = isNotificationEnabled(KEY_NOTIF_TRIP_UPDATES)
+    fun setTripUpdatesEnabled(enabled: Boolean) = setNotificationEnabled(KEY_NOTIF_TRIP_UPDATES, enabled)
 
-    fun getMessagesEnabled(): Boolean = getNotificationPreference(KEY_NOTIF_MESSAGES)
-    fun setMessagesEnabled(enabled: Boolean) = setNotificationPreference(KEY_NOTIF_MESSAGES, enabled)
+    fun getMessagesEnabled(): Boolean = isNotificationEnabled(KEY_NOTIF_MESSAGES)
+    fun setMessagesEnabled(enabled: Boolean) = setNotificationEnabled(KEY_NOTIF_MESSAGES, enabled)
 
-    fun getPromotionsEnabled(): Boolean = getNotificationPreference(KEY_NOTIF_PROMOTIONS)
-    fun setPromotionsEnabled(enabled: Boolean) = setNotificationPreference(KEY_NOTIF_PROMOTIONS, enabled)
+    fun getPromotionsEnabled(): Boolean = isNotificationEnabled(KEY_NOTIF_PROMOTIONS)
+    fun setPromotionsEnabled(enabled: Boolean) = setNotificationEnabled(KEY_NOTIF_PROMOTIONS, enabled)
 
-    fun getAccountAlertsEnabled(): Boolean = getNotificationPreference(KEY_NOTIF_ACCOUNT)
-    fun setAccountAlertsEnabled(enabled: Boolean) = setNotificationPreference(KEY_NOTIF_ACCOUNT, enabled)
+    fun getAccountAlertsEnabled(): Boolean = isNotificationEnabled(KEY_NOTIF_ACCOUNT)
+    fun setAccountAlertsEnabled(enabled: Boolean) = setNotificationEnabled(KEY_NOTIF_ACCOUNT, enabled)
 
     fun saveSession(
-        driverId: String, 
-        driverName: String, 
-        status: String = "PENDING", 
-        phone: String = "", 
-        role: String = "DRIVER", 
-        company: String? = null, 
+        driverId: String,
+        driverName: String,
+        status: String = "APPROVED",
+        phone: String = "",
+        role: String = "DRIVER",
+        company: String? = null,
         vehicleType: String? = null,
         profilePicture: String? = null
     ) {
-        prefs.edit().apply {
-            putBoolean(KEY_IS_LOGGED_IN, true)
-            putString(KEY_DRIVER_ID, driverId)
-            putString(KEY_DRIVER_NAME, driverName)
-            putString(KEY_DRIVER_PHONE, phone)
-            putString(KEY_DRIVER_STATUS, status)
-            putString(KEY_USER_ROLE, role)
-            putString(KEY_COMPANY_NAME, company)
-            putString(KEY_VEHICLE_TYPE, vehicleType)
-            putString(KEY_PROFILE_PICTURE, profilePicture)
-            apply()
-        }
+        val editor = prefs.edit()
+        editor.putBoolean(KEY_IS_LOGGED_IN, true)
+        editor.putString(KEY_DRIVER_ID, driverId)
+        editor.putString(KEY_DRIVER_NAME, driverName)
+        editor.putString(KEY_DRIVER_PHONE, phone)
+        editor.putString(KEY_DRIVER_STATUS, status)
+        editor.putString(KEY_USER_ROLE, role)
+        if (!company.isNullOrEmpty()) editor.putString(KEY_COMPANY_NAME, company)
+        if (!vehicleType.isNullOrEmpty()) editor.putString(KEY_VEHICLE_TYPE, vehicleType)
+        if (!profilePicture.isNullOrEmpty()) editor.putString(KEY_PROFILE_PICTURE, profilePicture)
+        editor.apply()
     }
 
-    fun getProfilePicture(): String? = prefs.getString(KEY_PROFILE_PICTURE, null)
+    fun saveDriverSession(
+        driverId: String,
+        driverName: String,
+        status: String = "APPROVED",
+        phone: String = "",
+        role: String = "DRIVER"
+    ) = saveSession(driverId, driverName, status, phone, role)
 
-    fun updateProfilePicture(url: String?) {
-        prefs.edit().putString(KEY_PROFILE_PICTURE, url).apply()
-    }
-
-    fun saveDriverSession(driverId: String, driverName: String, role: String) {
-        saveSession(driverId = driverId, driverName = driverName, role = role)
-    }
-
-    fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
-
-    fun getDriverId(): String? = prefs.getString(KEY_DRIVER_ID, null)
-    fun getCustomerId(): String? = prefs.getString(KEY_DRIVER_ID, null)
-
-    fun getDriverName(): String? = prefs.getString(KEY_DRIVER_NAME, "Driver")
-    fun getDriverPhone(): String? = prefs.getString(KEY_DRIVER_PHONE, null)
-    fun getDriverStatus(): String = prefs.getString(KEY_DRIVER_STATUS, "PENDING_DOCS") ?: "PENDING_DOCS"
-
-    fun getUserRole(): String = prefs.getString(KEY_USER_ROLE, "DRIVER") ?: "DRIVER"
-    fun getDriverRole(): String = getUserRole()
-    fun getCompanyName(): String? = prefs.getString(KEY_COMPANY_NAME, null)
-    fun getVehicleType(): String? = prefs.getString(KEY_VEHICLE_TYPE, null)
+    fun getCustomerId(): String? = getDriverId()
+    fun getCustomerIdInt(): Int? = getDriverId()?.removePrefix("DRIVER:")?.removePrefix("OWNER:")?.toIntOrNull()
+    fun getCustomerIdStr(): String? = getDriverId()
 
     fun setUserRole(role: String) {
         prefs.edit().putString(KEY_USER_ROLE, role).apply()
     }
 
-    fun isOnline(): Boolean = prefs.getBoolean(KEY_IS_ONLINE, false)
+    fun getUserRole(): String {
+        return prefs.getString(KEY_USER_ROLE, "DRIVER") ?: "DRIVER"
+    }
 
-    fun setOnline(online: Boolean) {
-        prefs.edit().putBoolean(KEY_IS_ONLINE, online).apply()
+    fun getDriverRole(): String = getUserRole()
+
+    fun getCompanyName(): String? {
+        return prefs.getString(KEY_COMPANY_NAME, null)
+    }
+
+    fun getVehicleType(): String? {
+        return prefs.getString(KEY_VEHICLE_TYPE, null)
+    }
+
+    fun getProfilePicture(): String? {
+        return prefs.getString(KEY_PROFILE_PICTURE, null)
+    }
+
+    fun updateProfilePicture(url: String) {
+        prefs.edit().putString(KEY_PROFILE_PICTURE, url).apply()
+    }
+
+    fun isLoggedIn(): Boolean {
+        return prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+    }
+
+    fun getDriverId(): String? {
+        return prefs.getString(KEY_DRIVER_ID, null)
+    }
+
+    fun getDriverName(): String? {
+        return prefs.getString(KEY_DRIVER_NAME, null)
+    }
+
+    fun getDriverPhone(): String? {
+        return prefs.getString(KEY_DRIVER_PHONE, null)
+    }
+
+    fun getDriverStatus(): String {
+        return prefs.getString(KEY_DRIVER_STATUS, "APPROVED") ?: "APPROVED"
     }
 
     fun updateStatus(status: String) {
         prefs.edit().putString(KEY_DRIVER_STATUS, status).apply()
     }
 
-    fun updateVehicleType(type: String?) {
-        prefs.edit().putString(KEY_VEHICLE_TYPE, type).apply()
+    fun isOnline(): Boolean {
+        return prefs.getBoolean(KEY_IS_ONLINE, false)
     }
 
-    fun setActiveOrderId(orderId: Int?) {
-        if (orderId == null) {
-            prefs.edit().remove(KEY_ACTIVE_ORDER_ID).apply()
-        } else {
-            prefs.edit().putInt(KEY_ACTIVE_ORDER_ID, orderId).apply()
-        }
+    fun setOnline(online: Boolean) {
+        prefs.edit().putBoolean(KEY_IS_ONLINE, online).apply()
     }
 
-    fun getActiveOrderId(): Int? {
-        val id = prefs.getInt(KEY_ACTIVE_ORDER_ID, -1)
-        return if (id == -1) null else id
+    fun setActiveOrderId(orderId: Int) {
+        prefs.edit().putInt(KEY_ACTIVE_ORDER_ID, orderId).apply()
+    }
+
+    fun getActiveOrderId(): Int {
+        return prefs.getInt(KEY_ACTIVE_ORDER_ID, -1)
+    }
+
+    fun clearActiveOrderId() {
+        prefs.edit().remove(KEY_ACTIVE_ORDER_ID).apply()
+    }
+
+    fun getAcceptedTermsVersion(): String {
+        return prefs.getString(KEY_ACCEPTED_TERMS_VERSION, "") ?: ""
+    }
+
+    fun setAcceptedTermsVersion(version: String) {
+        prefs.edit().putString(KEY_ACCEPTED_TERMS_VERSION, version).apply()
     }
 
     fun logout() {
         prefs.edit().clear().apply()
     }
 
-    fun isFirstLogin(): Boolean = prefs.getBoolean(KEY_IS_FIRST_LOGIN, true)
-
-    fun setFirstLogin(isFirst: Boolean) {
-        prefs.edit().putBoolean(KEY_IS_FIRST_LOGIN, isFirst).apply()
+    fun isFirstLogin(): Boolean {
+        return prefs.getBoolean(KEY_IS_FIRST_LOGIN, true)
     }
 
-    fun getAcceptedTermsVersion(): String? = prefs.getString(KEY_ACCEPTED_TERMS_VERSION, null)
+    fun setFirstLoginDone() {
+        prefs.edit().putBoolean(KEY_IS_FIRST_LOGIN, false).apply()
+    }
 
-    fun setAcceptedTermsVersion(version: String) {
-        prefs.edit().putString(KEY_ACCEPTED_TERMS_VERSION, version).apply()
+    fun setFirstLogin(done: Boolean) {
+        prefs.edit().putBoolean(KEY_IS_FIRST_LOGIN, !done).apply()
     }
 }

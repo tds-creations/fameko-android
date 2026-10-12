@@ -117,7 +117,7 @@ class CustomerMapViewModel(
         private set
 
     // --- Order & Call State ---
-    var currentOrderId by mutableStateOf(sessionManager.getActiveOrderId())
+    var currentOrderId by mutableStateOf<Int?>(sessionManager.getActiveOrderId().let { if (it > 0) it else null })
     var orderStatusData by mutableStateOf<OrderStatusResponse?>(null)
     var incomingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
     var ongoingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
@@ -252,6 +252,7 @@ class CustomerMapViewModel(
     private fun loadInitialData() {
         viewModelScope.launch {
             val customerId = sessionManager.getCustomerId() ?: "1"
+            val customerIdInt = customerId.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: 1
             
             // Listen to local changes
             viewModelScope.launch {
@@ -273,7 +274,7 @@ class CustomerMapViewModel(
             rentalRepository.getRentalRates().onSuccess { rentalRates = it }
 
             // Restore active rental from backend
-            rentalRepository.getActiveRental(customerId.toIntOrNull() ?: 1).onSuccess { 
+            rentalRepository.getActiveRental(customerIdInt).onSuccess { 
                 updateActiveRentalState(it)
                 if (it != null) {
                     navigateTo(CustomerScreen.MainMap)
@@ -319,7 +320,7 @@ class CustomerMapViewModel(
                     // Stale or no active order on server, clear local session
                     currentOrderId = null
                     orderStatusData = null
-                    sessionManager.setActiveOrderId(null)
+                    sessionManager.clearActiveOrderId()
                 }
             }
 
@@ -413,7 +414,7 @@ class CustomerMapViewModel(
                                     // If timed out, we stop polling but keep isTimedOut true to show the screen
                                     pollingJob?.cancel()
                                     currentOrderId = null
-                                    sessionManager.setActiveOrderId(null)
+                                    sessionManager.clearActiveOrderId()
                                 }
                             } else {
                                 startStatusPolling(id)
@@ -466,7 +467,7 @@ class CustomerMapViewModel(
     fun clearActiveOrder() {
         pollingJob?.cancel()
         currentOrderId = null
-        sessionManager.setActiveOrderId(null)
+        sessionManager.clearActiveOrderId()
         // We no longer clear polylinePoints or estimatedFare here. 
         // This allows the UI to transition back to the "Selection" state 
         // (showing the pricing card) instead of getting stuck in an infinite 
@@ -480,7 +481,7 @@ class CustomerMapViewModel(
         if (status == "CANCELLED" || status == "DELIVERED") {
             orderStatusData = null
             currentOrderId = null
-            sessionManager.setActiveOrderId(null)
+            sessionManager.clearActiveOrderId()
         }
 
         packageCategory = "Document"
@@ -512,7 +513,7 @@ class CustomerMapViewModel(
         if (status == "CANCELLED" || status == "DELIVERED") {
             orderStatusData = null
             currentOrderId = null
-            sessionManager.setActiveOrderId(null)
+            sessionManager.clearActiveOrderId()
         }
 
         packageCategory = "Document"
@@ -1265,7 +1266,7 @@ class CustomerMapViewModel(
     fun refreshActiveRental() {
         viewModelScope.launch {
             val customerId = sessionManager.getCustomerId() ?: return@launch
-            rentalRepository.getActiveRental(customerId.toInt()).onSuccess { 
+            rentalRepository.getActiveRental(customerId.toIntOrNull() ?: 1).onSuccess { 
                 updateActiveRentalState(it)
             }
         }
