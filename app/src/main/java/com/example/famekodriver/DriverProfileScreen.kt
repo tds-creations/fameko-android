@@ -72,51 +72,6 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var pendingDocType by remember { mutableStateOf<String?>(null) }
 
-    val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                isLoading = true
-                val file = uriToFile(context, it)
-                if (file != null) {
-                    val docType = pendingDocType ?: "profile_pic"
-                    repository.uploadDocument(driverId, docType, file).onSuccess {
-                        isLoading = false
-                        Toast.makeText(context, "Upload successful!", Toast.LENGTH_SHORT).show()
-                        
-                        repository.getDriverStatus(driverId).onSuccess { resp ->
-                            missingDocs = resp.missingDocs
-                            status = resp.status
-                            sessionManager.updateStatus(resp.status)
-                            if (docType == "profile_pic" && !resp.profilePicture.isNullOrEmpty()) {
-                                profilePicUrl = resp.profilePicture
-                                sessionManager.updateProfilePicture(resp.profilePicture)
-                            }
-                        }
-                        
-                        // Reload profile to refresh all doc URLs
-                        repository.getDriverProfile(driverId, userRole).onSuccess { prof ->
-                            docUrls = mapOf(
-                                "profile_pic" to (prof["profile_picture"]?.toString() ?: ""),
-                                "ghana_card" to (prof["id_front_image"]?.toString() ?: ""),
-                                "ghana_card_back" to (prof["id_back_image"]?.toString() ?: ""),
-                                "drivers_license" to (prof["license_image"]?.toString() ?: ""),
-                                "roadworthy_cert" to (prof["roadworthy_cert"]?.toString() ?: ""),
-                                "insurance_cert" to (prof["insurance_cert"]?.toString() ?: ""),
-                                "vehicle_image" to (prof["vehicle_image"]?.toString() ?: "")
-                            )
-                        }
-                    }.onFailure { err ->
-                        isLoading = false
-                        Toast.makeText(context, "Upload failed: ${err.message}", Toast.LENGTH_LONG).show()
-                    }
-                } else {
-                    isLoading = false
-                    Toast.makeText(context, "Failed to process image", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
     fun refreshProfile() {
         isLoading = true
         scope.launch {
@@ -186,6 +141,29 @@ fun DriverProfileScreen(onBack: () -> Unit) {
             }
 
             isLoading = false
+        }
+    }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                isLoading = true
+                val file = uriToFile(context, it)
+                if (file != null) {
+                    val docType = pendingDocType ?: "profile_pic"
+                    repository.uploadDocument(driverId, docType, file).onSuccess {
+                        isLoading = false
+                        Toast.makeText(context, "Upload successful! Refreshing profile...", Toast.LENGTH_SHORT).show()
+                        refreshProfile()
+                    }.onFailure { err ->
+                        isLoading = false
+                        Toast.makeText(context, "Upload failed: ${err.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    isLoading = false
+                    Toast.makeText(context, "Failed to process image", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
