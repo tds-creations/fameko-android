@@ -252,26 +252,34 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                 .padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Avatar with glowing ring & checkmark badge
+                            // Avatar with glowing ring & camera badge
+                            val initials = driverName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase().ifEmpty { "DR" }
+                            val hasValidPic = !profilePicUrl.isNullOrBlank() && profilePicUrl != "null" && profilePicUrl != "undefined"
+
                             Box(
-                                modifier = Modifier.size(88.dp)
+                                modifier = Modifier
+                                    .size(88.dp)
+                                    .clickable {
+                                        pendingDocType = "profile_pic"
+                                        pickImageLauncher.launch("image/*")
+                                    }
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = Color.White.copy(alpha = 0.15f),
+                                    color = Color(0xFF2563EB),
                                     modifier = Modifier.fillMaxSize(),
-                                    border = BorderStroke(2.dp, Color(0xFF10B981))
+                                    border = BorderStroke(2.5.dp, Color(0xFF10B981))
                                 ) {
-                                    if (!profilePicUrl.isNullOrEmpty()) {
+                                    if (hasValidPic) {
                                         AsyncImage(
                                             model = profilePicUrl,
-                                            contentDescription = null,
+                                            contentDescription = "Profile Picture",
                                             modifier = Modifier.fillMaxSize().clip(CircleShape),
                                             contentScale = ContentScale.Crop
                                         )
                                     } else {
                                         Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(44.dp))
+                                            Text(initials, color = Color.White, fontWeight = FontWeight.Black, fontSize = 28.sp)
                                         }
                                     }
                                 }
@@ -279,12 +287,12 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                     shape = CircleShape,
                                     color = Color(0xFF10B981),
                                     modifier = Modifier
-                                        .size(24.dp)
+                                        .size(26.dp)
                                         .align(Alignment.BottomEnd),
                                     border = BorderStroke(2.dp, Color(0xFF0A192F))
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                        Icon(Icons.Default.CameraAlt, null, tint = Color.White, modifier = Modifier.size(14.dp))
                                     }
                                 }
                             }
