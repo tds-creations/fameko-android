@@ -59,6 +59,7 @@ dependencies {
     api(libs.okhttp)
     api(libs.gson)
     api(libs.webrtc)
+    api("io.agora.rtc:full-sdk:4.3.0")
 
     // Room
     api(libs.androidx.room.runtime)
