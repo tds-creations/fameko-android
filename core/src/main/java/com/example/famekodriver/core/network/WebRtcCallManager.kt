@@ -403,11 +403,14 @@ class WebRtcCallManager(
             while (_callState.value is CallState.Connected && peerConnection != null) {
                 peerConnection?.getStats { report ->
                     for (stat in report.statsMap.values) {
-                        if (stat.type == "outbound-rtp" && stat.members["mediaType"] == "audio") {
+                        if (stat.type == "outbound-rtp" && (stat.members["mediaType"] == "audio" || stat.members["kind"] == "audio")) {
                             Log.d("WebRtcCallManager", "Audio Outbound RTP Stats: bytesSent=${stat.members["bytesSent"]}, packetsSent=${stat.members["packetsSent"]}")
                         }
-                        if (stat.type == "inbound-rtp" && stat.members["mediaType"] == "audio") {
+                        if (stat.type == "inbound-rtp" && (stat.members["mediaType"] == "audio" || stat.members["kind"] == "audio")) {
                             Log.d("WebRtcCallManager", "Audio Inbound RTP Stats: bytesReceived=${stat.members["bytesReceived"]}, packetsReceived=${stat.members["packetsReceived"]}")
+                        }
+                        if (stat.type == "candidate-pair" && (stat.members["state"] == "succeeded" || stat.members["nominated"] == true)) {
+                            Log.d("WebRtcCallManager", "Active Candidate Pair: state=${stat.members["state"]}, local=${stat.members["localCandidateId"]}")
                         }
                     }
                 }
