@@ -31,7 +31,7 @@ class CustomerMapViewModel(
     private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
-    val callManager by lazy { com.example.famekodriver.core.network.WebRtcCallManager(sessionManager.context, repository) }
+    val callManager by lazy { com.example.famekodriver.core.network.AgoraCallManager(sessionManager.context, repository) }
 
     sealed class SavedPlacesUiState {
         object Loading : SavedPlacesUiState()
@@ -1075,11 +1075,14 @@ class CustomerMapViewModel(
         val data = orderStatusData ?: return
         val orderId = currentOrderId ?: return
         val target = if (data.driverId != null) "DRIVER_${data.driverId}" else "DRIVER_UNKNOWN"
-        callManager.initiateCall(target, sessionManager.getDriverName() ?: "Customer", orderId)
+        callManager.startOutgoingCall(target, sessionManager.getDriverName() ?: "Customer", orderId)
     }
 
     fun acceptCall(callId: String) {
-        callManager.acceptCall(callId)
+        val data = orderStatusData
+        val orderId = currentOrderId ?: 0
+        val name = data?.driverName ?: "Caller"
+        callManager.acceptIncomingCall(callId, name, orderId)
     }
 
     fun rejectCall(callId: String) {

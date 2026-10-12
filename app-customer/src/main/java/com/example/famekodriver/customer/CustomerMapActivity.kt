@@ -588,7 +588,7 @@ fun CustomerMapScreen() {
                 }
             }
 
-            WebRtcCallOverlay(
+            com.example.famekodriver.core.ui.AgoraCallOverlay(
                 callState = callState,
                 callManager = mapViewModel.callManager
             )

@@ -3,7 +3,7 @@ package com.example.famekodriver.core.data
 import android.content.Context
 import android.content.SharedPreferences
 
-class SessionManager(context: Context) {
+class SessionManager(val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
     companion object {
