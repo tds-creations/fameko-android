@@ -138,7 +138,9 @@ class WebRtcCallManager(
                             }
                             "WEBRTC_ICE_CANDIDATE" -> {
                                 val candStr = data["candidate"]?.toString() ?: data["sdp"]?.toString() ?: ""
-                                handleRemoteIceCandidate(candStr)
+                                val sdpMid = data["sdpMid"]?.toString() ?: "0"
+                                val sdpMLineIndex = (data["sdpMLineIndex"] as? Number)?.toInt() ?: 0
+                                handleRemoteIceCandidate(candStr, sdpMid, sdpMLineIndex)
                             }
                         }
                     }
@@ -223,24 +225,40 @@ class WebRtcCallManager(
 
         peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onIceCandidate(candidate: IceCandidate) {
+                Log.d("WebRtcCallManager", "Generated Local ICE Candidate: mid=${candidate.sdpMid}, index=${candidate.sdpMLineIndex}")
                 scope.launch {
-                    repository.sendIceCandidate(callId, candidate.sdp)
+                    repository.sendIceCandidate(callId, candidate.sdp, candidate.sdpMid ?: "0", candidate.sdpMLineIndex)
                 }
             }
 
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) {}
-            override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
+            override fun onSignalingChange(state: PeerConnection.SignalingState?) {
+                Log.d("WebRtcCallManager", "Signaling State Changed -> $state")
+            }
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-                Log.d("WebRtcCallManager", "ICE Connection State: $state")
-                if (state == PeerConnection.IceConnectionState.DISCONNECTED || state == PeerConnection.IceConnectionState.FAILED) {
-                    endCallLocally("Connection Lost")
+                Log.d("WebRtcCallManager", "ICE Connection State Changed -> $state")
+                when (state) {
+                    PeerConnection.IceConnectionState.CONNECTED, PeerConnection.IceConnectionState.COMPLETED -> {
+                        _callState.value = CallState.Connected(activeCallId ?: "", "HD Voice Live")
+                        Log.d("WebRtcCallManager", "WebRTC Audio P2P / TURN Stream Connected Successfully!")
+                    }
+                    PeerConnection.IceConnectionState.DISCONNECTED, PeerConnection.IceConnectionState.FAILED -> {
+                        Log.e("WebRtcCallManager", "WebRTC ICE Connection Failed or Disconnected ($state)")
+                        endCallLocally("Connection Lost")
+                    }
+                    else -> {}
                 }
             }
-            override fun onIceConnectionReceivingChange(receiving: Boolean) {}
-            override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
+            override fun onIceConnectionReceivingChange(receiving: Boolean) {
+                Log.d("WebRtcCallManager", "ICE Connection Receiving Change -> $receiving")
+            }
+            override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {
+                Log.d("WebRtcCallManager", "ICE Gathering State Changed -> $state")
+            }
             override fun onAddStream(stream: MediaStream?) {
                 stream?.audioTracks?.forEach {
                     it.setEnabled(true)
+                    it.setVolume(1.0)
                     Log.d("WebRtcCallManager", "Remote Stream Audio Track enabled: ${it.id()}")
                 }
             }
@@ -249,8 +267,11 @@ class WebRtcCallManager(
             override fun onRenegotiationNeeded() {}
             override fun onAddTrack(receiver: RtpReceiver?, streams: Array<out MediaStream>?) {
                 val track = receiver?.track() as? AudioTrack
-                track?.setEnabled(true)
-                Log.d("WebRtcCallManager", "Remote Audio Track added & enabled: ${track?.id()}")
+                if (track != null) {
+                    track.setEnabled(true)
+                    track.setVolume(1.0)
+                    Log.d("WebRtcCallManager", "Remote Audio Track enabled & volume set to 1.0: ${track.id()}")
+                }
             }
         })
 
@@ -265,6 +286,7 @@ class WebRtcCallManager(
         localAudioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
         localAudioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", localAudioSource)
         localAudioTrack?.setEnabled(true)
+        localAudioTrack?.setVolume(1.0)
 
         peerConnection?.addTrack(localAudioTrack, listOf("ARDAMS"))
     }
@@ -313,9 +335,12 @@ class WebRtcCallManager(
         _callState.value = CallState.Connected(cid, "HD Voice Connected")
     }
 
-    private fun handleRemoteIceCandidate(candStr: String) {
-        val candidate = IceCandidate("audio", 0, candStr)
-        peerConnection?.addIceCandidate(candidate)
+    private fun handleRemoteIceCandidate(candStr: String, sdpMid: String, sdpMLineIndex: Int) {
+        if (candStr.isNotBlank()) {
+            val candidate = IceCandidate(sdpMid, sdpMLineIndex, candStr)
+            val added = peerConnection?.addIceCandidate(candidate) ?: false
+            Log.d("WebRtcCallManager", "Added Remote ICE Candidate (mid=$sdpMid, index=$sdpMLineIndex): success=$added")
+        }
     }
 
     fun toggleMute(): Boolean {

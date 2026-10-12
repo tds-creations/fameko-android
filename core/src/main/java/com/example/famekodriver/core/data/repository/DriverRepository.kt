@@ -298,9 +298,16 @@ class DriverRepository private constructor() {
         }
     }
 
-    suspend fun sendIceCandidate(callId: String, candidate: String): Result<Unit> {
+    suspend fun sendIceCandidate(callId: String, candidate: String, sdpMid: String = "0", sdpMLineIndex: Int = 0): Result<Unit> {
         return try {
-            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ICE_CANDIDATE", gson.toJson(mapOf("call_id" to callId, "candidate" to candidate, "sdp" to candidate)))))
+            val payload = mapOf(
+                "call_id" to callId,
+                "candidate" to candidate,
+                "sdp" to candidate,
+                "sdpMid" to sdpMid,
+                "sdpMLineIndex" to sdpMLineIndex
+            )
+            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ICE_CANDIDATE", gson.toJson(payload))))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
