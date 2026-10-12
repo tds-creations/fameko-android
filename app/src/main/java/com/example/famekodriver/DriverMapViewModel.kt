@@ -439,25 +439,15 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun acceptCall(callId: String) {
-        viewModelScope.launch {
-            repository.acceptCall(callId)
-            ongoingCall = incomingCall
-            incomingCall = null
-        }
+        callManager.acceptCall(callId)
     }
 
     fun rejectCall(callId: String) {
-        viewModelScope.launch {
-            repository.rejectCall(callId)
-            incomingCall = null
-        }
+        callManager.rejectCall(callId)
     }
 
-    fun endCall(callId: String) {
-        viewModelScope.launch {
-            repository.endCall(callId)
-            ongoingCall = null
-        }
+    fun endCall(callId: String = "") {
+        callManager.endCall()
     }
 
     fun sendAudioData(data: ByteArray) {
