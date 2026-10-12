@@ -528,18 +528,7 @@ object DatabaseInitializer {
             """.trimIndent()
             conn.createStatement().execute(linkSql)
             
-            // 3. Link rental_vehicles to fleet_owners
-            val linkVehiclesSql = """
-                UPDATE rental_vehicles rv
-                SET fleet_owner_id = d.fleet_owner_id
-                FROM drivers d
-                WHERE rv.owner_id = d.id
-                AND d.fleet_owner_id IS NOT NULL
-                AND rv.fleet_owner_id IS NULL
-            """.trimIndent()
-            conn.createStatement().execute(linkVehiclesSql)
-            
-            // 4. Drop fleet_owner_id column from rental_vehicles & drivers, and link Cloudinary images for driver 1
+            // 3. Drop fleet_owner_id column from rental_vehicles & drivers, and link Cloudinary images for driver 1
             conn.createStatement().execute("ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_owner_id_fkey; ALTER TABLE rental_vehicles DROP CONSTRAINT IF EXISTS rental_vehicles_fleet_owner_id_fkey; ALTER TABLE rental_vehicles DROP COLUMN IF EXISTS fleet_owner_id CASCADE; ALTER TABLE drivers DROP COLUMN IF EXISTS fleet_owner_id CASCADE; UPDATE rental_vehicles SET owner_id = 1 WHERE owner_id IS NULL OR owner_id = 0; UPDATE drivers SET id_front_image = 'https://res.cloudinary.com/df3jnubvy/image/upload/v1791741320/dwxrif1bfvyzhohq35cf.jpg' WHERE id = 1 AND (id_front_image IS NULL OR id_front_image = ''); UPDATE drivers SET profile_picture = 'https://res.cloudinary.com/df3jnubvy/image/upload/v1791762553/fm2wfzoew2flpxqmule6.jpg' WHERE id = 1 AND (profile_picture IS NULL OR profile_picture = ''); UPDATE drivers SET vehicle_image = 'https://res.cloudinary.com/df3jnubvy/image/upload/v1791741351/fleet_vehicles/l2lqzyaouzhbkcfxf98q.jpg' WHERE id = 1 AND (vehicle_image IS NULL OR vehicle_image = '');")
 
             println("Migration: Fleet owner data migration complete.")

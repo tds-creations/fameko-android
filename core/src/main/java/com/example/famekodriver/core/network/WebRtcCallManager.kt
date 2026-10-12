@@ -307,11 +307,14 @@ class WebRtcCallManager(
         }, constraints)
     }
 
+    private val pendingIceCandidates = mutableListOf<IceCandidate>()
+
     private fun handleRemoteOffer(callId: String, sdpOffer: String) {
         createPeerConnection(callId)
         val offerSdp = SessionDescription(SessionDescription.Type.OFFER, sdpOffer)
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
+                drainPendingIceCandidates()
                 val constraints = MediaConstraints().apply {
                     mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
                 }
@@ -330,7 +333,11 @@ class WebRtcCallManager(
 
     private fun handleRemoteAnswer(sdpAnswer: String) {
         val answerSdp = SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer)
-        peerConnection?.setRemoteDescription(SimpleSdpObserver(), answerSdp)
+        peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
+            override fun onSetSuccess() {
+                drainPendingIceCandidates()
+            }
+        }, answerSdp)
         val cid = activeCallId ?: ""
         _callState.value = CallState.Connected(cid, "HD Voice Connected")
     }
@@ -338,9 +345,22 @@ class WebRtcCallManager(
     private fun handleRemoteIceCandidate(candStr: String, sdpMid: String, sdpMLineIndex: Int) {
         if (candStr.isNotBlank()) {
             val candidate = IceCandidate(sdpMid, sdpMLineIndex, candStr)
-            val added = peerConnection?.addIceCandidate(candidate) ?: false
-            Log.d("WebRtcCallManager", "Added Remote ICE Candidate (mid=$sdpMid, index=$sdpMLineIndex): success=$added")
+            if (peerConnection?.remoteDescription != null) {
+                val added = peerConnection?.addIceCandidate(candidate) ?: false
+                Log.d("WebRtcCallManager", "Added Remote ICE Candidate (mid=$sdpMid, index=$sdpMLineIndex): success=$added")
+            } else {
+                pendingIceCandidates.add(candidate)
+                Log.d("WebRtcCallManager", "Buffered Remote ICE Candidate (total buffered: ${pendingIceCandidates.size})")
+            }
         }
+    }
+
+    private fun drainPendingIceCandidates() {
+        pendingIceCandidates.forEach { candidate ->
+            val added = peerConnection?.addIceCandidate(candidate) ?: false
+            Log.d("WebRtcCallManager", "Drained Buffered ICE Candidate: success=$added")
+        }
+        pendingIceCandidates.clear()
     }
 
     var isSpeakerphoneOn = true

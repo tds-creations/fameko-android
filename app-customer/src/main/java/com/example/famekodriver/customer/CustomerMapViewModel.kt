@@ -31,6 +31,8 @@ class CustomerMapViewModel(
     private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
+    val callManager by lazy { com.example.famekodriver.core.network.WebRtcCallManager(sessionManager.context, repository) }
+
     sealed class SavedPlacesUiState {
         object Loading : SavedPlacesUiState()
         data class Success(val places: List<SavedPlace>) : SavedPlacesUiState()
@@ -1072,41 +1074,20 @@ class CustomerMapViewModel(
     fun initiateCall() {
         val data = orderStatusData ?: return
         val orderId = currentOrderId ?: return
-        val driverName = data.driverName ?: "Driver"
-        
-        // Show immediate feedback
-        ongoingCall = FamekoEvent.IncomingCall("pending", driverName)
-        
-        viewModelScope.launch {
-            val target = if (data.driverId != null) "DRIVER_${data.driverId}" else "DRIVER_UNKNOWN"
-            repository.initiateCall(
-                targetId = target,
-                callerName = sessionManager.getDriverName() ?: "Customer",
-                orderId = orderId
-            )
-        }
+        val target = if (data.driverId != null) "DRIVER_${data.driverId}" else "DRIVER_UNKNOWN"
+        callManager.initiateCall(target, sessionManager.getDriverName() ?: "Customer", orderId)
     }
 
     fun acceptCall(callId: String) {
-        viewModelScope.launch {
-            repository.acceptCall(callId)
-            ongoingCall = incomingCall
-            incomingCall = null
-        }
+        callManager.acceptCall(callId)
     }
 
     fun rejectCall(callId: String) {
-        viewModelScope.launch {
-            repository.rejectCall(callId)
-            incomingCall = null
-        }
+        callManager.rejectCall(callId)
     }
 
-    fun endCall(callId: String) {
-        viewModelScope.launch {
-            repository.endCall(callId)
-            ongoingCall = null
-        }
+    fun endCall(callId: String = "") {
+        callManager.endCall()
     }
 
     fun updateScheduledRideTime(time: String?) {
