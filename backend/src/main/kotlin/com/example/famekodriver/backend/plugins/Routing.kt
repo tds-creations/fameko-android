@@ -1736,19 +1736,22 @@ fun Application.configureRouting() {
             }
 
             get("/my-deliveries/{id}") {
-                val driverId = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-                call.respond(DatabaseRepository.getDriverDeliveries(driverId))
+                val idStr = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val numericId = idStr.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                call.respond(DatabaseRepository.getDriverDeliveries(numericId))
             }
 
             get("/my-history/{id}") {
-                val driverId = call.parameters["id"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-                call.respond(DatabaseRepository.getDriverDeliveryHistory(driverId))
+                val idStr = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val numericId = idStr.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                call.respond(DatabaseRepository.getDriverDeliveryHistory(numericId))
             }
 
             route("/rentals") {
                 get("/{driverId}") {
-                    val driverId = call.parameters["driverId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
-                    call.respond(DatabaseRepository.getDriverRentals(driverId))
+                    val idStr = call.parameters["driverId"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    val numericId = idStr.removePrefix("DRIVER:").removePrefix("OWNER:").toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    call.respond(DatabaseRepository.getDriverRentals(numericId))
                 }
 
                 post("/verify") {
