@@ -443,6 +443,8 @@ fun MapScreen(
         }
     }
 
+    val callState by viewModel.callManager.callState.collectAsState()
+
     Scaffold(
         floatingActionButton = {
             Column(
@@ -517,6 +519,11 @@ fun MapScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            WebRtcCallOverlay(
+                callState = callState,
+                callManager = viewModel.callManager
+            )
+
             AndroidView(
                 factory = { ctx ->
                     MapView(ctx).apply {
