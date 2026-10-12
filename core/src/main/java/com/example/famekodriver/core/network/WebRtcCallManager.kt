@@ -35,6 +35,7 @@ class WebRtcCallManager(
     private var localAudioTrack: AudioTrack? = null
 
     private var activeCallId: String? = null
+    private var isInitiator = false
     private var isMuted = false
 
     private val pendingIceCandidates = mutableListOf<IceCandidate>()
@@ -104,12 +105,15 @@ class WebRtcCallManager(
                 when (event) {
                     is FamekoEvent.IncomingCall -> {
                         activeCallId = event.callId
+                        isInitiator = false
                         _callState.value = CallState.Incoming(event.callId, event.callerName, 0, "")
                     }
                     is FamekoEvent.CallAccepted -> {
                         activeCallId = event.callId
-                        configureAudioManagerForCall()
-                        createAndSendOffer(event.callId)
+                        if (isInitiator) {
+                            configureAudioManagerForCall()
+                            createAndSendOffer(event.callId)
+                        }
                     }
                     is FamekoEvent.CallRejected -> {
                         endCallLocally(event.reason ?: "Call Rejected")
@@ -127,13 +131,16 @@ class WebRtcCallManager(
                                 val orderId = (data["order_id"] as? Number)?.toInt() ?: 0
                                 val initiatorId = data["initiator_id"]?.toString() ?: ""
                                 activeCallId = callId
+                                isInitiator = false
                                 _callState.value = CallState.Incoming(callId, callerName, orderId, initiatorId)
                             }
                             "CALL_ACCEPTED" -> {
                                 val callId = data["call_id"]?.toString() ?: ""
                                 activeCallId = callId
-                                configureAudioManagerForCall()
-                                createAndSendOffer(callId)
+                                if (isInitiator) {
+                                    configureAudioManagerForCall()
+                                    createAndSendOffer(callId)
+                                }
                             }
                             "CALL_REJECTED" -> {
                                 endCallLocally("Call Rejected")
@@ -167,6 +174,7 @@ class WebRtcCallManager(
     fun initiateCall(targetId: String, callerName: String, orderId: Int) {
         val callId = java.util.UUID.randomUUID().toString()
         activeCallId = callId
+        isInitiator = true
         configureAudioManagerForCall()
         _callState.value = CallState.Outgoing(callId, "Calling...")
         
@@ -177,6 +185,7 @@ class WebRtcCallManager(
 
     fun acceptCall(callId: String) {
         activeCallId = callId
+        isInitiator = false
         configureAudioManagerForCall()
         _callState.value = CallState.Connected(callId, "Connecting Audio...")
         scope.launch {
@@ -204,6 +213,8 @@ class WebRtcCallManager(
     }
 
     private fun createPeerConnection(callId: String) {
+        if (peerConnection != null) return
+
         val iceServers = listOf(
             // Free Google STUN Servers
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
@@ -255,6 +266,7 @@ class WebRtcCallManager(
                     PeerConnection.IceConnectionState.CONNECTED, PeerConnection.IceConnectionState.COMPLETED -> {
                         _callState.value = CallState.Connected(activeCallId ?: "", "HD Voice Live")
                         Log.d("WebRtcCallManager", "WebRTC Audio P2P / TURN Stream Connected Successfully!")
+                        startStatsMonitoring()
                     }
                     PeerConnection.IceConnectionState.DISCONNECTED, PeerConnection.IceConnectionState.FAILED -> {
                         Log.e("WebRtcCallManager", "WebRTC ICE Connection Failed or Disconnected ($state)")
@@ -306,7 +318,6 @@ class WebRtcCallManager(
         localAudioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
         localAudioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", localAudioSource)
         localAudioTrack?.setEnabled(true)
-        localAudioTrack?.setVolume(1.0)
 
         peerConnection?.addTrack(localAudioTrack, listOf("ARDAMS"))
     }
@@ -342,7 +353,6 @@ class WebRtcCallManager(
                         scope.launch {
                             repository.sendWebrtcAnswer(callId, sdp.description)
                         }
-                        _callState.value = CallState.Connected(callId, "HD Voice Connected")
                     }
                 }, constraints)
             }
@@ -356,8 +366,6 @@ class WebRtcCallManager(
                 drainPendingIceCandidates()
             }
         }, answerSdp)
-        val cid = activeCallId ?: ""
-        _callState.value = CallState.Connected(cid, "HD Voice Connected")
     }
 
     private fun handleRemoteIceCandidate(candStr: String, sdpMid: String, sdpMLineIndex: Int) {
@@ -381,6 +389,24 @@ class WebRtcCallManager(
         pendingIceCandidates.clear()
     }
 
+    private fun startStatsMonitoring() {
+        scope.launch {
+            while (_callState.value is CallState.Connected && peerConnection != null) {
+                peerConnection?.getStats { report ->
+                    for (stat in report.statsMap.values) {
+                        if (stat.type == "outbound-rtp" && stat.members["mediaType"] == "audio") {
+                            Log.d("WebRtcCallManager", "Audio Outbound RTP Stats: bytesSent=${stat.members["bytesSent"]}, packetsSent=${stat.members["packetsSent"]}")
+                        }
+                        if (stat.type == "inbound-rtp" && stat.members["mediaType"] == "audio") {
+                            Log.d("WebRtcCallManager", "Audio Inbound RTP Stats: bytesReceived=${stat.members["bytesReceived"]}, packetsReceived=${stat.members["packetsReceived"]}")
+                        }
+                    }
+                }
+                delay(3000)
+            }
+        }
+    }
+
     var isSpeakerphoneOn = true
         private set
 
@@ -400,11 +426,22 @@ class WebRtcCallManager(
     fun endCallLocally(reason: String) {
         try {
             restoreAudioManager()
+            
             localAudioTrack?.setEnabled(false)
+            localAudioTrack?.dispose()
+            localAudioTrack = null
+
             localAudioSource?.dispose()
+            localAudioSource = null
+
             peerConnection?.close()
+            peerConnection?.dispose()
             peerConnection = null
+
+            pendingIceCandidates.clear()
             activeCallId = null
+            isInitiator = false
+
             _callState.value = CallState.Ended(reason)
             scope.launch {
                 delay(1500)
