@@ -282,7 +282,7 @@ class DriverRepository private constructor() {
 
     suspend fun sendWebrtcOffer(callId: String, offer: String): Result<Unit> {
         return try {
-            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_OFFER", gson.toJson(mapOf("call_id" to callId, "offer" to offer)))))
+            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_OFFER", gson.toJson(mapOf("call_id" to callId, "offer" to offer, "sdp" to offer)))))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -291,7 +291,7 @@ class DriverRepository private constructor() {
 
     suspend fun sendWebrtcAnswer(callId: String, answer: String): Result<Unit> {
         return try {
-            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ANSWER", gson.toJson(mapOf("call_id" to callId, "answer" to answer)))))
+            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ANSWER", gson.toJson(mapOf("call_id" to callId, "answer" to answer, "sdp" to answer)))))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -300,7 +300,7 @@ class DriverRepository private constructor() {
 
     suspend fun sendIceCandidate(callId: String, candidate: String): Result<Unit> {
         return try {
-            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ICE_CANDIDATE", gson.toJson(mapOf("call_id" to callId, "candidate" to candidate)))))
+            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ICE_CANDIDATE", gson.toJson(mapOf("call_id" to callId, "candidate" to candidate, "sdp" to candidate)))))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

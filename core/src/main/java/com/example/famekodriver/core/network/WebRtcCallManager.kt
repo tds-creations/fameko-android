@@ -3,6 +3,7 @@ package com.example.famekodriver.core.network
 import android.content.Context
 import android.util.Log
 import com.example.famekodriver.core.data.repository.DriverRepository
+import com.example.famekodriver.core.domain.model.FamekoEvent
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,7 +65,21 @@ class WebRtcCallManager(
         scope.launch {
             repository.events.collect { event ->
                 when (event) {
-                    is com.example.famekodriver.core.domain.model.FamekoEvent.Unknown -> {
+                    is FamekoEvent.IncomingCall -> {
+                        activeCallId = event.callId
+                        _callState.value = CallState.Incoming(event.callId, event.callerName, 0, "")
+                    }
+                    is FamekoEvent.CallAccepted -> {
+                        activeCallId = event.callId
+                        createAndSendOffer(event.callId)
+                    }
+                    is FamekoEvent.CallRejected -> {
+                        endCallLocally(event.reason ?: "Call Rejected")
+                    }
+                    is FamekoEvent.CallEnded -> {
+                        endCallLocally("Call Ended")
+                    }
+                    is FamekoEvent.Unknown -> {
                         val type = event.type
                         val data = event.data
                         when (type) {
@@ -78,6 +93,7 @@ class WebRtcCallManager(
                             }
                             "CALL_ACCEPTED" -> {
                                 val callId = data["call_id"]?.toString() ?: ""
+                                activeCallId = callId
                                 createAndSendOffer(callId)
                             }
                             "CALL_REJECTED" -> {
@@ -172,11 +188,20 @@ class WebRtcCallManager(
             }
             override fun onIceConnectionReceivingChange(receiving: Boolean) {}
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
-            override fun onAddStream(stream: MediaStream?) {}
+            override fun onAddStream(stream: MediaStream?) {
+                stream?.audioTracks?.forEach {
+                    it.setEnabled(true)
+                    Log.d("WebRtcCallManager", "Remote Stream Audio Track enabled: ${it.id()}")
+                }
+            }
             override fun onRemoveStream(stream: MediaStream?) {}
             override fun onDataChannel(channel: DataChannel?) {}
             override fun onRenegotiationNeeded() {}
-            override fun onAddTrack(receiver: RtpReceiver?, streams: Array<out MediaStream>?) {}
+            override fun onAddTrack(receiver: RtpReceiver?, streams: Array<out MediaStream>?) {
+                val track = receiver?.track() as? AudioTrack
+                track?.setEnabled(true)
+                Log.d("WebRtcCallManager", "Remote Audio Track added & enabled: ${track?.id()}")
+            }
         })
 
         // Add local Audio Track
