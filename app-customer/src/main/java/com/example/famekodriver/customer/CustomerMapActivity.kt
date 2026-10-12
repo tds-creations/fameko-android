@@ -1162,11 +1162,6 @@ fun MainMapContent(
                 }
                 
                 if (currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER) { RadarPulseAnimation() }
-                
-                viewModel.incomingCall?.let { call ->
-                    AlertDialog(onDismissRequest = { }, title = { Text("Incoming Call") }, text = { Text("Driver ${call.callerName} is calling you...") }, confirmButton = { Button(onClick = { viewModel.acceptCall(call.callId) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745))) { Icon(Icons.Default.Call, null); Spacer(Modifier.width(8.dp)); Text("Accept") } }, dismissButton = { OutlinedButton(onClick = { viewModel.rejectCall(call.callId) }) { Text("Reject", color = Color.Red) } }, shape = RoundedCornerShape(24.dp))
-                }
-                viewModel.ongoingCall?.let { call -> CallOverlay(call = call, onEnd = { viewModel.endCall(call.callId) }) }
 
                 if (viewModel.showRatingDialog) { RatingDialog(driverName = viewModel.ratingDriverName ?: "Your Driver", driverProfilePic = viewModel.ratingDriverPic, onRate = { rating, comment -> viewModel.submitRating(rating, comment) }, onDismiss = { viewModel.showRatingDialog = false }) }
                 if (viewModel.showTripSummary) { TripSummaryDialog(fare = viewModel.finalFare, onRate = { viewModel.showTripSummary = false; viewModel.showRatingDialog = true }, onDismiss = { viewModel.showTripSummary = false }) }
