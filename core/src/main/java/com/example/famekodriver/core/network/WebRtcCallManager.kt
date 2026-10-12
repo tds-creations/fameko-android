@@ -1,6 +1,7 @@
 package com.example.famekodriver.core.network
 
 import android.content.Context
+import android.media.AudioManager
 import android.util.Log
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.FamekoEvent
@@ -25,6 +26,8 @@ class WebRtcCallManager(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _callState = MutableStateFlow<CallState>(CallState.Idle)
     val callState: StateFlow<CallState> = _callState
+
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
@@ -61,6 +64,26 @@ class WebRtcCallManager(
         }
     }
 
+    private fun configureAudioManagerForCall() {
+        try {
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            audioManager.isSpeakerphoneOn = true
+            Log.d("WebRtcCallManager", "AudioManager configured for Voice Communication on Speakerphone.")
+        } catch (e: Exception) {
+            Log.e("WebRtcCallManager", "Failed to configure AudioManager", e)
+        }
+    }
+
+    private fun restoreAudioManager() {
+        try {
+            audioManager.mode = AudioManager.MODE_NORMAL
+            audioManager.isSpeakerphoneOn = false
+            Log.d("WebRtcCallManager", "AudioManager restored to Normal mode.")
+        } catch (e: Exception) {
+            Log.e("WebRtcCallManager", "Failed to restore AudioManager", e)
+        }
+    }
+
     private fun listenToSignalingEvents() {
         scope.launch {
             repository.events.collect { event ->
@@ -71,6 +94,7 @@ class WebRtcCallManager(
                     }
                     is FamekoEvent.CallAccepted -> {
                         activeCallId = event.callId
+                        configureAudioManagerForCall()
                         createAndSendOffer(event.callId)
                     }
                     is FamekoEvent.CallRejected -> {
@@ -94,6 +118,7 @@ class WebRtcCallManager(
                             "CALL_ACCEPTED" -> {
                                 val callId = data["call_id"]?.toString() ?: ""
                                 activeCallId = callId
+                                configureAudioManagerForCall()
                                 createAndSendOffer(callId)
                             }
                             "CALL_REJECTED" -> {
@@ -126,6 +151,7 @@ class WebRtcCallManager(
     fun initiateCall(targetId: String, callerName: String, orderId: Int) {
         val callId = java.util.UUID.randomUUID().toString()
         activeCallId = callId
+        configureAudioManagerForCall()
         _callState.value = CallState.Outgoing(callId, "Calling...")
         
         scope.launch {
@@ -135,6 +161,7 @@ class WebRtcCallManager(
 
     fun acceptCall(callId: String) {
         activeCallId = callId
+        configureAudioManagerForCall()
         _callState.value = CallState.Connected(callId, "Connecting Audio...")
         scope.launch {
             repository.acceptCall(callId)
@@ -162,13 +189,36 @@ class WebRtcCallManager(
 
     private fun createPeerConnection(callId: String) {
         val iceServers = listOf(
+            // Free Google STUN Servers
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-            PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer()
+            PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer(),
+
+            // ExpressTURN TURN Servers (Symmetric CGNAT & Carrier Relay Traversal)
+            PeerConnection.IceServer.builder("turn:free.expressturn.com:3478")
+                .setUsername("000000002107168884")
+                .setPassword("0cYnict4u/vHVZaiV6vLm/pvFCU=")
+                .createIceServer(),
+
+            PeerConnection.IceServer.builder("turn:free.expressturn.com:3478?transport=udp")
+                .setUsername("000000002107168884")
+                .setPassword("0cYnict4u/vHVZaiV6vLm/pvFCU=")
+                .createIceServer(),
+
+            PeerConnection.IceServer.builder("turn:free.expressturn.com:3478?transport=tcp")
+                .setUsername("000000002107168884")
+                .setPassword("0cYnict4u/vHVZaiV6vLm/pvFCU=")
+                .createIceServer(),
+
+            PeerConnection.IceServer.builder("turns:free.expressturn.com:5349")
+                .setUsername("000000002107168884")
+                .setPassword("0cYnict4u/vHVZaiV6vLm/pvFCU=")
+                .createIceServer()
         )
 
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+            continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
         }
 
         peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
@@ -209,6 +259,7 @@ class WebRtcCallManager(
             mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
         }
 
         localAudioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
@@ -275,6 +326,7 @@ class WebRtcCallManager(
 
     fun endCallLocally(reason: String) {
         try {
+            restoreAudioManager()
             localAudioTrack?.setEnabled(false)
             localAudioSource?.dispose()
             peerConnection?.close()
@@ -287,6 +339,7 @@ class WebRtcCallManager(
             }
         } catch (e: Exception) {
             Log.e("WebRtcCallManager", "Error closing WebRTC connection", e)
+            restoreAudioManager()
             _callState.value = CallState.Idle
         }
     }
