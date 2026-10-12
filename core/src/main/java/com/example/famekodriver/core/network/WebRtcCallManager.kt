@@ -37,6 +37,8 @@ class WebRtcCallManager(
     private var activeCallId: String? = null
     private var isMuted = false
 
+    private val pendingIceCandidates = mutableListOf<IceCandidate>()
+
     init {
         initWebRtcFactory()
         listenToSignalingEvents()
@@ -52,6 +54,16 @@ class WebRtcCallManager(
             val audioDeviceModule = JavaAudioDeviceModule.builder(context)
                 .setUseHardwareAcousticEchoCanceler(true)
                 .setUseHardwareNoiseSuppressor(true)
+                .setAudioRecordErrorCallback(object : JavaAudioDeviceModule.AudioRecordErrorCallback {
+                    override fun onWebRtcAudioRecordInitError(errorMessage: String?) { Log.e("WebRtcCallManager", "AudioRecord Init Error: $errorMessage") }
+                    override fun onWebRtcAudioRecordStartError(errorType: JavaAudioDeviceModule.AudioRecordStartErrorCode?, errorMessage: String?) { Log.e("WebRtcCallManager", "AudioRecord Start Error: $errorMessage") }
+                    override fun onWebRtcAudioRecordError(errorMessage: String?) { Log.e("WebRtcCallManager", "AudioRecord Error: $errorMessage") }
+                })
+                .setAudioTrackErrorCallback(object : JavaAudioDeviceModule.AudioTrackErrorCallback {
+                    override fun onWebRtcAudioTrackInitError(errorMessage: String?) { Log.e("WebRtcCallManager", "AudioTrack Init Error: $errorMessage") }
+                    override fun onWebRtcAudioTrackStartError(errorType: JavaAudioDeviceModule.AudioTrackStartErrorCode?, errorMessage: String?) { Log.e("WebRtcCallManager", "AudioTrack Start Error: $errorMessage") }
+                    override fun onWebRtcAudioTrackError(errorMessage: String?) { Log.e("WebRtcCallManager", "AudioTrack Error: $errorMessage") }
+                })
                 .createAudioDeviceModule()
 
             peerConnectionFactory = PeerConnectionFactory.builder()
@@ -68,7 +80,9 @@ class WebRtcCallManager(
         try {
             audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
             audioManager.isSpeakerphoneOn = true
-            Log.d("WebRtcCallManager", "AudioManager configured for Voice Communication on Speakerphone.")
+            val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL)
+            audioManager.setStreamVolume(AudioManager.STREAM_VOICE_CALL, maxVol, 0)
+            Log.d("WebRtcCallManager", "AudioManager configured for Voice Communication (Max Vol $maxVol).")
         } catch (e: Exception) {
             Log.e("WebRtcCallManager", "Failed to configure AudioManager", e)
         }
@@ -275,6 +289,12 @@ class WebRtcCallManager(
             }
         })
 
+        // Force bidirectional Audio Transceiver
+        peerConnection?.addTransceiver(
+            MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO,
+            RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.SEND_RECV)
+        )
+
         // Add local Audio Track
         val audioConstraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
@@ -306,8 +326,6 @@ class WebRtcCallManager(
             }
         }, constraints)
     }
-
-    private val pendingIceCandidates = mutableListOf<IceCandidate>()
 
     private fun handleRemoteOffer(callId: String, sdpOffer: String) {
         createPeerConnection(callId)
