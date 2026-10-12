@@ -71,9 +71,10 @@ fun Application.configureSockets() {
                                             recipientId = DatabaseRepository.getDriverIdForOrder(orderId)?.let { "DRIVER_$it" }
                                         }
                                         
-                                        if (recipientId != null) {
-                                            activeCalls[callId] = CallParticipants(userId, recipientId)
-                                            sendToUser(recipientId, "CALL_INCOMING", mapOf(
+                                        val finalRecipientId = recipientId ?: data["target_id"]?.toString()
+                                        if (finalRecipientId != null) {
+                                            activeCalls[callId] = CallParticipants(userId, finalRecipientId)
+                                            sendToUser(finalRecipientId, "CALL_INCOMING", mapOf(
                                                 "call_id" to callId,
                                                 "caller_name" to resolvedCallerName,
                                                 "order_id" to orderId,

@@ -307,19 +307,28 @@ class WebRtcCallManager(
             RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.SEND_RECV)
         )
 
-        // Add local Audio Track
-        val audioConstraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
+        // Add local Audio Track if RECORD_AUDIO permission granted
+        val hasAudioPerm = androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (hasAudioPerm) {
+            val audioConstraints = MediaConstraints().apply {
+                mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
+            }
+
+            localAudioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
+            localAudioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", localAudioSource)
+            localAudioTrack?.setEnabled(true)
+
+            peerConnection?.addTrack(localAudioTrack, listOf("ARDAMS"))
+            Log.d("WebRtcCallManager", "Local Audio Track created and attached to PeerConnection.")
+        } else {
+            Log.e("WebRtcCallManager", "RECORD_AUDIO runtime permission NOT granted! Local audio capture disabled.")
         }
-
-        localAudioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
-        localAudioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", localAudioSource)
-        localAudioTrack?.setEnabled(true)
-
-        peerConnection?.addTrack(localAudioTrack, listOf("ARDAMS"))
     }
 
     private fun createAndSendOffer(callId: String) {
