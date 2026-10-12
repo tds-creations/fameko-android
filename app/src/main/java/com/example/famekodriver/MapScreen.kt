@@ -445,7 +445,7 @@ fun MapScreen(
         }
     }
 
-    val callState by viewModel.callManager.callState.collectAsState()
+    val callState: com.example.famekodriver.core.network.CallState by viewModel.callManager.callState.collectAsState()
 
     Scaffold(
         floatingActionButton = {
@@ -521,7 +521,7 @@ fun MapScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            WebRtcCallOverlay(
+            com.example.famekodriver.core.ui.WebRtcCallOverlay(
                 callState = callState,
                 callManager = viewModel.callManager
             )
