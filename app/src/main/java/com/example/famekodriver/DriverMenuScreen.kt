@@ -35,6 +35,7 @@ import java.util.Locale
 fun DriverMenuScreen(
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToVehicleRegistration: () -> Unit = {},
     onNavigateToWallet: () -> Unit,
     onNavigateToRentals: () -> Unit,
     onNavigateToRideHistory: () -> Unit,
@@ -402,6 +403,17 @@ fun DriverMenuScreen(
                             badgeColor = Color(0xFFECFDF5),
                             badgeTextColor = Color(0xFF059669),
                             onClick = onNavigateToProfile
+                        )
+                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                        DriverOpRow(
+                            icon = Icons.Default.DirectionsCar,
+                            iconColor = Color(0xFF059669),
+                            title = "Vehicle Registration & Details",
+                            subtitle = "Register or update plate number, vehicle model & permits",
+                            badgeText = "Update",
+                            badgeColor = Color(0xFFECFDF5),
+                            badgeTextColor = Color(0xFF059669),
+                            onClick = onNavigateToVehicleRegistration
                         )
                         HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                         DriverOpRow(

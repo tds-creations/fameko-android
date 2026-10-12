@@ -170,6 +170,9 @@ class MainActivity : ComponentActivity() {
                                 val intent = Intent(this@MainActivity, DriverProfileActivity::class.java)
                                 startActivity(intent)
                             },
+                            onNavigateToVehicleRegistration = {
+                                currentScreen = Screen.VehicleRegistration
+                            },
                             onNavigateToWallet = { currentScreen = Screen.Earnings },
                             onNavigateToRentals = { currentScreen = Screen.Rentals },
                             onNavigateToRideHistory = { currentScreen = Screen.RideHistory },

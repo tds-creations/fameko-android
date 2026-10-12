@@ -386,10 +386,10 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                     }
                 }
 
-                // Section 2: PROFILE PHOTO UPLOAD
+                // Section 2: VERIFICATION & VEHICLE DOCUMENTS
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("PROFILE PHOTO & IDENTIFICATION", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp))
+                        Text("VERIFICATION & VEHICLE DOCUMENTS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp))
 
                         Card(
                             shape = RoundedCornerShape(24.dp),
@@ -409,11 +409,51 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 DocumentUploadRow(
-                                    title = "Ghana Card Verification",
-                                    subtitle = "National Identification Authority (NIA) Card",
+                                    title = "Ghana Card (Front)",
+                                    subtitle = "National Identification Authority (NIA) Card Front",
                                     isUploaded = !missingDocs.contains("ghana_card"),
                                     onClick = {
                                         pendingDocType = "ghana_card"
+                                        pickImageLauncher.launch("image/*")
+                                    }
+                                )
+                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                DocumentUploadRow(
+                                    title = "Ghana Card (Back)",
+                                    subtitle = "National Identification Authority (NIA) Card Back",
+                                    isUploaded = !missingDocs.contains("ghana_card_back"),
+                                    onClick = {
+                                        pendingDocType = "ghana_card_back"
+                                        pickImageLauncher.launch("image/*")
+                                    }
+                                )
+                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                DocumentUploadRow(
+                                    title = "DVLA Driver's License",
+                                    subtitle = "Valid Class B/C Driver License Document",
+                                    isUploaded = !missingDocs.contains("drivers_license"),
+                                    onClick = {
+                                        pendingDocType = "drivers_license"
+                                        pickImageLauncher.launch("image/*")
+                                    }
+                                )
+                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                DocumentUploadRow(
+                                    title = "DVLA Roadworthy Certificate",
+                                    subtitle = "Commercial Roadworthiness Sticker",
+                                    isUploaded = !missingDocs.contains("roadworthy_cert"),
+                                    onClick = {
+                                        pendingDocType = "roadworthy_cert"
+                                        pickImageLauncher.launch("image/*")
+                                    }
+                                )
+                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                                DocumentUploadRow(
+                                    title = "Vehicle Insurance Policy",
+                                    subtitle = "Comprehensive Passenger Commercial Insurance",
+                                    isUploaded = !missingDocs.contains("insurance_cert"),
+                                    onClick = {
+                                        pendingDocType = "insurance_cert"
                                         pickImageLauncher.launch("image/*")
                                     }
                                 )
