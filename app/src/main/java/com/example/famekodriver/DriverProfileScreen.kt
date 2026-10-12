@@ -66,6 +66,9 @@ fun DriverProfileScreen(onBack: () -> Unit) {
     var profilePicUrl by remember { mutableStateOf<String?>(sessionManager.getProfilePicture()) }
     var driverStats by remember { mutableStateOf(com.example.famekodriver.core.domain.model.DriverStats()) }
 
+    var docUrls by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var viewingDoc by remember { mutableStateOf<Triple<String, String, String>?>(null) } // Title, DocType, ImageUrl
+
     var isEditDialogVisible by remember { mutableStateOf(false) }
     var pendingDocType by remember { mutableStateOf<String?>(null) }
 
@@ -84,10 +87,23 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                             missingDocs = resp.missingDocs
                             status = resp.status
                             sessionManager.updateStatus(resp.status)
-                            if (docType == "profile_pic") {
+                            if (docType == "profile_pic" && !resp.profilePicture.isNullOrEmpty()) {
                                 profilePicUrl = resp.profilePicture
                                 sessionManager.updateProfilePicture(resp.profilePicture)
                             }
+                        }
+                        
+                        // Reload profile to refresh all doc URLs
+                        repository.getDriverProfile(driverId, userRole).onSuccess { prof ->
+                            docUrls = mapOf(
+                                "profile_pic" to (prof["profile_picture"]?.toString() ?: ""),
+                                "ghana_card" to (prof["id_front_image"]?.toString() ?: ""),
+                                "ghana_card_back" to (prof["id_back_image"]?.toString() ?: ""),
+                                "drivers_license" to (prof["license_image"]?.toString() ?: ""),
+                                "roadworthy_cert" to (prof["roadworthy_cert"]?.toString() ?: ""),
+                                "insurance_cert" to (prof["insurance_cert"]?.toString() ?: ""),
+                                "vehicle_image" to (prof["vehicle_image"]?.toString() ?: "")
+                            )
                         }
                     }.onFailure { err ->
                         isLoading = false
@@ -131,6 +147,16 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                         sessionManager.updateProfilePicture(pic)
                     }
 
+                    docUrls = mapOf(
+                        "profile_pic" to (profile["profile_picture"]?.toString() ?: ""),
+                        "ghana_card" to (profile["id_front_image"]?.toString() ?: ""),
+                        "ghana_card_back" to (profile["id_back_image"]?.toString() ?: ""),
+                        "drivers_license" to (profile["license_image"]?.toString() ?: ""),
+                        "roadworthy_cert" to (profile["roadworthy_cert"]?.toString() ?: ""),
+                        "insurance_cert" to (profile["insurance_cert"]?.toString() ?: ""),
+                        "vehicle_image" to (profile["vehicle_image"]?.toString() ?: "")
+                    )
+
                     val fetchedRole = profile["user_role"]?.toString()
                     if (!fetchedRole.isNullOrEmpty()) {
                         userRole = fetchedRole
@@ -165,6 +191,16 @@ fun DriverProfileScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         refreshProfile()
+    }
+
+    fun onDocClick(docType: String, title: String) {
+        val url = docUrls[docType]
+        if (!url.isNullOrBlank()) {
+            viewingDoc = Triple(title, docType, url)
+        } else {
+            pendingDocType = docType
+            pickImageLauncher.launch("image/*")
+        }
     }
 
     val isFleetOwner = userRole == "OWNER" || userRole == "BOTH"
@@ -434,61 +470,43 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                 DocumentUploadRow(
                                     title = "Profile Photo",
                                     subtitle = "Official avatar displayed to partners & clients",
-                                    isUploaded = !profilePicUrl.isNullOrEmpty(),
-                                    onClick = {
-                                        pendingDocType = "profile_pic"
-                                        pickImageLauncher.launch("image/*")
-                                    }
+                                    isUploaded = !docUrls["profile_pic"].isNullOrBlank() || !profilePicUrl.isNullOrEmpty(),
+                                    onClick = { onDocClick("profile_pic", "Profile Photo") }
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 DocumentUploadRow(
                                     title = "Ghana Card (Front)",
                                     subtitle = "National Identification Authority (NIA) Card Front",
-                                    isUploaded = !missingDocs.contains("ghana_card"),
-                                    onClick = {
-                                        pendingDocType = "ghana_card"
-                                        pickImageLauncher.launch("image/*")
-                                    }
+                                    isUploaded = !docUrls["ghana_card"].isNullOrBlank(),
+                                    onClick = { onDocClick("ghana_card", "Ghana Card (Front)") }
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 DocumentUploadRow(
                                     title = "Ghana Card (Back)",
                                     subtitle = "National Identification Authority (NIA) Card Back",
-                                    isUploaded = !missingDocs.contains("ghana_card_back"),
-                                    onClick = {
-                                        pendingDocType = "ghana_card_back"
-                                        pickImageLauncher.launch("image/*")
-                                    }
+                                    isUploaded = !docUrls["ghana_card_back"].isNullOrBlank(),
+                                    onClick = { onDocClick("ghana_card_back", "Ghana Card (Back)") }
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 DocumentUploadRow(
                                     title = "DVLA Driver's License",
                                     subtitle = "Valid Class B/C Driver License Document",
-                                    isUploaded = !missingDocs.contains("drivers_license"),
-                                    onClick = {
-                                        pendingDocType = "drivers_license"
-                                        pickImageLauncher.launch("image/*")
-                                    }
+                                    isUploaded = !docUrls["drivers_license"].isNullOrBlank(),
+                                    onClick = { onDocClick("drivers_license", "DVLA Driver's License") }
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 DocumentUploadRow(
                                     title = "DVLA Roadworthy Certificate",
                                     subtitle = "Commercial Roadworthiness Sticker",
-                                    isUploaded = !missingDocs.contains("roadworthy_cert"),
-                                    onClick = {
-                                        pendingDocType = "roadworthy_cert"
-                                        pickImageLauncher.launch("image/*")
-                                    }
+                                    isUploaded = !docUrls["roadworthy_cert"].isNullOrBlank(),
+                                    onClick = { onDocClick("roadworthy_cert", "DVLA Roadworthy Certificate") }
                                 )
                                 HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                                 DocumentUploadRow(
                                     title = "Vehicle Insurance Policy",
                                     subtitle = "Comprehensive Passenger Commercial Insurance",
-                                    isUploaded = !missingDocs.contains("insurance_cert"),
-                                    onClick = {
-                                        pendingDocType = "insurance_cert"
-                                        pickImageLauncher.launch("image/*")
-                                    }
+                                    isUploaded = !docUrls["insurance_cert"].isNullOrBlank(),
+                                    onClick = { onDocClick("insurance_cert", "Vehicle Insurance Policy") }
                                 )
                             }
                         }
@@ -507,6 +525,58 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                 }
             }
         }
+    }
+
+    // Document Viewer Dialog
+    if (viewingDoc != null) {
+        val (title, docType, imageUrl) = viewingDoc!!
+        AlertDialog(
+            onDismissRequest = { viewingDoc = null },
+            title = { Text(title, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(240.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFF1F5F9)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = title,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+
+                    Text("Uploaded Document Image", fontSize = 11.sp, color = Color.Gray)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val dt = docType
+                        viewingDoc = null
+                        pendingDocType = dt
+                        pickImageLauncher.launch("image/*")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                ) {
+                    Text("Re-upload / Update")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { viewingDoc = null }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 
     // Edit Profile Dialog
@@ -747,7 +817,7 @@ fun DocumentUploadRow(
             shape = RoundedCornerShape(8.dp)
         ) {
             Text(
-                text = if (isUploaded) "Verified" else "Upload",
+                text = if (isUploaded) "View / Edit" else "Upload",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isUploaded) Color(0xFF059669) else Color(0xFF2563EB),

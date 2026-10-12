@@ -1280,7 +1280,7 @@ object DatabaseRepository {
 
     fun getFleetOwnerProfile(id: Int): Map<String, Any>? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sqlOwner = "SELECT id, full_name, email, phone, region, profile_picture, status, company_name, registration_number FROM fleet_owners WHERE id = ?"
+            val sqlOwner = "SELECT id, full_name, email, phone, region, profile_picture, id_front_image, id_back_image, business_certificate, status, company_name, registration_number FROM fleet_owners WHERE id = ?"
             val stmtOwner = conn.prepareStatement(sqlOwner)
             stmtOwner.setInt(1, id)
             val rsOwner = stmtOwner.executeQuery()
@@ -1289,20 +1289,18 @@ object DatabaseRepository {
                 var activeRentalsCount = 0
                 var totalEarnings = 0.0
                 try {
-                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE owner_id = ? OR owner_id = 1 OR owner_id IS NULL")
+                    val stmtCount = conn.prepareStatement("SELECT COUNT(*) FROM rental_vehicles WHERE owner_id = ?")
                     stmtCount.setInt(1, id)
                     val rsCount = stmtCount.executeQuery()
                     if (rsCount.next()) fleetCount = rsCount.getInt(1)
 
-                    val stmtActive = conn.prepareStatement("SELECT COUNT(*) FROM rentals r JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE (v.fleet_owner_id = ? OR v.owner_id = ?) AND r.status = 'ACTIVE'")
+                    val stmtActive = conn.prepareStatement("SELECT COUNT(*) FROM rentals r JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE v.owner_id = ? AND r.status = 'ACTIVE'")
                     stmtActive.setInt(1, id)
-                    stmtActive.setInt(2, id)
                     val rsActive = stmtActive.executeQuery()
                     if (rsActive.next()) activeRentalsCount = rsActive.getInt(1)
 
-                    val stmtEarn = conn.prepareStatement("SELECT COALESCE(SUM(r.total_price), 0.0) FROM rentals r JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE (v.fleet_owner_id = ? OR v.owner_id = ?) AND r.payment_status = 'COMPLETED'")
+                    val stmtEarn = conn.prepareStatement("SELECT COALESCE(SUM(r.total_price), 0.0) FROM rentals r JOIN rental_vehicles v ON r.vehicle_id = v.id WHERE v.owner_id = ? AND r.payment_status = 'COMPLETED'")
                     stmtEarn.setInt(1, id)
-                    stmtEarn.setInt(2, id)
                     val rsEarn = stmtEarn.executeQuery()
                     if (rsEarn.next()) totalEarnings = rsEarn.getDouble(1)
                 } catch (_: Exception) {}
@@ -1319,6 +1317,9 @@ object DatabaseRepository {
                     "phone" to (rsOwner.getString("phone") ?: ""),
                     "region" to (rsOwner.getString("region") ?: ""),
                     "profile_picture" to (rsOwner.getString("profile_picture") ?: ""),
+                    "id_front_image" to (rsOwner.getString("id_front_image") ?: ""),
+                    "id_back_image" to (rsOwner.getString("id_back_image") ?: ""),
+                    "business_certificate" to (rsOwner.getString("business_certificate") ?: ""),
                     "vehicle_type" to "Fleet",
                     "status" to (rsOwner.getString("status") ?: "APPROVED"),
                     "user_role" to "OWNER",
@@ -1339,7 +1340,7 @@ object DatabaseRepository {
         }
 
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "SELECT id, full_name, email, phone, region, profile_picture, vehicle_type, vehicle_number, vehicle_model, status, COALESCE(user_role, 'DRIVER') as user_role, company_name, registration_number FROM drivers WHERE id = ?"
+            val sql = "SELECT id, full_name, email, phone, region, profile_picture, license_image, id_front_image, id_back_image, insurance_cert, roadworthy_cert, vehicle_image, vehicle_type, vehicle_number, vehicle_model, status, COALESCE(user_role, 'DRIVER') as user_role, company_name, registration_number FROM drivers WHERE id = ?"
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, id)
             val rs = stmt.executeQuery()
@@ -1376,6 +1377,12 @@ object DatabaseRepository {
                     "phone" to phone,
                     "region" to (rs.getString("region") ?: ""),
                     "profile_picture" to (rs.getString("profile_picture") ?: ""),
+                    "license_image" to (rs.getString("license_image") ?: ""),
+                    "id_front_image" to (rs.getString("id_front_image") ?: ""),
+                    "id_back_image" to (rs.getString("id_back_image") ?: ""),
+                    "insurance_cert" to (rs.getString("insurance_cert") ?: ""),
+                    "roadworthy_cert" to (rs.getString("roadworthy_cert") ?: ""),
+                    "vehicle_image" to (rs.getString("vehicle_image") ?: ""),
                     "vehicle_type" to (rs.getString("vehicle_type") ?: "Car"),
                     "vehicle_number" to (rs.getString("vehicle_number") ?: ""),
                     "vehicle_model" to (rs.getString("vehicle_model") ?: ""),
