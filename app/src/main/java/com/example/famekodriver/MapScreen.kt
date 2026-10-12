@@ -848,20 +848,6 @@ fun MapScreen(
                 )
             }
             
-            viewModel.incomingCall?.let { call -> 
-                IncomingCallDialog(
-                    call = call,
-                    onAccept = { viewModel.acceptCall(call.callId) },
-                    onReject = { viewModel.rejectCall(call.callId) }
-                )
-            }
-            viewModel.ongoingCall?.let { call -> 
-                CallOverlay(
-                    call = call,
-                    onEnd = { viewModel.endCall(call.callId) }
-                )
-            }
-
             if (viewModel.showTripSummary) {
                 TripSummaryDialog(
                     totalFare = viewModel.finalTotalFare,
