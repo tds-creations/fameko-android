@@ -101,44 +101,70 @@ fun DriverProfileScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    fun refreshProfile() {
         isLoading = true
-        repository.getDriverProfile(driverId, userRole).onSuccess { profile ->
-            if (profile["success"] == true) {
-                driverName = profile["name"]?.toString() ?: driverName
-                driverEmail = profile["email"]?.toString() ?: driverEmail
-                driverPhone = profile["phone"]?.toString() ?: driverPhone
-                driverRegion = profile["region"]?.toString() ?: driverRegion
-                status = profile["status"]?.toString() ?: "APPROVED"
-                profilePicUrl = profile["profile_picture"]?.toString() ?: profilePicUrl
+        scope.launch {
+            repository.getDriverProfile(driverId, userRole).onSuccess { profile ->
+                if (profile["success"] == true) {
+                    driverName = profile["name"]?.toString()?.ifEmpty { driverName } ?: driverName
+                    var rawEmail = profile["email"]?.toString() ?: ""
+                    var rawPhone = profile["phone"]?.toString() ?: ""
 
-                val fetchedRole = profile["user_role"]?.toString()
-                if (!fetchedRole.isNullOrEmpty()) {
-                    userRole = fetchedRole
-                    sessionManager.setUserRole(fetchedRole)
+                    if (rawEmail.isBlank() && rawPhone.contains("@")) {
+                        rawEmail = rawPhone
+                        rawPhone = ""
+                    }
+
+                    if (rawEmail.isNotBlank()) driverEmail = rawEmail
+                    if (rawPhone.isNotBlank()) driverPhone = rawPhone
+
+                    driverRegion = profile["region"]?.toString()?.ifEmpty { driverRegion } ?: driverRegion
+                    val fetchedStatus = profile["status"]?.toString()
+                    if (!fetchedStatus.isNullOrEmpty()) {
+                        status = fetchedStatus
+                        sessionManager.updateStatus(fetchedStatus)
+                    }
+
+                    val pic = profile["profile_picture"]?.toString()
+                    if (!pic.isNullOrEmpty()) {
+                        profilePicUrl = pic
+                        sessionManager.updateProfilePicture(pic)
+                    }
+
+                    val fetchedRole = profile["user_role"]?.toString()
+                    if (!fetchedRole.isNullOrEmpty()) {
+                        userRole = fetchedRole
+                        sessionManager.setUserRole(fetchedRole)
+                    }
+
+                    companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
+                    regNumber = profile["registration_number"]?.toString()?.ifEmpty { regNumber } ?: regNumber
+                    (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
+                    vehicleModel = profile["vehicle_model"]?.toString() ?: vehicleModel
+                    vehiclePlate = profile["vehicle_number"]?.toString() ?: vehiclePlate
                 }
-
-                companyName = profile["company_name"]?.toString()?.ifEmpty { companyName } ?: companyName
-                regNumber = profile["registration_number"]?.toString()?.ifEmpty { regNumber } ?: regNumber
-                (profile["fleet_count"] as? Number)?.toInt()?.let { fleetCount = it }
-                vehicleModel = profile["vehicle_model"]?.toString() ?: vehicleModel
-                vehiclePlate = profile["vehicle_number"]?.toString() ?: vehiclePlate
             }
-            isLoading = false
-        }.onFailure {
-            isLoading = false
-        }
 
-        if (driverId.isNotEmpty()) {
-            repository.getDriverStats(driverId).onSuccess { stats -> driverStats = stats }
+            repository.getDriverStatus(driverId).onSuccess { resp ->
+                status = resp.status
+                sessionManager.updateStatus(resp.status)
+                missingDocs = resp.missingDocs
+                if (!resp.profilePicture.isNullOrEmpty()) {
+                    profilePicUrl = resp.profilePicture
+                    sessionManager.updateProfilePicture(resp.profilePicture)
+                }
+            }
+
+            if (driverId.isNotEmpty()) {
+                repository.getDriverStats(driverId).onSuccess { stats -> driverStats = stats }
+            }
+
+            isLoading = false
         }
-        
-        repository.getDriverStatus(driverId).onSuccess { resp ->
-            sessionManager.updateStatus(resp.status)
-            status = resp.status
-            missingDocs = resp.missingDocs
-            if (profilePicUrl == null) profilePicUrl = resp.profilePicture
-        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshProfile()
     }
 
     val isFleetOwner = userRole == "OWNER" || userRole == "BOTH"
@@ -162,6 +188,13 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
+                    IconButton(onClick = { refreshProfile(); Toast.makeText(context, "Refreshing profile...", Toast.LENGTH_SHORT).show() }) {
+                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Refresh Profile", tint = Color(0xFF0F172A), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
                     IconButton(onClick = { isEditDialogVisible = true }) {
                         Surface(shape = CircleShape, color = Color(0xFFEFF6FF), modifier = Modifier.size(40.dp)) {
                             Box(contentAlignment = Alignment.Center) {

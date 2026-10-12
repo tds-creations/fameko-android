@@ -1346,16 +1346,23 @@ object DatabaseRepository {
             if (rs.next()) {
                 val dbRole = rs.getString("user_role") ?: "DRIVER"
                 val fullName = rs.getString("full_name") ?: ""
+                var email = rs.getString("email") ?: ""
+                var phone = rs.getString("phone") ?: ""
+
+                if (email.isBlank() && phone.contains("@")) {
+                    email = phone
+                    phone = ""
+                }
+
                 val dbCompany = rs.getString("company_name")
                 val companyName = if (!dbCompany.isNullOrBlank()) dbCompany else if (fullName.isNotBlank()) "$fullName's Fleet" else ""
 
                 var fleetCount = 0
                 if (dbRole == "OWNER" || dbRole == "BOTH") {
                     try {
-                        val countSql = "SELECT COUNT(*) FROM rental_vehicles WHERE fleet_owner_id = ? OR owner_id = ?"
+                        val countSql = "SELECT COUNT(*) FROM rental_vehicles WHERE owner_id = ?"
                         val stmtCount = conn.prepareStatement(countSql)
                         stmtCount.setInt(1, id)
-                        stmtCount.setInt(2, id)
                         val rsCount = stmtCount.executeQuery()
                         if (rsCount.next()) fleetCount = rsCount.getInt(1)
                     } catch (_: Exception) {}
@@ -1365,8 +1372,8 @@ object DatabaseRepository {
                     "success" to true,
                     "id" to rs.getInt("id"),
                     "name" to fullName,
-                    "email" to (rs.getString("email") ?: ""),
-                    "phone" to (rs.getString("phone") ?: ""),
+                    "email" to email,
+                    "phone" to phone,
                     "region" to (rs.getString("region") ?: ""),
                     "profile_picture" to (rs.getString("profile_picture") ?: ""),
                     "vehicle_type" to (rs.getString("vehicle_type") ?: "Car"),
