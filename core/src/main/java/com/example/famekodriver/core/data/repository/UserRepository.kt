@@ -312,20 +312,23 @@ class UserRepository {
         }
     }
 
-    suspend fun uploadImage(file: File, preset: String = "fameko_docs"): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun uploadImage(file: File, preset: String = "fameko_docs", folder: String? = null): Result<String> = withContext(Dispatchers.IO) {
         try {
             val cloudName = "df3jnubvy"
             val cloudinaryUrl = "https://api.cloudinary.com/v1_1/$cloudName/image/upload"
             
-            val requestBody = MultipartBody.Builder()
+            val builder = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", file.name, file.asRequestBody("image/*".toMediaTypeOrNull()))
                 .addFormDataPart("upload_preset", preset)
-                .build()
+
+            if (!folder.isNullOrBlank()) {
+                builder.addFormDataPart("folder", folder)
+            }
 
             val request = Request.Builder()
                 .url(cloudinaryUrl)
-                .post(requestBody)
+                .post(builder.build())
                 .build()
 
             val response = NetworkClient.okHttpClient.newCall(request).execute()
@@ -350,7 +353,7 @@ class UserRepository {
         try {
             var profilePicUrl: String? = null
             if (profilePic != null) {
-                val uploadResult = uploadImage(profilePic, "customer_profiles")
+                val uploadResult = uploadImage(profilePic, preset = "fameko_docs", folder = "customer_profile")
                 if (uploadResult.isSuccess) {
                     profilePicUrl = uploadResult.getOrNull()
                 }

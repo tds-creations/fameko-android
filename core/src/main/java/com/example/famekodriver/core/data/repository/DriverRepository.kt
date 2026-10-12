@@ -630,8 +630,8 @@ class DriverRepository private constructor() {
 
     suspend fun uploadDocument(driverId: String, docType: String, file: File): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val preset = if (docType == "profile_pic") "driver_profiles" else "fameko_docs"
-            val uploadResult = uploadImage(file, preset)
+            val folderName = if (docType == "profile_pic") "driver_docs" else "driver_docs"
+            val uploadResult = uploadImage(file, preset = "fameko_docs", folder = folderName)
             if (uploadResult.isFailure) {
                 val error = uploadResult.exceptionOrNull()
                 Log.e("FamekoRepo", "Cloudinary upload failed for $docType", error)
