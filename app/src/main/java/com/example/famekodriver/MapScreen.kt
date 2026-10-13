@@ -315,7 +315,7 @@ fun MapScreen(
             }
         }
         if (viewModel.isOnline || viewModel.currentDelivery != null) {
-            context.startForegroundService(intent)
+            ContextCompat.startForegroundService(context, intent)
         } else {
             context.stopService(intent)
         }
@@ -1767,6 +1767,7 @@ fun OnlineToggleButton(isOnline: Boolean, isApproved: Boolean, onClick: () -> Un
     }
 }
 
+
 @Composable
 fun BatteryOptimizationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
@@ -1959,184 +1960,6 @@ fun SOSDialog(
         shape = RoundedCornerShape(28.dp),
         containerColor = Color.White
     )
-}
-
-@Composable
-fun IncomingCallDialog(call: FamekoEvent.IncomingCall, onAccept: () -> Unit, onReject: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = {},
-        title = { Text("Incoming Call", fontWeight = FontWeight.ExtraBold, color = FamekoPrimary) },
-        text = { 
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Surface(shape = CircleShape, color = BoltLightGray, modifier = Modifier.size(80.dp)) {
-                    Icon(Icons.Default.Person, null, modifier = Modifier.padding(20.dp), tint = BoltDark)
-                }
-                Spacer(Modifier.height(16.dp))
-                Text("Customer ${call.callerName} is calling you regarding the active trip.", textAlign = TextAlign.Center)
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onAccept, 
-                colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Call, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Accept")
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onReject,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
-            ) {
-                Text("Reject")
-            }
-        },
-        shape = RoundedCornerShape(28.dp),
-        containerColor = Color.White
-    )
-}
-
-@Composable
-fun CallOverlay(call: FamekoEvent.IncomingCall, onEnd: () -> Unit) {
-    var callDuration by remember { mutableIntStateOf(0) }
-    val isConnecting = call.callId == "pending"
-    
-    LaunchedEffect(isConnecting) {
-        if (!isConnecting) {
-            while (true) {
-                delay(1.seconds)
-                callDuration++
-            }
-        }
-    }
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.95f))
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(modifier = Modifier.height(64.dp))
-            
-            val scale = if (!isConnecting) {
-                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                infiniteTransition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.2f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "pulse"
-                ).value
-            } else {
-                1f
-            }
-            
-            Surface(
-                shape = CircleShape,
-                color = BoltGreen.copy(alpha = 0.2f),
-                modifier = Modifier.size(140.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (!isConnecting) {
-                        Surface(
-                            shape = CircleShape, 
-                                        color = BoltGreen.copy(alpha = 0.1f), 
-                            modifier = Modifier.size(140.dp * scale)
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize())
-                        }
-                    }
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(80.dp)
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                text = call.callerName,
-                color = Color.White,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = if (isConnecting) "Connecting..." else {
-                    val mins = callDuration / 60
-                    val secs = callDuration % 60
-                    "In-app Call • %02d:%02d".format(Locale.US, mins, secs)
-                },
-                color = if (isConnecting) Color.Gray else BoltGreen,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            )
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 48.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(
-                        onClick = {},
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(Color.White.copy(alpha = 0.1f), CircleShape)
-                    ) {
-                        Icon(Icons.Default.MicOff, null, tint = Color.White)
-                    }
-                    Text(
-                        text = "Mute",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-                
-                FloatingActionButton(
-                    onClick = onEnd,
-                    containerColor = Color(0xFFDC3545),
-                    contentColor = Color.White,
-                    shape = CircleShape,
-                    modifier = Modifier.size(80.dp)
-                ) {
-                    Icon(Icons.Default.CallEnd, null, modifier = Modifier.size(36.dp))
-                }
-                
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(
-                        onClick = {},
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(Color.White.copy(alpha = 0.1f), CircleShape)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.VolumeUp, null, tint = Color.White)
-                    }
-                    Text(
-                        text = "Speaker",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
