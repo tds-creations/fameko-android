@@ -1350,10 +1350,12 @@ fun Application.configureRouting() {
                 DatabaseRepository.cancelOrder(orderId)
                 RedisManager.setChatRetention(orderId)
                 
-                if (driverId != null) {
+                if (driverId != null && driverId > 0) {
                     println("DEBUG: Notifying DRIVER_$driverId that Order $orderId was cancelled")
                     sendToUser("DRIVER_$driverId", "ORDER_CANCELLED", mapOf("orderId" to orderId))
                 }
+
+                broadcastToDrivers("ORDER_CANCELLED", mapOf("orderId" to orderId))
 
                 call.respond(mapOf("success" to true))
             }

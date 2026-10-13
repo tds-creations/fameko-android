@@ -3188,8 +3188,16 @@ object DatabaseRepository {
 
     fun getDriverIdForOrder(orderId: Int): Int? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val rs = conn.prepareStatement("SELECT driver_id FROM deliveries WHERE order_id = ?").apply { setInt(1, orderId) }.executeQuery()
-            if (rs.next()) return rs.getInt(1)
+            val rsDel = conn.prepareStatement("SELECT driver_id FROM deliveries WHERE order_id = ? AND driver_id IS NOT NULL AND driver_id > 0").apply { setInt(1, orderId) }.executeQuery()
+            if (rsDel.next()) {
+                val dId = rsDel.getInt(1)
+                if (dId > 0) return dId
+            }
+            val rsOrd = conn.prepareStatement("SELECT driver_id FROM orders WHERE id = ? AND driver_id IS NOT NULL AND driver_id > 0").apply { setInt(1, orderId) }.executeQuery()
+            if (rsOrd.next()) {
+                val dId = rsOrd.getInt(1)
+                if (dId > 0) return dId
+            }
         }
         return null
     }
