@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.seconds
 class DriverMapViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DriverRepository.getInstance()
     private val sessionManager = SessionManager(application)
-    val callManager = com.example.famekodriver.core.network.DriverAgoraCallManager(application.applicationContext, repository)
+    val callManager = DriverAgoraCallManager(application.applicationContext, repository)
 
     // --- Screen State ---
     var isOnline by mutableStateOf(sessionManager.isOnline())

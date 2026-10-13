@@ -307,7 +307,7 @@ fun CustomerMapScreen() {
 
     val scope = rememberCoroutineScope()
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
-    val callState by mapViewModel.callManager.callState.collectAsState()
+    val callState: CustomerCallState by mapViewModel.callManager.callState.collectAsState()
 
     // Physical Back Button Logic
     BackHandler(enabled = true) {
@@ -588,7 +588,7 @@ fun CustomerMapScreen() {
                 }
             }
 
-            com.example.famekodriver.core.ui.AgoraCallOverlay(
+            CustomerAgoraCallOverlay(
                 callState = callState,
                 callManager = mapViewModel.callManager
             )

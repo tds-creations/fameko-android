@@ -445,7 +445,7 @@ fun MapScreen(
         }
     }
 
-    val callState by viewModel.callManager.callState.collectAsState()
+    val callState: DriverCallState by viewModel.callManager.callState.collectAsState()
 
     Scaffold(
         floatingActionButton = {
@@ -521,7 +521,7 @@ fun MapScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            com.example.famekodriver.core.ui.AgoraCallOverlay(
+            DriverAgoraCallOverlay(
                 callState = callState,
                 callManager = viewModel.callManager
             )
