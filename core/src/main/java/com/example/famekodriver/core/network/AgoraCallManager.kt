@@ -19,7 +19,7 @@ sealed interface AgoraCallState {
     data class Ended(val reason: String) : AgoraCallState
 }
 
-class AgoraCallManager(
+open class AgoraCallManager(
     private val context: Context,
     private val repository: DriverRepository
 ) {

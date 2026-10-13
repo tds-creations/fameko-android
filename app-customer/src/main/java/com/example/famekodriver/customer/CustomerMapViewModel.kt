@@ -31,7 +31,7 @@ class CustomerMapViewModel(
     private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
 
-    val callManager by lazy { com.example.famekodriver.core.network.AgoraCallManager(sessionManager.context, repository) }
+    val callManager by lazy { com.example.famekodriver.core.network.CustomerAgoraCallManager(sessionManager.context, repository) }
 
     sealed class SavedPlacesUiState {
         object Loading : SavedPlacesUiState()
