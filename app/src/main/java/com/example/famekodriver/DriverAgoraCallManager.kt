@@ -38,6 +38,7 @@ class DriverAgoraCallManager(
     val isSpeakerOn: StateFlow<Boolean> = _isSpeakerOn
 
     private var activeChannelName: String? = null
+    private var activeOrderId: Int = 0
 
     init {
         initializeAgoraEngine()
@@ -57,7 +58,7 @@ class DriverAgoraCallManager(
                         is DriverCallState.Active -> currentState.remoteName
                         else -> "Customer"
                     }
-                    _callState.value = DriverCallState.Active(channel, remoteName, 0)
+                    _callState.value = DriverCallState.Active(channel, remoteName, activeOrderId)
                 }
 
                 override fun onUserOffline(uid: Int, reason: Int) {
@@ -96,13 +97,17 @@ class DriverAgoraCallManager(
                 when (event) {
                     is FamekoEvent.IncomingCall -> {
                         activeChannelName = event.callId
-                        _callState.value = DriverCallState.Ringing(event.callId, event.callerName, 0, "")
+                        val parsedOrderId = if (event.orderId > 0) event.orderId else event.callId.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
+                        if (parsedOrderId > 0) activeOrderId = parsedOrderId
+                        _callState.value = DriverCallState.Ringing(event.callId, event.callerName, activeOrderId, "")
                     }
                     is FamekoEvent.CallAccepted -> {
                         val channelName = event.callId
                         activeChannelName = channelName
+                        val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
+                        if (parsedOrderId > 0) activeOrderId = parsedOrderId
                         rtcEngine?.joinChannel(null, channelName, null, 0)
-                        _callState.value = DriverCallState.Active(channelName, "Customer", 0)
+                        _callState.value = DriverCallState.Active(channelName, "Customer", activeOrderId)
                     }
                     is FamekoEvent.CallRejected -> {
                         endCallLocally(event.reason ?: "Customer Rejected Call")
@@ -117,16 +122,19 @@ class DriverAgoraCallManager(
                             "CALL_INCOMING" -> {
                                 val callId = data["call_id"]?.toString() ?: ""
                                 val callerName = data["caller_name"]?.toString() ?: "Customer"
-                                val orderId = (data["order_id"] as? Number)?.toInt() ?: 0
+                                val rawOrderId = (data["order_id"] as? Number)?.toInt() ?: callId.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
+                                if (rawOrderId > 0) activeOrderId = rawOrderId
                                 val initiatorId = data["initiator_id"]?.toString() ?: ""
                                 activeChannelName = callId
-                                _callState.value = DriverCallState.Ringing(callId, callerName, orderId, initiatorId)
+                                _callState.value = DriverCallState.Ringing(callId, callerName, activeOrderId, initiatorId)
                             }
                             "CALL_ACCEPTED" -> {
                                 val channelName = data["call_id"]?.toString() ?: ""
                                 activeChannelName = channelName
+                                val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
+                                if (parsedOrderId > 0) activeOrderId = parsedOrderId
                                 rtcEngine?.joinChannel(null, channelName, null, 0)
-                                _callState.value = DriverCallState.Active(channelName, "Customer", 0)
+                                _callState.value = DriverCallState.Active(channelName, "Customer", activeOrderId)
                             }
                             "CALL_REJECTED" -> {
                                 endCallLocally("Customer Rejected Call")
@@ -145,6 +153,7 @@ class DriverAgoraCallManager(
     fun startOutgoingCall(targetId: String, callerName: String, orderId: Int) {
         val channelName = "fameko_order_$orderId"
         activeChannelName = channelName
+        activeOrderId = orderId
         _callState.value = DriverCallState.Dialing(channelName, "Calling Customer...", orderId)
 
         rtcEngine?.joinChannel(null, channelName, null, 0)
@@ -157,7 +166,9 @@ class DriverAgoraCallManager(
     fun acceptIncomingCall(callId: String, callerName: String, orderId: Int) {
         val channelName = if (callId.startsWith("fameko_order_")) callId else "fameko_order_$orderId"
         activeChannelName = channelName
-        _callState.value = DriverCallState.Active(channelName, callerName, orderId)
+        val parsedOrderId = if (orderId > 0) orderId else channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
+        if (parsedOrderId > 0) activeOrderId = parsedOrderId
+        _callState.value = DriverCallState.Active(channelName, callerName, activeOrderId)
 
         rtcEngine?.joinChannel(null, channelName, null, 0)
 
@@ -202,6 +213,7 @@ class DriverAgoraCallManager(
         try {
             rtcEngine?.leaveChannel()
             activeChannelName = null
+            activeOrderId = 0
             _isMicMuted.value = false
             _callState.value = DriverCallState.Ended(reason)
             scope.launch {

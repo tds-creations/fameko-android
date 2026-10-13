@@ -59,7 +59,8 @@ fun CustomerAgoraCallOverlay(
                         }
 
                         Text(callState.callerName, fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color.White)
-                        Text("Order #${callState.orderId}", fontSize = 12.sp, color = Color.LightGray)
+                        val orderText = if (callState.orderId > 0) "Order #${callState.orderId}" else "Active Trip Call"
+                        Text(orderText, fontSize = 12.sp, color = Color.LightGray)
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),

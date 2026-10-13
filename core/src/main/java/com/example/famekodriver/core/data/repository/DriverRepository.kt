@@ -84,7 +84,8 @@ class DriverRepository private constructor() {
                             val data = gson.fromJson(wsMessage.payload, Map::class.java)
                             val callId = data["call_id"]?.toString() ?: ""
                             val name = data["caller_name"]?.toString() ?: data["customer_name"]?.toString() ?: data["driver_name"]?.toString() ?: "Someone"
-                            _events.tryEmit(FamekoEvent.IncomingCall(callId, name))
+                            val orderId = (data["order_id"] as? Number)?.toInt() ?: data["order_id"]?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+                            _events.tryEmit(FamekoEvent.IncomingCall(callId, name, orderId = orderId))
                         }
                         "CALL_ACCEPTED", "call_accepted" -> {
                             val data = gson.fromJson(wsMessage.payload, Map::class.java)
