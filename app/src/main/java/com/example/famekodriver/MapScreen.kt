@@ -521,11 +521,6 @@ fun MapScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            DriverAgoraCallOverlay(
-                callState = callState,
-                callManager = viewModel.callManager
-            )
-
             AndroidView(
                 factory = { ctx ->
                     MapView(ctx).apply {
@@ -856,6 +851,11 @@ fun MapScreen(
                     onDismiss = { viewModel.showTripSummary = false }
                 )
             }
+
+            DriverAgoraCallOverlay(
+                callState = callState,
+                callManager = viewModel.callManager
+            )
         }
     }
 }
