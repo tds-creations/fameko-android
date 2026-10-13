@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.seconds
 class DriverMapViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DriverRepository.getInstance()
     private val sessionManager = SessionManager(application)
-    val callManager = com.example.famekodriver.core.network.WebRtcCallManager(application.applicationContext, repository)
+    val callManager = com.example.famekodriver.core.network.AgoraCallManager(application.applicationContext, repository)
 
     // --- Screen State ---
     var isOnline by mutableStateOf(sessionManager.isOnline())
@@ -434,11 +434,14 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         val delivery = currentDelivery ?: return
         val driverName = sessionManager.getDriverName() ?: "Driver"
         val target = if (delivery.customerId != null) "CUSTOMER_${delivery.customerId}" else "CUSTOMER_UNKNOWN"
-        callManager.initiateCall(target, driverName, delivery.orderId)
+        callManager.startOutgoingCall(target, driverName, delivery.orderId)
     }
 
     fun acceptCall(callId: String) {
-        callManager.acceptCall(callId)
+        val delivery = currentDelivery ?: activeRequest
+        val customerName = delivery?.customerName ?: "Customer"
+        val orderId = delivery?.orderId ?: 0
+        callManager.acceptIncomingCall(callId, customerName, orderId)
     }
 
     fun rejectCall(callId: String) {
