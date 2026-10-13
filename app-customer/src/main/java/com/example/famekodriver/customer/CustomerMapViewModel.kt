@@ -1075,8 +1075,10 @@ class CustomerMapViewModel(
     fun initiateCall() {
         val data = orderStatusData ?: return
         val orderId = currentOrderId ?: return
+        val driverName = data.driverName ?: "Driver"
+        val customerName = sessionManager.getDriverName() ?: "Customer"
         val target = if (data.driverId != null) "DRIVER_${data.driverId}" else "DRIVER_UNKNOWN"
-        callManager.startOutgoingCall(target, sessionManager.getDriverName() ?: "Customer", orderId)
+        callManager.startOutgoingCall(target, customerName, driverName, orderId)
     }
 
     fun acceptCall(callId: String) {

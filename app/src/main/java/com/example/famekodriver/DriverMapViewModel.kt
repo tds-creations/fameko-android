@@ -197,11 +197,13 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 ongoingCall = null
             }
             is FamekoEvent.OrderCancelled -> {
-                if ((currentDelivery?.orderId == event.orderId) || (activeRequest?.orderId == event.orderId)) {
+                val activeId = currentDelivery?.orderId ?: activeRequest?.orderId
+                if (activeId == null || activeId == event.orderId || event.orderId == 0) {
                     currentDelivery = null
                     activeRequest = null
                     clearRouteAndNavigation()
                     timerJob?.cancel()
+                    android.widget.Toast.makeText(getApplication(), "Order #${event.orderId} was cancelled by customer", android.widget.Toast.LENGTH_LONG).show()
                 }
             }
             is FamekoEvent.OrderStatusUpdate -> {
@@ -433,8 +435,9 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     fun initiateCall() {
         val delivery = currentDelivery ?: return
         val driverName = sessionManager.getDriverName() ?: "Driver"
+        val customerName = delivery.customerName ?: "Customer"
         val target = if (delivery.customerId != null) "CUSTOMER_${delivery.customerId}" else "CUSTOMER_UNKNOWN"
-        callManager.startOutgoingCall(target, driverName, delivery.orderId)
+        callManager.startOutgoingCall(target, driverName, customerName, delivery.orderId)
     }
 
     fun acceptCall(callId: String) {

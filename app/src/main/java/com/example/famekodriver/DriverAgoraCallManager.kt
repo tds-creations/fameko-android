@@ -39,6 +39,7 @@ class DriverAgoraCallManager(
 
     private var activeChannelName: String? = null
     private var activeOrderId: Int = 0
+    private var activeRecipientName: String = "Customer"
 
     init {
         initializeAgoraEngine()
@@ -51,14 +52,7 @@ class DriverAgoraCallManager(
                 override fun onUserJoined(uid: Int, elapsed: Int) {
                     Log.d("DriverAgoraCall", "Customer joined Agora channel: $uid")
                     val channel = activeChannelName ?: ""
-                    val currentState = _callState.value
-                    val remoteName = when (currentState) {
-                        is DriverCallState.Dialing -> currentState.recipientName
-                        is DriverCallState.Ringing -> currentState.callerName
-                        is DriverCallState.Active -> currentState.remoteName
-                        else -> "Customer"
-                    }
-                    _callState.value = DriverCallState.Active(channel, remoteName, activeOrderId)
+                    _callState.value = DriverCallState.Active(channel, activeRecipientName, activeOrderId)
                 }
 
                 override fun onUserOffline(uid: Int, reason: Int) {
@@ -99,7 +93,8 @@ class DriverAgoraCallManager(
                         activeChannelName = event.callId
                         val parsedOrderId = if (event.orderId > 0) event.orderId else event.callId.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                         if (parsedOrderId > 0) activeOrderId = parsedOrderId
-                        _callState.value = DriverCallState.Ringing(event.callId, event.callerName, activeOrderId, "")
+                        activeRecipientName = event.callerName.ifBlank { "Customer" }
+                        _callState.value = DriverCallState.Ringing(event.callId, activeRecipientName, activeOrderId, "")
                     }
                     is FamekoEvent.CallAccepted -> {
                         val channelName = event.callId
@@ -107,7 +102,7 @@ class DriverAgoraCallManager(
                         val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                         if (parsedOrderId > 0) activeOrderId = parsedOrderId
                         rtcEngine?.joinChannel(null, channelName, null, 0)
-                        _callState.value = DriverCallState.Active(channelName, "Customer", activeOrderId)
+                        _callState.value = DriverCallState.Active(channelName, activeRecipientName, activeOrderId)
                     }
                     is FamekoEvent.CallRejected -> {
                         endCallLocally(event.reason ?: "Customer Rejected Call")
@@ -124,9 +119,10 @@ class DriverAgoraCallManager(
                                 val callerName = data["caller_name"]?.toString() ?: "Customer"
                                 val rawOrderId = (data["order_id"] as? Number)?.toInt() ?: callId.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                                 if (rawOrderId > 0) activeOrderId = rawOrderId
+                                activeRecipientName = callerName.ifBlank { "Customer" }
                                 val initiatorId = data["initiator_id"]?.toString() ?: ""
                                 activeChannelName = callId
-                                _callState.value = DriverCallState.Ringing(callId, callerName, activeOrderId, initiatorId)
+                                _callState.value = DriverCallState.Ringing(callId, activeRecipientName, activeOrderId, initiatorId)
                             }
                             "CALL_ACCEPTED" -> {
                                 val channelName = data["call_id"]?.toString() ?: ""
@@ -134,7 +130,7 @@ class DriverAgoraCallManager(
                                 val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                                 if (parsedOrderId > 0) activeOrderId = parsedOrderId
                                 rtcEngine?.joinChannel(null, channelName, null, 0)
-                                _callState.value = DriverCallState.Active(channelName, "Customer", activeOrderId)
+                                _callState.value = DriverCallState.Active(channelName, activeRecipientName, activeOrderId)
                             }
                             "CALL_REJECTED" -> {
                                 endCallLocally("Customer Rejected Call")
@@ -150,11 +146,12 @@ class DriverAgoraCallManager(
         }
     }
 
-    fun startOutgoingCall(targetId: String, callerName: String, orderId: Int) {
+    fun startOutgoingCall(targetId: String, callerName: String, recipientName: String, orderId: Int) {
         val channelName = "fameko_order_$orderId"
         activeChannelName = channelName
         activeOrderId = orderId
-        _callState.value = DriverCallState.Dialing(channelName, "Calling Customer...", orderId)
+        activeRecipientName = recipientName.ifBlank { "Customer" }
+        _callState.value = DriverCallState.Dialing(channelName, activeRecipientName, orderId)
 
         rtcEngine?.joinChannel(null, channelName, null, 0)
 
@@ -168,7 +165,8 @@ class DriverAgoraCallManager(
         activeChannelName = channelName
         val parsedOrderId = if (orderId > 0) orderId else channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
         if (parsedOrderId > 0) activeOrderId = parsedOrderId
-        _callState.value = DriverCallState.Active(channelName, callerName, activeOrderId)
+        if (callerName.isNotBlank()) activeRecipientName = callerName
+        _callState.value = DriverCallState.Active(channelName, activeRecipientName, activeOrderId)
 
         rtcEngine?.joinChannel(null, channelName, null, 0)
 
@@ -213,7 +211,6 @@ class DriverAgoraCallManager(
         try {
             rtcEngine?.leaveChannel()
             activeChannelName = null
-            activeOrderId = 0
             _isMicMuted.value = false
             _callState.value = DriverCallState.Ended(reason)
             scope.launch {

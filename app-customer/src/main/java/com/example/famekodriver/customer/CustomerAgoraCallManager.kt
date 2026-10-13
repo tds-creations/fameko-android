@@ -39,6 +39,7 @@ class CustomerAgoraCallManager(
 
     private var activeChannelName: String? = null
     private var activeOrderId: Int = 0
+    private var activeRecipientName: String = "Driver"
 
     init {
         initializeAgoraEngine()
@@ -51,14 +52,7 @@ class CustomerAgoraCallManager(
                 override fun onUserJoined(uid: Int, elapsed: Int) {
                     Log.d("CustomerAgoraCall", "Driver joined Agora channel: $uid")
                     val channel = activeChannelName ?: ""
-                    val currentState = _callState.value
-                    val remoteName = when (currentState) {
-                        is CustomerCallState.Dialing -> currentState.recipientName
-                        is CustomerCallState.Ringing -> currentState.callerName
-                        is CustomerCallState.Active -> currentState.remoteName
-                        else -> "Driver"
-                    }
-                    _callState.value = CustomerCallState.Active(channel, remoteName, activeOrderId)
+                    _callState.value = CustomerCallState.Active(channel, activeRecipientName, activeOrderId)
                 }
 
                 override fun onUserOffline(uid: Int, reason: Int) {
@@ -99,7 +93,8 @@ class CustomerAgoraCallManager(
                         activeChannelName = event.callId
                         val parsedOrderId = if (event.orderId > 0) event.orderId else event.callId.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                         if (parsedOrderId > 0) activeOrderId = parsedOrderId
-                        _callState.value = CustomerCallState.Ringing(event.callId, event.callerName, activeOrderId, "")
+                        activeRecipientName = event.callerName.ifBlank { "Driver" }
+                        _callState.value = CustomerCallState.Ringing(event.callId, activeRecipientName, activeOrderId, "")
                     }
                     is FamekoEvent.CallAccepted -> {
                         val channelName = event.callId
@@ -107,7 +102,7 @@ class CustomerAgoraCallManager(
                         val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                         if (parsedOrderId > 0) activeOrderId = parsedOrderId
                         rtcEngine?.joinChannel(null, channelName, null, 0)
-                        _callState.value = CustomerCallState.Active(channelName, "Driver", activeOrderId)
+                        _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
                     }
                     is FamekoEvent.CallRejected -> {
                         endCallLocally(event.reason ?: "Driver Rejected Call")
@@ -124,9 +119,10 @@ class CustomerAgoraCallManager(
                                 val callerName = data["caller_name"]?.toString() ?: "Driver"
                                 val rawOrderId = (data["order_id"] as? Number)?.toInt() ?: callId.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                                 if (rawOrderId > 0) activeOrderId = rawOrderId
+                                activeRecipientName = callerName.ifBlank { "Driver" }
                                 val initiatorId = data["initiator_id"]?.toString() ?: ""
                                 activeChannelName = callId
-                                _callState.value = CustomerCallState.Ringing(callId, callerName, activeOrderId, initiatorId)
+                                _callState.value = CustomerCallState.Ringing(callId, activeRecipientName, activeOrderId, initiatorId)
                             }
                             "CALL_ACCEPTED" -> {
                                 val channelName = data["call_id"]?.toString() ?: ""
@@ -134,7 +130,7 @@ class CustomerAgoraCallManager(
                                 val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                                 if (parsedOrderId > 0) activeOrderId = parsedOrderId
                                 rtcEngine?.joinChannel(null, channelName, null, 0)
-                                _callState.value = CustomerCallState.Active(channelName, "Driver", activeOrderId)
+                                _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
                             }
                             "CALL_REJECTED" -> {
                                 endCallLocally("Driver Rejected Call")
@@ -150,11 +146,12 @@ class CustomerAgoraCallManager(
         }
     }
 
-    fun startOutgoingCall(targetId: String, callerName: String, orderId: Int) {
+    fun startOutgoingCall(targetId: String, callerName: String, recipientName: String, orderId: Int) {
         val channelName = "fameko_order_$orderId"
         activeChannelName = channelName
         activeOrderId = orderId
-        _callState.value = CustomerCallState.Dialing(channelName, "Calling Driver...", orderId)
+        activeRecipientName = recipientName.ifBlank { "Driver" }
+        _callState.value = CustomerCallState.Dialing(channelName, activeRecipientName, orderId)
 
         rtcEngine?.joinChannel(null, channelName, null, 0)
 
@@ -168,7 +165,8 @@ class CustomerAgoraCallManager(
         activeChannelName = channelName
         val parsedOrderId = if (orderId > 0) orderId else channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
         if (parsedOrderId > 0) activeOrderId = parsedOrderId
-        _callState.value = CustomerCallState.Active(channelName, callerName, activeOrderId)
+        if (callerName.isNotBlank()) activeRecipientName = callerName
+        _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
 
         rtcEngine?.joinChannel(null, channelName, null, 0)
 
@@ -213,7 +211,6 @@ class CustomerAgoraCallManager(
         try {
             rtcEngine?.leaveChannel()
             activeChannelName = null
-            activeOrderId = 0
             _isMicMuted.value = false
             _callState.value = CustomerCallState.Ended(reason)
             scope.launch {
