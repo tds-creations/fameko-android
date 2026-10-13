@@ -82,6 +82,7 @@ object DatabaseInitializer {
                     migrateTables(conn)
                     migrateFleetOwners(conn)
                     seedAdmin(conn)
+                    seedTestCustomer(conn)
                     seedRideCategories(conn)
                     println("Database initialization complete.")
                 }
@@ -500,6 +501,25 @@ object DatabaseInitializer {
             migrations.forEach { 
                 try { stmt.execute(it) } catch (e: Exception) { /* Ignore */ }
             }
+        }
+    }
+
+    private fun seedTestCustomer(conn: Connection) {
+        try {
+            val passHash = org.mindrot.jbcrypt.BCrypt.hashpw("password123", org.mindrot.jbcrypt.BCrypt.gensalt())
+            val sql = """
+                INSERT INTO customers (id, name, email, phone, password, region, default_address)
+                VALUES (1, 'Test Customer', 'testcustomer@fameko.com', '+233200000001', '$passHash', 'Greater Accra', 'East Legon')
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    email = EXCLUDED.email,
+                    phone = EXCLUDED.phone,
+                    password = EXCLUDED.password
+            """.trimIndent()
+            conn.createStatement().execute(sql)
+            println("Database: Test customer (id=1, +233200000001) seeded successfully.")
+        } catch (e: Exception) {
+            println("Database: Customer seeding notice: ${e.message}")
         }
     }
 
