@@ -140,9 +140,10 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                 status = resp.status
                 sessionManager.updateStatus(resp.status)
                 missingDocs = resp.missingDocs
-                if (!resp.profilePicture.isNullOrEmpty()) {
-                    profilePicUrl = resp.profilePicture
-                    sessionManager.updateProfilePicture(resp.profilePicture)
+                val pic: String? = resp.profilePicture
+                if (pic != null && pic.isNotBlank()) {
+                    profilePicUrl = pic
+                    sessionManager.updateProfilePicture(pic)
                 }
             }
 
