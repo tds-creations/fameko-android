@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.FamekoEvent
-import com.example.famekodriver.core.network.AgoraTokenBuilder
 import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
@@ -25,7 +24,7 @@ class CustomerAgoraCallManager(
     private val repository: DriverRepository
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val appId = AgoraTokenBuilder.APP_ID
+    private val appId = "38144168c418426faf0ee6a02c9b46e4"
 
     private var rtcEngine: RtcEngine? = null
 
@@ -118,6 +117,14 @@ class CustomerAgoraCallManager(
         }
     }
 
+    private fun joinChannelWithBackendToken(channelName: String) {
+        scope.launch {
+            val token = repository.fetchAgoraToken(channelName)
+            Log.d("CustomerAgoraCall", "Fetched secure Agora token for channel $channelName from backend API.")
+            rtcEngine?.joinChannel(token.ifBlank { null }, channelName, null, 0)
+        }
+    }
+
     private fun listenToSignalingEvents() {
         scope.launch {
             repository.events.collect { event ->
@@ -134,8 +141,7 @@ class CustomerAgoraCallManager(
                         activeChannelName = channelName
                         val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                         if (parsedOrderId > 0) activeOrderId = parsedOrderId
-                        val token = AgoraTokenBuilder.buildToken(channelName)
-                        rtcEngine?.joinChannel(token, channelName, null, 0)
+                        joinChannelWithBackendToken(channelName)
                         _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
                     }
                     is FamekoEvent.CallRejected -> {
@@ -163,8 +169,7 @@ class CustomerAgoraCallManager(
                                 activeChannelName = channelName
                                 val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                                 if (parsedOrderId > 0) activeOrderId = parsedOrderId
-                                val token = AgoraTokenBuilder.buildToken(channelName)
-                                rtcEngine?.joinChannel(token, channelName, null, 0)
+                                joinChannelWithBackendToken(channelName)
                                 _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
                             }
                             "CALL_REJECTED" -> {
@@ -188,8 +193,7 @@ class CustomerAgoraCallManager(
         activeRecipientName = recipientName.ifBlank { "Driver" }
         _callState.value = CustomerCallState.Dialing(channelName, activeRecipientName, orderId)
 
-        val token = AgoraTokenBuilder.buildToken(channelName)
-        rtcEngine?.joinChannel(token, channelName, null, 0)
+        joinChannelWithBackendToken(channelName)
 
         scope.launch {
             repository.initiateCall(targetId, callerName, orderId)
@@ -204,8 +208,7 @@ class CustomerAgoraCallManager(
         if (callerName.isNotBlank()) activeRecipientName = callerName
         _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
 
-        val token = AgoraTokenBuilder.buildToken(channelName)
-        rtcEngine?.joinChannel(token, channelName, null, 0)
+        joinChannelWithBackendToken(channelName)
 
         scope.launch {
             repository.acceptCall(callId)

@@ -1117,6 +1117,18 @@ class DriverRepository private constructor() {
         }
     }
 
+    suspend fun fetchAgoraToken(channel: String): String = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getAgoraToken(channel)
+            if (response["success"] == true) {
+                return@withContext response["token"]?.toString() ?: ""
+            }
+        } catch (e: Exception) {
+            Log.e("FamekoRepo", "Error fetching Agora token from backend", e)
+        }
+        return@withContext ""
+    }
+
     suspend fun getOrderStatus(orderId: Int): Result<OrderStatusResponse> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.getOrderStatus(orderId)

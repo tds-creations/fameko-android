@@ -951,6 +951,17 @@ fun Application.configureRouting() {
             }
         }
 
+        get("/agora/token") {
+            val channel = call.request.queryParameters["channel"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("success" to false, "message" to "Channel parameter is required"))
+            val token = com.example.famekodriver.backend.utils.AgoraTokenBuilder.buildToken(channel)
+            call.respond(mapOf(
+                "success" to true,
+                "token" to token,
+                "channel" to channel,
+                "appId" to com.example.famekodriver.backend.utils.AgoraTokenBuilder.appId
+            ))
+        }
+
         delete("/customer/saved-places/{id}") {
             val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)
             val success = DatabaseRepository.deleteSavedPlace(id)
