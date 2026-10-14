@@ -95,18 +95,24 @@ class DriverAgoraCallManager(
                 }
             })
 
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            audioManager.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+            audioManager.isSpeakerphoneOn = true
+            val maxVol = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_VOICE_CALL)
+            audioManager.setStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL, maxVol, 0)
+
             rtcEngine?.setChannelProfile(Constants.CHANNEL_PROFILE_COMMUNICATION)
             rtcEngine?.setAudioProfile(
                 Constants.AUDIO_PROFILE_SPEECH_STANDARD,
-                Constants.AUDIO_SCENARIO_GAME_STREAMING
+                Constants.AUDIO_SCENARIO_DEFAULT
             )
             rtcEngine?.setClientRole(Constants.CLIENT_ROLE_BROADCASTER)
             rtcEngine?.enableAudio()
             rtcEngine?.enableLocalAudio(true)
             rtcEngine?.muteLocalAudioStream(false)
             rtcEngine?.muteAllRemoteAudioStreams(false)
-            rtcEngine?.adjustRecordingSignalVolume(100)
-            rtcEngine?.adjustPlaybackSignalVolume(100)
+            rtcEngine?.adjustRecordingSignalVolume(400)
+            rtcEngine?.adjustPlaybackSignalVolume(400)
             rtcEngine?.setDefaultAudioRoutetoSpeakerphone(true)
             rtcEngine?.setEnableSpeakerphone(true)
             rtcEngine?.enableAudioVolumeIndication(200, 3, true)
