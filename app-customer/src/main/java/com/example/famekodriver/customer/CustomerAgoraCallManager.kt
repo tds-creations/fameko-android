@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.FamekoEvent
+import com.example.famekodriver.core.network.AgoraTokenBuilder
 import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
@@ -24,7 +25,7 @@ class CustomerAgoraCallManager(
     private val repository: DriverRepository
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val appId = "38144168c418426faf0ee6a02c9b46e4"
+    private val appId = AgoraTokenBuilder.APP_ID
 
     private var rtcEngine: RtcEngine? = null
 
@@ -49,8 +50,15 @@ class CustomerAgoraCallManager(
     private fun initializeAgoraEngine() {
         try {
             rtcEngine = RtcEngine.create(context, appId, object : IRtcEngineEventHandler() {
+                override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+                    Log.d("CustomerAgoraCall", "Customer successfully joined channel $channel as uid=$uid")
+                    rtcEngine?.muteLocalAudioStream(false)
+                    rtcEngine?.muteAllRemoteAudioStreams(false)
+                }
+
                 override fun onUserJoined(uid: Int, elapsed: Int) {
                     Log.d("CustomerAgoraCall", "Driver joined Agora channel: $uid")
+                    rtcEngine?.muteRemoteAudioStream(uid, false)
                     val channel = activeChannelName ?: ""
                     _callState.value = CustomerCallState.Active(channel, activeRecipientName, activeOrderId)
                 }
@@ -58,6 +66,24 @@ class CustomerAgoraCallManager(
                 override fun onUserOffline(uid: Int, reason: Int) {
                     Log.d("CustomerAgoraCall", "Driver left Agora channel: $uid")
                     endCallLocally("Driver Ended Call")
+                }
+
+                override fun onAudioPublishStateChanged(channel: String?, oldState: Int, newState: Int, elapseSinceLastState: Int) {
+                    Log.d("CustomerAgoraCall", "Customer Audio Publish State: $oldState -> $newState")
+                }
+
+                override fun onAudioSubscribeStateChanged(channel: String?, uid: Int, oldState: Int, newState: Int, elapseSinceLastState: Int) {
+                    Log.d("CustomerAgoraCall", "Customer Audio Subscribe State for $uid: $oldState -> $newState")
+                }
+
+                override fun onRemoteAudioStateChanged(uid: Int, state: Int, reason: Int, elapsed: Int) {
+                    Log.d("CustomerAgoraCall", "Customer Remote Audio State for $uid: state=$state, reason=$reason")
+                }
+
+                override fun onAudioVolumeIndication(speakers: Array<out IRtcEngineEventHandler.AudioVolumeInfo>?, totalVolume: Int) {
+                    if (totalVolume > 0) {
+                        Log.d("CustomerAgoraCall", "Customer Audio Volume Detected: $totalVolume")
+                    }
                 }
 
                 override fun onConnectionLost() {
@@ -77,7 +103,14 @@ class CustomerAgoraCallManager(
             )
             rtcEngine?.setClientRole(Constants.CLIENT_ROLE_BROADCASTER)
             rtcEngine?.enableAudio()
+            rtcEngine?.enableLocalAudio(true)
+            rtcEngine?.muteLocalAudioStream(false)
+            rtcEngine?.muteAllRemoteAudioStreams(false)
+            rtcEngine?.adjustRecordingSignalVolume(100)
+            rtcEngine?.adjustPlaybackSignalVolume(100)
             rtcEngine?.setDefaultAudioRoutetoSpeakerphone(true)
+            rtcEngine?.setEnableSpeakerphone(true)
+            rtcEngine?.enableAudioVolumeIndication(200, 3, true)
 
             Log.d("CustomerAgoraCall", "Customer Agora RTC Engine Initialized.")
         } catch (e: Exception) {
@@ -101,7 +134,8 @@ class CustomerAgoraCallManager(
                         activeChannelName = channelName
                         val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                         if (parsedOrderId > 0) activeOrderId = parsedOrderId
-                        rtcEngine?.joinChannel(null, channelName, null, 0)
+                        val token = AgoraTokenBuilder.buildToken(channelName)
+                        rtcEngine?.joinChannel(token, channelName, null, 0)
                         _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
                     }
                     is FamekoEvent.CallRejected -> {
@@ -129,7 +163,8 @@ class CustomerAgoraCallManager(
                                 activeChannelName = channelName
                                 val parsedOrderId = channelName.removePrefix("fameko_order_").toIntOrNull() ?: activeOrderId
                                 if (parsedOrderId > 0) activeOrderId = parsedOrderId
-                                rtcEngine?.joinChannel(null, channelName, null, 0)
+                                val token = AgoraTokenBuilder.buildToken(channelName)
+                                rtcEngine?.joinChannel(token, channelName, null, 0)
                                 _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
                             }
                             "CALL_REJECTED" -> {
@@ -153,7 +188,8 @@ class CustomerAgoraCallManager(
         activeRecipientName = recipientName.ifBlank { "Driver" }
         _callState.value = CustomerCallState.Dialing(channelName, activeRecipientName, orderId)
 
-        rtcEngine?.joinChannel(null, channelName, null, 0)
+        val token = AgoraTokenBuilder.buildToken(channelName)
+        rtcEngine?.joinChannel(token, channelName, null, 0)
 
         scope.launch {
             repository.initiateCall(targetId, callerName, orderId)
@@ -168,7 +204,8 @@ class CustomerAgoraCallManager(
         if (callerName.isNotBlank()) activeRecipientName = callerName
         _callState.value = CustomerCallState.Active(channelName, activeRecipientName, activeOrderId)
 
-        rtcEngine?.joinChannel(null, channelName, null, 0)
+        val token = AgoraTokenBuilder.buildToken(channelName)
+        rtcEngine?.joinChannel(token, channelName, null, 0)
 
         scope.launch {
             repository.acceptCall(callId)
