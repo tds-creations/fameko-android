@@ -445,8 +445,6 @@ fun MapScreen(
         }
     }
 
-    val callState: DriverCallState by viewModel.callManager.callState.collectAsState()
-
     Scaffold(
         floatingActionButton = {
             Column(
@@ -670,7 +668,7 @@ fun MapScreen(
                 DeliveryControlSheet(
                     delivery = delivery,
                     isFullscreenMap = viewModel.isFullscreenMap,
-                    onCall = { viewModel.initiateCall() },
+                    onCall = { viewModel.initiateCall(context) },
                     onChat = { onNavigateToChat(delivery.orderId, delivery.customerName ?: "Customer") },
                     onStatusUpdate = { viewModel.updateDeliveryStatus(it) },
                     onCancel = { viewModel.cancelActiveTrip() },
@@ -851,11 +849,6 @@ fun MapScreen(
                     onDismiss = { viewModel.showTripSummary = false }
                 )
             }
-
-            DriverAgoraCallOverlay(
-                callState = callState,
-                callManager = viewModel.callManager
-            )
         }
     }
 }

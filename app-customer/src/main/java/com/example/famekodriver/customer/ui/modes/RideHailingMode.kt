@@ -17,6 +17,7 @@ fun RideHailingSheetContent(
     onRetryTimeout: () -> Unit,
     onCloseTimeout: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     when (state) {
         CustomerSheetState.SELECTING_SERVICE -> {
             ServiceSelectionSheet(
@@ -50,7 +51,7 @@ fun RideHailingSheetContent(
                         serviceType = viewModel.activeServiceMode,
                         onNavigateToChat = onNavigateToChat,
                         onCancel = { viewModel.showCancelConfirmation = true },
-                        onInitiateCall = { viewModel.initiateCall() },
+                        onInitiateCall = { viewModel.initiateCall(context) },
                         onShareTrip = onShareTrip
                     )
                 }

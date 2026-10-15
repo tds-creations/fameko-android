@@ -24,7 +24,6 @@ import kotlin.time.Duration.Companion.seconds
 class DriverMapViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DriverRepository.getInstance()
     private val sessionManager = SessionManager(application)
-    val callManager = DriverAgoraCallManager(application.applicationContext, repository)
 
     // --- Screen State ---
     var isOnline by mutableStateOf(sessionManager.isOnline())
@@ -432,27 +431,11 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun initiateCall() {
-        val delivery = currentDelivery ?: return
-        val driverName = sessionManager.getDriverName() ?: "Driver"
-        val customerName = delivery.customerName ?: "Customer"
-        val target = if (delivery.customerId != null) "CUSTOMER_${delivery.customerId}" else "CUSTOMER_UNKNOWN"
-        callManager.startOutgoingCall(target, driverName, customerName, delivery.orderId)
-    }
-
-    fun acceptCall(callId: String) {
-        val delivery = currentDelivery ?: activeRequest
-        val customerName = delivery?.customerName ?: "Customer"
-        val orderId = delivery?.orderId ?: 0
-        callManager.acceptIncomingCall(callId, customerName, orderId)
-    }
-
-    fun rejectCall(callId: String) {
-        callManager.rejectCall(callId)
-    }
-
-    fun endCall(callId: String = "") {
-        callManager.endCall()
+    fun initiateCall(context: Context) {
+        val delivery = currentDelivery ?: activeRequest ?: return
+        val phone = delivery.customerPhone ?: delivery.recipientPhone
+        val label = delivery.customerName ?: "Customer"
+        com.example.famekodriver.core.utils.PhoneNumberUtils.openDialer(context, phone, label)
     }
 
     fun sendAudioData(data: ByteArray) {

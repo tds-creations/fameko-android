@@ -1,5 +1,6 @@
 package com.example.famekodriver.customer
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
@@ -30,8 +31,6 @@ class CustomerMapViewModel(
     private val sessionManager: SessionManager,
     private val savedPlaceRepository: SavedPlaceRepository,
 ) : ViewModel() {
-
-    val callManager by lazy { CustomerAgoraCallManager(sessionManager.context, repository) }
 
     sealed class SavedPlacesUiState {
         object Loading : SavedPlacesUiState()
@@ -1072,28 +1071,11 @@ class CustomerMapViewModel(
         }
     }
 
-    fun initiateCall() {
+    fun initiateCall(context: Context) {
         val data = orderStatusData ?: return
-        val orderId = currentOrderId ?: return
-        val driverName = data.driverName ?: "Driver"
-        val customerName = sessionManager.getDriverName() ?: "Customer"
-        val target = if (data.driverId != null) "DRIVER_${data.driverId}" else "DRIVER_UNKNOWN"
-        callManager.startOutgoingCall(target, customerName, driverName, orderId)
-    }
-
-    fun acceptCall(callId: String) {
-        val data = orderStatusData
-        val orderId = currentOrderId ?: 0
-        val name = data?.driverName ?: "Caller"
-        callManager.acceptIncomingCall(callId, name, orderId)
-    }
-
-    fun rejectCall(callId: String) {
-        callManager.rejectCall(callId)
-    }
-
-    fun endCall(callId: String = "") {
-        callManager.endCall()
+        val phone = data.driverPhone
+        val label = data.driverName ?: "Driver"
+        com.example.famekodriver.core.utils.PhoneNumberUtils.openDialer(context, phone, label)
     }
 
     fun updateScheduledRideTime(time: String?) {

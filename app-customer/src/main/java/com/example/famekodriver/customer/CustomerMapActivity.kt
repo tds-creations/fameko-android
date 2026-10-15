@@ -307,7 +307,6 @@ fun CustomerMapScreen() {
 
     val scope = rememberCoroutineScope()
     var lastBackPressTime by remember { mutableLongStateOf(0L) }
-    val callState: CustomerCallState by mapViewModel.callManager.callState.collectAsState()
 
     // Physical Back Button Logic
     BackHandler(enabled = true) {
@@ -587,11 +586,6 @@ fun CustomerMapScreen() {
                     PrivacyPolicyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
             }
-
-            CustomerAgoraCallOverlay(
-                callState = callState,
-                callManager = mapViewModel.callManager
-            )
 
             if (showDatePicker) { DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { showDatePicker = false; showTimePicker = true }) { Text("Next") } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState) } }
             if (showTimePicker) { AlertDialog(onDismissRequest = { showTimePicker = false }, confirmButton = { TextButton(onClick = { val dateStr = datePickerState.selectedDateMillis?.let { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()); val timeStr = "%02d:%02d".format(timePickerState.hour, timePickerState.minute); val scheduledTime = "$dateStr $timeStr"; mapViewModel.updateScheduledRideTime(scheduledTime); mapViewModel.setServiceMode(ServiceType.RIDE_HAILING); mapViewModel.navigateTo(CustomerScreen.MainMap); mapViewModel.isSearchMode = true; showTimePicker = false }) { Text("Confirm") } }, dismissButton = { TextButton(onClick = { showTimePicker = false; showDatePicker = true }) { Text("Back") } }, text = { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("Select Time", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp)); TimePicker(state = timePickerState) } } ) }
