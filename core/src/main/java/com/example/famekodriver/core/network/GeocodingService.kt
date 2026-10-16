@@ -199,11 +199,6 @@ interface FamekoApiService {
         @Path("deliveryId") deliveryId: String
     ): ShareTripResponse
 
-    @GET("agora/token")
-    suspend fun getAgoraToken(
-        @Query("channel") channel: String
-    ): Map<String, Any>
-
     @GET("demand/heatmap")
     suspend fun getHeatmapData(): List<HeatmapPoint>
 

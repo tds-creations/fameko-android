@@ -281,40 +281,6 @@ class DriverRepository private constructor() {
         }
     }
 
-    suspend fun sendWebrtcOffer(callId: String, offer: String): Result<Unit> {
-        return try {
-            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_OFFER", gson.toJson(mapOf("call_id" to callId, "offer" to offer, "sdp" to offer)))))
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun sendWebrtcAnswer(callId: String, answer: String): Result<Unit> {
-        return try {
-            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ANSWER", gson.toJson(mapOf("call_id" to callId, "answer" to answer, "sdp" to answer)))))
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun sendIceCandidate(callId: String, candidate: String, sdpMid: String = "0", sdpMLineIndex: Int = 0): Result<Unit> {
-        return try {
-            val payload = mapOf(
-                "call_id" to callId,
-                "candidate" to candidate,
-                "sdp" to candidate,
-                "sdpMid" to sdpMid,
-                "sdpMLineIndex" to sdpMLineIndex
-            )
-            webSocket?.send(gson.toJson(WebSocketMessage("WEBRTC_ICE_CANDIDATE", gson.toJson(payload))))
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     fun sendLocationUpdateWs(lat: Double, lng: Double, bearing: Float) {
         val payload = mapOf("lat" to lat, "lng" to lng, "bearing" to bearing)
         webSocket?.send(gson.toJson(WebSocketMessage("LOCATION_UPDATE", gson.toJson(payload))))
@@ -1115,18 +1081,6 @@ class DriverRepository private constructor() {
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    suspend fun fetchAgoraToken(channel: String): String = withContext(Dispatchers.IO) {
-        try {
-            val response = NetworkClient.famekoApi.getAgoraToken(channel)
-            if (response["success"] == true) {
-                return@withContext response["token"]?.toString() ?: ""
-            }
-        } catch (e: Exception) {
-            Log.e("FamekoRepo", "Error fetching Agora token from backend", e)
-        }
-        return@withContext ""
     }
 
     suspend fun getOrderStatus(orderId: Int): Result<OrderStatusResponse> = withContext(Dispatchers.IO) {

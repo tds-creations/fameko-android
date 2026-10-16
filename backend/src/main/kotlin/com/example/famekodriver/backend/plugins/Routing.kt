@@ -1773,14 +1773,6 @@ fun Application.configureRouting() {
                 val deliveryId = p["delivery_id"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
                 val status = p["status"] ?: ""
 
-                if (status == "CANCELLED") {
-                    val currentDetails = DatabaseRepository.getOrderStatusDetails(deliveryId)
-                    val currentStatus = currentDetails?.status ?: ""
-                    if (currentStatus == "ARRIVED" || currentStatus == "IN_TRANSIT" || currentStatus == "IN_PROGRESS") {
-                        return@post call.respond(HttpStatusCode.BadRequest, AuthResponse(false, "Driver cannot cancel trip after arrival. PIN verification required.", null, null))
-                    }
-                }
-                
                 val result = DatabaseRepository.updateDeliveryStatus(deliveryId, status)
                 if (result != null) {
                     val (orderId, _) = result

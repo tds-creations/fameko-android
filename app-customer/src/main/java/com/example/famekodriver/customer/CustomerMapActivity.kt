@@ -1,8 +1,6 @@
 // Fameko Customer Map Activity - Modularized and Cleaned
 package com.example.famekodriver.customer
 
-import com.example.famekodriver.core.ui.WebRtcCallOverlay
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
