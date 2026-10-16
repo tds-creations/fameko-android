@@ -16,20 +16,19 @@ class FamekoMessagingService : FirebaseMessagingService() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
 
-        // Handle data messages even when app is in background/killed
-        if (remoteMessage.data.isNotEmpty()) {
-            val title = remoteMessage.data["title"] ?: "Fameko"
-            val message = remoteMessage.data["message"] ?: ""
-            NotificationHelper.showNotification(applicationContext, title, message, intent)
-        }
+        val type = remoteMessage.data["type"] ?: ""
+        val title = remoteMessage.data["title"] ?: remoteMessage.notification?.title ?: "Fameko Driver"
+        val body = remoteMessage.data["message"] ?: remoteMessage.notification?.body ?: ""
 
-        // Handle notification messages
-        remoteMessage.notification?.let {
+        val isNewOrder = type == "NEW_DELIVERY" || type == "NEW_ORDER" || title.contains("New", ignoreCase = true)
+
+        if (title.isNotEmpty() || body.isNotEmpty()) {
             NotificationHelper.showNotification(
                 applicationContext,
-                it.title ?: "Fameko",
-                it.body ?: "",
-                intent
+                title,
+                body,
+                intent,
+                isNewOrder = isNewOrder
             )
         }
     }

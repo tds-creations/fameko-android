@@ -3,6 +3,8 @@ package com.example.famekodriver.backend.plugins
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
+import com.google.firebase.messaging.AndroidConfig
+import com.google.firebase.messaging.AndroidNotification
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.Message
 import com.google.firebase.messaging.Notification
@@ -35,12 +37,25 @@ object PushNotificationHelper {
         if (FirebaseApp.getApps().isEmpty()) return
 
         try {
+            val isNewOrder = data["type"] == "NEW_DELIVERY" || data["type"] == "NEW_ORDER" || title.contains("New", ignoreCase = true)
+
+            val androidConfigBuilder = AndroidConfig.builder()
+            if (isNewOrder) {
+                androidConfigBuilder.setNotification(
+                    AndroidNotification.builder()
+                        .setChannelId("fameko_new_order_requests_v2")
+                        .setSound("fameko_new_order")
+                        .build()
+                )
+            }
+
             val message = Message.builder()
                 .setToken(token)
                 .setNotification(Notification.builder()
                     .setTitle(title)
                     .setBody(body)
                     .build())
+                .setAndroidConfig(androidConfigBuilder.build())
                 .putAllData(data)
                 .build()
 

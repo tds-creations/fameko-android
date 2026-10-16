@@ -179,6 +179,16 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 if (currentDelivery == null) {
                     activeRequest = event.delivery
                     startRequestTimer()
+                    val intent = android.content.Intent(getApplication(), MainActivity::class.java).apply {
+                        flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    com.example.famekodriver.core.utils.NotificationHelper.showNotification(
+                        getApplication(),
+                        "New Order Request!",
+                        "New job at ${event.delivery.pickupLocation}",
+                        intent,
+                        isNewOrder = true
+                    )
                 }
             }
             is FamekoEvent.IncomingCall -> incomingCall = event
