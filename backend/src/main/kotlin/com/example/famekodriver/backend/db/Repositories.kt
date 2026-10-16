@@ -250,7 +250,9 @@ object DatabaseRepository {
                 if (totalAcceptedRs.next()) {
                     totalAccepted = totalAcceptedRs.getInt(1)
                 }
-                val completionRate = if (totalAccepted > 0) ((totalDeliveries * 100) / totalAccepted).coerceIn(0, 100) else 100
+                val finalTotalEarnings = kotlin.math.max(totalEarnings, earningsToday)
+                val finalTotalDeliveries = kotlin.math.max(totalDeliveries, completedToday)
+                val completionRate = if (totalAccepted > 0) ((finalTotalDeliveries * 100) / totalAccepted).coerceIn(0, 100) else 100
 
                 return DriverStats(
                     isOnline = isOnline,
@@ -259,9 +261,9 @@ object DatabaseRepository {
                     earningsToday = earningsToday,
                     rating = if (rating > 0.0) rating else 5.0,
                     ratingCount = ratingCount,
-                    totalDeliveries = totalDeliveries,
+                    totalDeliveries = finalTotalDeliveries,
                     completionRate = completionRate,
-                    totalEarnings = totalEarnings
+                    totalEarnings = finalTotalEarnings
                 )
             }
         } catch (e: Exception) {

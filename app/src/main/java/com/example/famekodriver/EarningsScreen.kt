@@ -219,7 +219,7 @@ fun EarningsScreen(
                                             color = Color(0xFF0F172A)
                                         )
                                         Text(
-                                            text = if (viewModel.isDailyFeePaid) "You are fully activated to take passenger trips today." else "Pay ₵${viewModel.dailyFeeAmount.toInt()} to receive requests",
+                                            text = if (viewModel.isDailyFeePaid) "You are fully activated to take passenger trips today." else "Pay GH₵ ${viewModel.dailyFeeAmount.toInt()} to receive requests",
                                             fontSize = 12.sp,
                                             color = Color.Gray
                                         )
@@ -281,8 +281,8 @@ fun EarningsScreen(
                             ModernStatCard(
                                 title = "LIFETIME",
                                 label = "Life Earnings",
-                                value = "₵${String.format(Locale.US, "%.2f", viewModel.stats.totalEarnings)}",
-                                subtitle = "↑ +₵${String.format(Locale.US, "%.2f", viewModel.stats.earningsToday)} today",
+                                value = "GH₵ ${String.format(Locale.US, "%.2f", viewModel.stats.totalEarnings)}",
+                                subtitle = "↑ +GH₵ ${String.format(Locale.US, "%.2f", viewModel.stats.earningsToday)} today",
                                 subtitleColor = Color(0xFF059669),
                                 icon = Icons.Default.AccountBalanceWallet,
                                 iconColor = Color(0xFF10B981),
