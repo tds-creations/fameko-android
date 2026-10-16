@@ -1,7 +1,5 @@
 package com.example.famekodriver
 
-import com.example.famekodriver.core.ui.WebRtcCallOverlay
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -1203,6 +1201,7 @@ fun DeliveryControlSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = onCancel,
+                    enabled = delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.PENDING,
                     modifier = Modifier.weight(0.7f).height(44.dp),
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),

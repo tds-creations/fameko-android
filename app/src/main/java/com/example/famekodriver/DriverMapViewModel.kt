@@ -355,6 +355,10 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun cancelActiveTrip() {
         val delivery = currentDelivery ?: return
+        if (delivery.status == DeliveryStatus.ARRIVED || delivery.status == DeliveryStatus.IN_TRANSIT) {
+            android.widget.Toast.makeText(getApplication(), "PIN Verification required. Driver cannot cancel after arrival.", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
         viewModelScope.launch {
             repository.updateDeliveryStatus(delivery.id, DeliveryStatus.CANCELLED).onSuccess {
                 currentDelivery = null
