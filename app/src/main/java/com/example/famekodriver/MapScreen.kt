@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.media.RingtoneManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -277,33 +276,6 @@ fun MapScreen(
     }
 
     // Sound Management
-    val ringtone = remember {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        RingtoneManager.getRingtone(context, uri)
-    }
-
-    LaunchedEffect(viewModel.activeRequest, viewModel.incomingCall) {
-        if (viewModel.activeRequest != null || viewModel.incomingCall != null) {
-            ringtone?.play()
-        } else {
-            ringtone?.stop()
-        }
-    }
-
-    LaunchedEffect(viewModel.ongoingCall, hasAudioPermission) {
-        if (viewModel.ongoingCall != null) {
-            if (hasAudioPermission) {
-                voiceCallHandler.startRecording()
-                voiceCallHandler.startPlayback()
-            } else {
-                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        } else {
-            voiceCallHandler.stopRecording()
-            voiceCallHandler.stopPlayback()
-        }
-    }
-
     LaunchedEffect(viewModel.isOnline, viewModel.currentDelivery) {
         val intent = Intent(context, LocationService::class.java).apply {
             action = if (viewModel.isOnline || viewModel.currentDelivery != null) {
@@ -1201,7 +1173,6 @@ fun DeliveryControlSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = onCancel,
-                    enabled = delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.PENDING,
                     modifier = Modifier.weight(0.7f).height(44.dp),
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
