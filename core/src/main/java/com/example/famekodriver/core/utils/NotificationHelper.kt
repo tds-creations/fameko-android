@@ -73,7 +73,7 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .apply {
-                if (soundUri != null) setSound(soundUri)
+                if (soundUri != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) setSound(soundUri)
                 if (pendingIntent != null) setContentIntent(pendingIntent)
             }
 
