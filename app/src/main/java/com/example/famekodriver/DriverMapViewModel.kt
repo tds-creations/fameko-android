@@ -12,6 +12,7 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.utils.LocationUtils
 import com.example.famekodriver.core.utils.VoiceNavigationManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -460,20 +461,23 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
         routeJob?.cancel()
-        routeJob = viewModelScope.launch {
+        routeJob = viewModelScope.launch(Dispatchers.Default) {
             repository.calculateRoute(RouteRequest(RouteLocation(start.latitude, start.longitude), RouteLocation(end.latitude, end.longitude)))
                 .onSuccess { response ->
-                    val isFirstCalc = navigationPath.isEmpty()
-                    navigationPath = response.routeCoords.map { LatLng(it[1], it[0]) }
-                    instructions = response.instructions
-                    currentInstruction = instructions.firstOrNull()
-                    distanceKm = response.distanceM / 1000.0
-                    durationMin = response.etaMin
-                    lastRouteCalcLatLng = start
-                    
-                    if (isFirstCalc) {
-                        val destName = if (currentDelivery?.status == DeliveryStatus.ASSIGNED) "pickup" else "destination"
-                        voiceNavManager.announceTripStart(destName)
+                    val path = response.routeCoords.map { LatLng(it[1], it[0]) }
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        val isFirstCalc = navigationPath.isEmpty()
+                        navigationPath = path
+                        instructions = response.instructions
+                        currentInstruction = instructions.firstOrNull()
+                        distanceKm = response.distanceM / 1000.0
+                        durationMin = response.etaMin
+                        lastRouteCalcLatLng = start
+                        
+                        if (isFirstCalc) {
+                            val destName = if (currentDelivery?.status == DeliveryStatus.ASSIGNED) "pickup" else "destination"
+                            voiceNavManager.announceTripStart(destName)
+                        }
                     }
                 }
         }

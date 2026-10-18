@@ -855,65 +855,54 @@ class CustomerMapViewModel(
         }
 
         routeJob?.cancel()
-        routeJob = viewModelScope.launch {
+        routeJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             val request = RouteRequest(
                 start = RouteLocation(pLat, pLng), 
                 end = RouteLocation(dLat, dLng), 
                 stops = waypoints,
                 vehicleType = "car"
             )
-            android.util.Log.d("RouteDiag", "Sending RouteRequest: Start=(${request.start.lat}, ${request.start.lng}), End=(${request.end.lat}, ${request.end.lng})")
             
             orderRepository.calculateRoute(request)
                 .onSuccess { response ->
-                    Log.d("RouteDiag", "Route calculation success: ${response.routeCoords.size} points received.")
-                    isSearchMode = false
-                    
                     val coords = response.routeCoords.ifEmpty {
-                        // Fallback to straight line if no route coords but we have start/end
-                        Log.w("RouteDiag", "No route coords received, using straight line fallback")
                         listOf(listOf(pLng, pLat), listOf(dLng, dLat))
                     }
+                    val points = coords.filter { it.size >= 2 }.map { LatLng(it[1], it[0]) }
 
-                    polylinePoints = coords.filter { it.size >= 2 }.map { LatLng(it[1], it[0]) }
-                    
-                    if (polylinePoints.isNotEmpty()) {
-                        val first = polylinePoints.first()
-                        android.util.Log.d("RouteDiag", "Polyline points set: ${polylinePoints.size}, Start: ${first.latitude}, ${first.longitude}")
-                    }
-                    
-                    instructions = response.instructions
-                    currentInstruction = instructions.firstOrNull()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        isSearchMode = false
+                        polylinePoints = points
+                        instructions = response.instructions
+                        currentInstruction = instructions.firstOrNull()
 
-                    if (!isUpdate) {
-                        distanceKm = if (response.distanceM > 0) response.distanceM / 1000.0 
-                                     else LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
-                        durationMin = if (response.etaMin > 0) response.etaMin 
-                                      else (distanceKm * 2.0) // rough estimate: 2 mins per km
-                        
-                        if (activeServiceMode != ServiceType.RENTAL) {
-                            updateEstimatedFare()
-                            // Note: isLoading will be set to false inside updateEstimatedFare()
+                        if (!isUpdate) {
+                            distanceKm = if (response.distanceM > 0) response.distanceM / 1000.0 
+                                         else LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
+                            durationMin = if (response.etaMin > 0) response.etaMin 
+                                          else (distanceKm * 2.0)
+                            
+                            if (activeServiceMode != ServiceType.RENTAL) {
+                                updateEstimatedFare()
+                            } else {
+                                isLoading = false
+                            }
                         } else {
                             isLoading = false
                         }
-                    } else {
-                        isLoading = false
+                        lastRouteCalcLatLng = LatLng(pLat, pLng)
                     }
-                    lastRouteCalcLatLng = LatLng(pLat, pLng)
                 }
-                .onFailure {
-                    isLoading = false
-                    Log.e("RouteDiag", "Route calculation failed completely", it)
-                    
-                    // Even on complete failure, try to show a straight line if we have coordinates
-                    // so the user isn't stuck without a pricing card
-                    if (!isUpdate && pLat != 0.0 && dLat != 0.0) {
-                        isSearchMode = false
-                        polylinePoints = listOf(LatLng(pLat, pLng), LatLng(dLat, dLng))
-                        distanceKm = LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
-                        durationMin = distanceKm * 2.0
-                        updateEstimatedFare()
+                .onFailure { err ->
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        isLoading = false
+                        if (!isUpdate && pLat != 0.0 && dLat != 0.0) {
+                            isSearchMode = false
+                            polylinePoints = listOf(LatLng(pLat, pLng), LatLng(dLat, dLng))
+                            distanceKm = LocationUtils.calculateDistance(pLat, pLng, dLat, dLng) / 1000.0
+                            durationMin = distanceKm * 2.0
+                            updateEstimatedFare()
+                        }
                     }
                 }
         }
