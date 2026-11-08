@@ -7,6 +7,6 @@
   "deploy": {
     "restartPolicyType": "ON_FAILURE",
     "healthcheckPath": "/admin/login",
-    "healthcheckTimeout": 100
+    "healthcheckTimeout": 300
   }
 }

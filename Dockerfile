@@ -24,6 +24,9 @@ WORKDIR /app
 # Copy built application from build stage
 COPY --from=build /app/backend/build/install/backend /app/backend
 
+# Ensure binary executable permission
+RUN chmod +x /app/backend/bin/backend
+
 # Use the PORT environment variable provided by Railway
 ENV PORT=8080
 # Set Java memory limits for the running app as well
