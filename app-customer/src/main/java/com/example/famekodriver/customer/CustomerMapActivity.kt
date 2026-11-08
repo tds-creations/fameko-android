@@ -642,6 +642,25 @@ fun CustomerMapScreen() {
                 }
                 CustomerScreen.PackageDispatchSetup -> {
                     PackageDetailsSheet(
+                        stage = mapViewModel.packageStage,
+                        onNextStage = {
+                            if (mapViewModel.packageStage == 1) {
+                                mapViewModel.packageStage = 2
+                                mapViewModel.navigateTo(CustomerScreen.RouteSelection)
+                            } else if (mapViewModel.packageStage == 3) {
+                                mapViewModel.packageStage = 4
+                            }
+                        },
+                        onPrevStage = {
+                            if (mapViewModel.packageStage == 4) {
+                                mapViewModel.packageStage = 3
+                            } else if (mapViewModel.packageStage == 3) {
+                                mapViewModel.packageStage = 2
+                                mapViewModel.navigateTo(CustomerScreen.RouteSelection)
+                            } else {
+                                mapViewModel.showPackageDetailsSheet = false
+                            }
+                        },
                         isSending = mapViewModel.isSendingPackage,
                         onIsSendingChange = { mapViewModel.isSendingPackage = it },
                         pickupNamePhone = "${mapViewModel.customerProfile?.get("name") ?: SessionManager(context).getDriverName() ?: "Customer"} • ${mapViewModel.customerProfile?.get("phone") ?: SessionManager(context).getDriverPhone() ?: ""}",
@@ -663,10 +682,10 @@ fun CustomerMapScreen() {
                         weightSize = mapViewModel.packageWeightSize,
                         onCategoryChange = {
                             mapViewModel.packageCategory = it
-                            mapViewModel.selectedVehicleType = when (it) {
-                                "Document", "Small Parcel" -> "Okada"
-                                "Medium Box" -> "Saloon"
-                                "Aboboyaa Cargo" -> "Aboboyaa"
+                            mapViewModel.selectedVehicleType = when {
+                                it.contains("Motorbike", true) -> "Okada"
+                                it.contains("Car", true) -> "Saloon"
+                                it.contains("Aboboyaa", true) -> "Aboboyaa"
                                 else -> "Okada"
                             }
                         },
@@ -685,10 +704,12 @@ fun CustomerMapScreen() {
                         onConfirm = {
                             mapViewModel.confirmOrder()
                             mapViewModel.showPackageDetailsSheet = false
+                            mapViewModel.packageStage = 1
                             mapViewModel.activeServiceMode = ServiceType.PACKAGE_DELIVERY
                             mapViewModel.navigateTo(CustomerScreen.MainMap)
                         },
                         onBack = {
+                            mapViewModel.showPackageDetailsSheet = false
                             if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.MainMap)
                         },
                         onProfileClick = { mapViewModel.navigateTo(CustomerScreen.Account) },
@@ -1214,6 +1235,25 @@ fun MainMapContent(
                         CustomerSheetState.TIMED_OUT -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = onScheduleClick, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
                         CustomerSheetState.ENTERING_PACKAGE_DETAILS -> {
                             PackageDetailsSheet(
+                                stage = viewModel.packageStage,
+                                onNextStage = {
+                                    if (viewModel.packageStage == 1) {
+                                        viewModel.packageStage = 2
+                                        viewModel.navigateTo(CustomerScreen.RouteSelection)
+                                    } else if (viewModel.packageStage == 3) {
+                                        viewModel.packageStage = 4
+                                    }
+                                },
+                                onPrevStage = {
+                                    if (viewModel.packageStage == 4) {
+                                        viewModel.packageStage = 3
+                                    } else if (viewModel.packageStage == 3) {
+                                        viewModel.packageStage = 2
+                                        viewModel.navigateTo(CustomerScreen.RouteSelection)
+                                    } else {
+                                        viewModel.showPackageDetailsSheet = false
+                                    }
+                                },
                                 isSending = viewModel.isSendingPackage,
                                 onIsSendingChange = { viewModel.isSendingPackage = it },
                                 pickupNamePhone = "${viewModel.customerProfile?.get("name") ?: SessionManager(context).getDriverName() ?: "Customer"} • ${viewModel.customerProfile?.get("phone") ?: SessionManager(context).getDriverPhone() ?: ""}",
@@ -1235,10 +1275,10 @@ fun MainMapContent(
                                 weightSize = viewModel.packageWeightSize,
                                 onCategoryChange = {
                                     viewModel.packageCategory = it
-                                    viewModel.selectedVehicleType = when (it) {
-                                        "Document", "Small Parcel" -> "Okada"
-                                        "Medium Box" -> "Saloon"
-                                        "Aboboyaa Cargo" -> "Aboboyaa"
+                                    viewModel.selectedVehicleType = when {
+                                        it.contains("Motorbike", true) -> "Okada"
+                                        it.contains("Car", true) -> "Saloon"
+                                        it.contains("Aboboyaa", true) -> "Aboboyaa"
                                         else -> "Okada"
                                     }
                                 },
@@ -1257,10 +1297,13 @@ fun MainMapContent(
                                 onConfirm = {
                                     viewModel.confirmOrder()
                                     viewModel.showPackageDetailsSheet = false
+                                    viewModel.packageStage = 1
                                     viewModel.activeServiceMode = ServiceType.PACKAGE_DELIVERY
                                     viewModel.navigateTo(CustomerScreen.MainMap)
                                 },
-                                onBack = { viewModel.showPackageDetailsSheet = false },
+                                onBack = {
+                                    viewModel.showPackageDetailsSheet = false
+                                },
                                 onProfileClick = { viewModel.navigateTo(CustomerScreen.Account) },
                                 isPlacing = viewModel.isOrderPlacing
                             )

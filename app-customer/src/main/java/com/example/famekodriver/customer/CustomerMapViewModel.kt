@@ -146,7 +146,8 @@ class CustomerMapViewModel(
 
     // --- Package Delivery State ---
     var isSendingPackage by mutableStateOf(true)
-    var packageCategory by mutableStateOf("Small Parcel")
+    var packageStage by mutableIntStateOf(1)
+    var packageCategory by mutableStateOf("Send Motorbike")
     var packageWeightSize by mutableStateOf("≤ 5kg")
     var isFragile by mutableStateOf(false)
     var recipientName by mutableStateOf("")
@@ -579,8 +580,12 @@ class CustomerMapViewModel(
         
         if (mode == ServiceType.PACKAGE_DELIVERY) {
             selectedVehicleType = "Okada" // Valid default for delivery
+            packageCategory = "Send Motorbike"
+            packageStage = 1
+            showPackageDetailsSheet = true
         } else if (mode == ServiceType.RIDE_HAILING) {
             selectedVehicleType = "Economy"
+            showPackageDetailsSheet = false
         }
         
         if (mode != ServiceType.RENTAL) {
@@ -908,6 +913,11 @@ class CustomerMapViewModel(
                                 updateEstimatedFare()
                             } else {
                                 isLoading = false
+                            }
+
+                            if (activeServiceMode == ServiceType.PACKAGE_DELIVERY && (packageStage == 1 || packageStage == 2)) {
+                                packageStage = 3
+                                showPackageDetailsSheet = true
                             }
                         } else {
                             isLoading = false
