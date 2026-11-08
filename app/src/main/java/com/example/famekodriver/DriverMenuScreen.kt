@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,7 +41,8 @@ fun DriverMenuScreen(
     onNavigateToRentals: () -> Unit,
     onNavigateToRideHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToSupport: () -> Unit
+    onNavigateToSupport: () -> Unit,
+    onLogout: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
@@ -462,6 +464,31 @@ fun DriverMenuScreen(
                             showGreenDot = true,
                             onClick = onNavigateToSupport
                         )
+                    }
+                }
+            }
+
+            // End Shift & Logout Card
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onLogout() },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFECDD3))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = Color(0xFFDC2626), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text("End Shift & Logout", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFFDC2626))
                     }
                 }
             }

@@ -177,7 +177,13 @@ class MainActivity : ComponentActivity() {
                             onNavigateToRentals = { currentScreen = Screen.Rentals },
                             onNavigateToRideHistory = { currentScreen = Screen.RideHistory },
                             onNavigateToSettings = { currentScreen = Screen.Settings },
-                            onNavigateToSupport = { currentScreen = Screen.SupportChat }
+                            onNavigateToSupport = { currentScreen = Screen.SupportChat },
+                            onLogout = {
+                                sessionManager.logout()
+                                val intent = Intent(this@MainActivity, DriverLoginActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            }
                         )
                     }
                 }
