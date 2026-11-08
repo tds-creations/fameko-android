@@ -1224,6 +1224,7 @@ fun MainMapContent(
                                 estimatedFare = viewModel.estimatedFare ?: 0.0,
                                 estimatedTime = if (viewModel.durationMin > 0) "${viewModel.durationMin.toInt()} mins" else "",
                                 estimatedDistance = if (viewModel.distanceKm > 0) "${String.format(java.util.Locale.US, "%.1f", viewModel.distanceKm)} km" else "",
+                                discountRate = viewModel.discountRate,
                                 rideEstimates = viewModel.rideEstimates,
                                 selectedPaymentMethod = viewModel.selectedPaymentMethod,
                                 onPaymentMethodChange = { viewModel.selectedPaymentMethod = it },

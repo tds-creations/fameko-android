@@ -66,6 +66,7 @@ fun PackageDetailsSheet(
     estimatedFare: Double = 0.0,
     estimatedTime: String = "",
     estimatedDistance: String = "",
+    discountRate: Int = 0,
     rideEstimates: List<com.example.famekodriver.core.domain.model.RideEstimateResponse> = emptyList(),
     selectedPaymentMethod: String = "Cash",
     onPaymentMethodChange: (String) -> Unit = {},
@@ -172,25 +173,26 @@ fun PackageDetailsSheet(
                     .padding(16.dp)
             ) {
                 // Top Promo Banner
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF0F172A)
-                ) {
-                    Box(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                        contentAlignment = Alignment.Center
+                if (discountRate > 0) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF0F172A)
                     ) {
-                        Text(
-                            "⚡ 5% off on Premium Dispatches",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                        Box(
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "⚡ $discountRate% promo applied",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 // Vehicle Options List
                 val motorbikeFare = rideEstimates.find { it.serviceId.contains("Okada", true) }?.fare ?: basePrice
@@ -205,6 +207,7 @@ fun PackageDetailsSheet(
 
                 options.forEach { (title, desc, price) ->
                     val isSelected = category.contains(title, true) || (category.contains("Motorbike", true) && title.contains("Motorbike", true))
+                    val finalDisplayPrice = if (discountRate > 0) price * (100 - discountRate) / 100 else price
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -235,7 +238,7 @@ fun PackageDetailsSheet(
                                 }
                                 Text(desc, fontSize = 11.sp, color = Color(0xFF64748B), maxLines = 1)
                             }
-                            Text("GH₵ ${String.format(java.util.Locale.US, "%.0f", price)}", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
+                            Text("GH₵ ${String.format(java.util.Locale.US, "%.0f", finalDisplayPrice)}", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
                         }
                     }
                 }
@@ -299,6 +302,7 @@ fun PackageDetailsSheet(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Vehicle & Fare Summary Pill
+                val finalSummaryPrice = if (discountRate > 0) basePrice * (100 - discountRate) / 100 else basePrice
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -310,7 +314,7 @@ fun PackageDetailsSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(category, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                        Text("GH₵ ${String.format(java.util.Locale.US, "%.0f", basePrice)}", fontWeight = FontWeight.Black, fontSize = 14.sp, color = DispatchGreen)
+                        Text("GH₵ ${String.format(java.util.Locale.US, "%.0f", finalSummaryPrice)}", fontWeight = FontWeight.Black, fontSize = 14.sp, color = DispatchGreen)
                     }
                 }
 
