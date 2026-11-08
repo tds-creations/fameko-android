@@ -89,20 +89,22 @@
         let driverMarker = null;
 
         function updateLocation() {
-            fetch('/api/admin/live-locations')
+            fetch(`/public-track/${driverId}/${deliveryId}`)
                 .then(r => r.json())
-                .then(drivers => {
-                    const driver = drivers.find(d => d.id == driverId);
-                    if (driver) {
-                        const pos = [driver.lat, driver.lng];
+                .then(data => {
+                    if (data.success && data.lat && data.lng) {
+                        const pos = [data.lat, data.lng];
 
-                        document.getElementById('driver-name').innerText = driver.name;
-                        document.getElementById('vehicle-info').innerText = driver.vehicle || 'Trip in Progress';
-                        document.getElementById('driver-initial').innerText = driver.name.charAt(0);
+                        document.getElementById('driver-name').innerText = data.driverName;
+                        document.getElementById('vehicle-info').innerText = data.vehicle || 'Trip in Progress';
+                        document.getElementById('driver-initial').innerText = data.driverName ? data.driverName.charAt(0) : 'D';
+                        if (document.getElementById('trip-status')) {
+                            document.getElementById('trip-status').innerText = data.status || 'Live Tracking';
+                        }
 
                         if (!driverMarker) {
                             const iconHtml = `<div class="custom-marker" style="width: 40px; height: 40px;">
-                                <i class="fas fa-car" style="color: #004E89; font-size: 20px;"></i>
+                                <i class="fas fa-motorcycle" style="color: #004E89; font-size: 20px;"></i>
                             </div>`;
                             const icon = L.divIcon({
                                 html: iconHtml,
@@ -114,7 +116,6 @@
                             map.setView(pos, 16);
                         } else {
                             driverMarker.setLatLng(pos);
-                            // Smoothly follow driver
                             map.panTo(pos);
                         }
                     }

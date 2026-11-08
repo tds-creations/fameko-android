@@ -833,6 +833,48 @@ object DatabaseRepository {
         return list
     }
 
+    fun getPublicTrackingData(driverId: Int, deliveryId: Int): Map<String, Any?> {
+        try {
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = """
+                    SELECT d.id, d.status, d.pickup_location, d.dropoff_location, d.pickup_lat, d.pickup_lng, d.dropoff_lat, d.dropoff_lng,
+                           drv.full_name as driver_name, drv.phone_number as driver_phone, drv.vehicle_type, drv.vehicle_model, drv.vehicle_number,
+                           ds.current_lat, ds.current_lng, ds.bearing
+                    FROM deliveries d
+                    LEFT JOIN drivers drv ON d.driver_id = drv.id
+                    LEFT JOIN driver_stats ds ON drv.id = ds.driver_id
+                    WHERE d.id = ? OR (d.driver_id = ? AND d.status NOT IN ('DELIVERED', 'CANCELLED'))
+                    ORDER BY d.id DESC LIMIT 1
+                """.trimIndent()
+                val stmt = conn.prepareStatement(sql)
+                stmt.setInt(1, deliveryId)
+                stmt.setInt(2, driverId)
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    val lat = rs.getDouble("current_lat").takeIf { it != 0.0 } ?: rs.getDouble("pickup_lat")
+                    val lng = rs.getDouble("current_lng").takeIf { it != 0.0 } ?: rs.getDouble("pickup_lng")
+                    return mapOf(
+                        "success" to true,
+                        "driverId" to driverId,
+                        "deliveryId" to deliveryId,
+                        "driverName" to (rs.getString("driver_name") ?: "Driver"),
+                        "driverPhone" to (rs.getString("driver_phone") ?: ""),
+                        "vehicle" to "${rs.getString("vehicle_type") ?: "Vehicle"} • ${rs.getString("vehicle_number") ?: ""}",
+                        "lat" to lat,
+                        "lng" to lng,
+                        "bearing" to rs.getFloat("bearing"),
+                        "status" to rs.getString("status"),
+                        "pickupLocation" to rs.getString("pickup_location"),
+                        "dropOffLocation" to rs.getString("dropoff_location")
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return mapOf("success" to false, "message" to "Trip not found")
+    }
+
     fun getFinancialStats(month: String?, date: String?): Map<String, Any> {
         val stats = mutableMapOf<String, Any>(
             "totalRevenue" to 0.0,

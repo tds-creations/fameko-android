@@ -1928,7 +1928,17 @@ fun Application.configureRouting() {
             get("/share-trip/{driverId}/{deliveryId}") {
                 val driverId = call.parameters["driverId"] ?: "0"
                 val deliveryId = call.parameters["deliveryId"] ?: "0"
-                val baseUrl = System.getenv("BASE_URL") ?: "http://localhost:8080"
+                
+                val hostHeader = call.request.headers["X-Forwarded-Host"] ?: call.request.headers["Host"] ?: "fameko-android-production-de51.up.railway.app"
+                val schemeHeader = call.request.headers["X-Forwarded-Proto"] ?: "https"
+                
+                val envBaseUrl = System.getenv("BASE_URL")?.trim()
+                val baseUrl = if (!envBaseUrl.isNullOrBlank() && !envBaseUrl.contains("localhost") && !envBaseUrl.contains("69b3")) {
+                    if (envBaseUrl.startsWith("http")) envBaseUrl else "https://$envBaseUrl"
+                } else {
+                    "$schemeHeader://$hostHeader"
+                }
+                
                 val shareUrl = "$baseUrl/track/$driverId/$deliveryId"
                 call.respond(ShareTripResponse(shareUrl, deliveryId, System.currentTimeMillis() + 3600000))
             }
@@ -1946,6 +1956,14 @@ fun Application.configureRouting() {
                 "driverId" to cleanDriverId,
                 "deliveryId" to cleanDeliveryId
             )))
+        }
+
+        get("/public-track/{driverId}/{deliveryId}") {
+            val driverId = call.parameters["driverId"]?.toDoubleOrNull()?.toInt() ?: 0
+            val deliveryId = call.parameters["deliveryId"]?.toDoubleOrNull()?.toInt() ?: 0
+            
+            val trackingData = DatabaseRepository.getPublicTrackingData(driverId, deliveryId)
+            call.respond(trackingData)
         }
 
         post("/update-fcm-token") {
