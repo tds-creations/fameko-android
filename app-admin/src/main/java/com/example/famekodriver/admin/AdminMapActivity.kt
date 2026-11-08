@@ -258,13 +258,14 @@ fun AdminMapScreen(
 
     var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
-        val loader = context.imageLoader
-        val request = ImageRequest.Builder(context)
-            .data(ImageLinks.IC_OKADA)
-            .build()
-        val result = (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+        val localMotorDrawable = ContextCompat.getDrawable(context, R.drawable.ic_okada)
+        val result = localMotorDrawable?.toBitmap() ?: run {
+            val loader = context.imageLoader
+            val request = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
+            (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+        }
         if (result != null) {
-            motorbikeBitmap = Bitmap.createScaledBitmap(result, 40, 40, false)
+            motorbikeBitmap = Bitmap.createScaledBitmap(result, 32, 32, false)
         }
     }
 

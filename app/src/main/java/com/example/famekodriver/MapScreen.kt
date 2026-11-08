@@ -142,7 +142,7 @@ fun MapScreen(
 
         val localDrawable = if (isOkada) ContextCompat.getDrawable(context, R.drawable.ic_okada) else null
         if (localDrawable != null) {
-            vehicleBitmap = localDrawable.toBitmap().scale(54, 54)
+            vehicleBitmap = localDrawable.toBitmap().scale(32, 32)
         } else {
             val iconUrl = when {
                 isOkada -> ImageLinks.IC_OKADA
@@ -161,7 +161,7 @@ fun MapScreen(
             try {
                 val result = (loader.execute(request) as? SuccessResult)?.drawable
                 if (result != null) {
-                    vehicleBitmap = result.toBitmap().scale(54, 54)
+                    vehicleBitmap = result.toBitmap().scale(32, 32)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
