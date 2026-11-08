@@ -149,8 +149,16 @@ fun Application.configureRouting() {
                     
                     val allDrivers = DatabaseRepository.getAllDrivers(principalRegion)
                     val filteredDrivers = allDrivers.filter { driver ->
-                        (statusFilter.isNullOrBlank() || driver["status"].toString().equals(statusFilter, ignoreCase = true)) &&
-                        (regionFilter.isNullOrBlank() || driver["region"].toString().equals(regionFilter, ignoreCase = true))
+                        val drvStatus = driver["status"]?.toString() ?: ""
+                        val matchesStatus = when {
+                            statusFilter.isNullOrBlank() -> true
+                            statusFilter.equals("PENDING", ignoreCase = true) || statusFilter.equals("PENDING_DOCS", ignoreCase = true) -> {
+                                drvStatus.startsWith("PENDING", ignoreCase = true)
+                            }
+                            else -> drvStatus.equals(statusFilter, ignoreCase = true)
+                        }
+                        val matchesRegion = regionFilter.isNullOrBlank() || driver["region"]?.toString().equals(regionFilter, ignoreCase = true)
+                        matchesStatus && matchesRegion
                     }
 
                     // Group by region for better arrangement if requested
@@ -220,8 +228,16 @@ fun Application.configureRouting() {
 
                     val allOwners = DatabaseRepository.getAllFleetOwners(principalRegion)
                     val filteredOwners = allOwners.filter { owner ->
-                        (statusFilter.isNullOrBlank() || owner["status"].toString().equals(statusFilter, ignoreCase = true)) &&
-                        (regionFilter.isNullOrBlank() || owner["region"].toString().equals(regionFilter, ignoreCase = true))
+                        val oStatus = owner["status"]?.toString() ?: ""
+                        val matchesStatus = when {
+                            statusFilter.isNullOrBlank() -> true
+                            statusFilter.equals("PENDING", ignoreCase = true) || statusFilter.equals("PENDING_DOCS", ignoreCase = true) -> {
+                                oStatus.startsWith("PENDING", ignoreCase = true)
+                            }
+                            else -> oStatus.equals(statusFilter, ignoreCase = true)
+                        }
+                        val matchesRegion = regionFilter.isNullOrBlank() || owner["region"]?.toString().equals(regionFilter, ignoreCase = true)
+                        matchesStatus && matchesRegion
                     }
 
                     val groupedOwners = filteredOwners.groupBy { it["region"].toString() }
@@ -696,7 +712,10 @@ fun Application.configureRouting() {
             }
 
             get("/pending-drivers") {
-                val drivers = DatabaseRepository.getAllDrivers(null).filter { it["status"] == "PENDING" || it["status"] == "PENDING_DOCS" }
+                val drivers = DatabaseRepository.getAllDrivers(null).filter {
+                    val st = it["status"]?.toString() ?: ""
+                    st.startsWith("PENDING", ignoreCase = true)
+                }
                 call.respond(drivers)
             }
 
