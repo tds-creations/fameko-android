@@ -273,7 +273,7 @@ fun VehicleRegistrationScreen(
                                     status = sessionManager.getDriverStatus(),
                                     phone = sessionManager.getDriverPhone() ?: "",
                                     role = sessionManager.getUserRole(),
-                                    vehicleType = "$vehicleName ($plateNumber)"
+                                    vehicleType = if (selectedType.contains("okada", true)) "Okada" else selectedType
                                 )
                                 onComplete()
                             }.onFailure {

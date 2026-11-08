@@ -138,27 +138,34 @@ fun MapScreen(
     var vehicleBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(vehicleType) {
         val type = vehicleType
-        val iconUrl = when {
-            type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor") -> ImageLinks.IC_OKADA
-            type.contains("pragya") -> ImageLinks.IC_PRAGYA
-            type.contains("bicycle") -> ImageLinks.IC_BICYCLE
-            type.contains("aboboyaa") -> ImageLinks.IC_ABOBOYAA
-            type.contains("truck") -> ImageLinks.IC_TRUCK
-            else -> ImageLinks.IC_CAR_SALOON
-        }
+        val isOkada = type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor") || type.contains("delivery")
 
-        val loader = context.imageLoader
-        val request = ImageRequest.Builder(context)
-            .data(iconUrl)
-            .build()
-        
-        try {
-            val result = (loader.execute(request) as? SuccessResult)?.drawable
-            if (result != null) {
-                vehicleBitmap = result.toBitmap().scale(40, 40)
+        val localDrawable = if (isOkada) ContextCompat.getDrawable(context, R.drawable.ic_okada) else null
+        if (localDrawable != null) {
+            vehicleBitmap = localDrawable.toBitmap().scale(54, 54)
+        } else {
+            val iconUrl = when {
+                isOkada -> ImageLinks.IC_OKADA
+                type.contains("pragya") -> ImageLinks.IC_PRAGYA
+                type.contains("bicycle") -> ImageLinks.IC_BICYCLE
+                type.contains("aboboyaa") -> ImageLinks.IC_ABOBOYAA
+                type.contains("truck") -> ImageLinks.IC_TRUCK
+                else -> ImageLinks.IC_CAR_SALOON
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+
+            val loader = context.imageLoader
+            val request = ImageRequest.Builder(context)
+                .data(iconUrl)
+                .build()
+            
+            try {
+                val result = (loader.execute(request) as? SuccessResult)?.drawable
+                if (result != null) {
+                    vehicleBitmap = result.toBitmap().scale(54, 54)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -554,8 +561,10 @@ fun MapScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(Icons.Default.DirectionsCar, null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
-                            Text((viewModel.vehicleCategory ?: "").ifEmpty { vehicleTypeFromSession.ifEmpty { "Saloon" } }, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                            val vLabel = (viewModel.vehicleCategory ?: "").ifEmpty { vehicleTypeFromSession.ifEmpty { "Saloon" } }
+                            val isOkadaV = vLabel.lowercase().let { it.contains("okada") || it.contains("bike") || it.contains("motor") || it.contains("delivery") }
+                            Icon(if (isOkadaV) Icons.Default.TwoWheeler else Icons.Default.DirectionsCar, null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
+                            Text(vLabel, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
                         }
 
                         Surface(

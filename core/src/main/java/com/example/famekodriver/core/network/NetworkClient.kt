@@ -29,8 +29,8 @@ object NetworkClient {
         }
     }
 
-    private const val PRODUCTION_URL = "https://fameko-android-production.up.railway.app/"
-    private const val PRODUCTION_ROUTING_URL = "https://go-routing-production.up.railway.app/"
+    private const val PRODUCTION_URL = "https://fameko-android-production-de51.up.railway.app/"
+    private const val PRODUCTION_ROUTING_URL = "https://go-routing-production-89ba.up.railway.app/"
 
     private val BASE_URL = PRODUCTION_URL
     private val ROUTING_URL = PRODUCTION_ROUTING_URL

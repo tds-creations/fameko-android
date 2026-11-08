@@ -144,6 +144,8 @@ sealed class CustomerScreen {
     object WorkProfile : CustomerScreen()
     object TermsAndConditions : CustomerScreen()
     object PrivacyPolicy : CustomerScreen()
+    object PackageDispatchSetup : CustomerScreen()
+    data class PublicLiveTracking(val orderId: Int? = null, val trackingUrl: String? = null) : CustomerScreen()
 }
 
 class CustomerMapActivity : ComponentActivity() {
@@ -242,6 +244,61 @@ fun CustomerMapScreen() {
         modelClass = CustomerMapViewModel::class.java,
         factory = CustomerMapViewModelFactory(repository, orderRepository, rentalRepository, userRepository, sessionManager, savedPlaceRepository)
     )
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            try {
+                val contentResolver = context.contentResolver
+                val cursor = contentResolver.query(
+                    uri,
+                    arrayOf(
+                        android.provider.ContactsContract.Contacts._ID,
+                        android.provider.ContactsContract.Contacts.DISPLAY_NAME,
+                        android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
+                    ),
+                    null, null, null
+                )
+                cursor?.use { c ->
+                    if (c.moveToFirst()) {
+                        val idIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+                        val nameIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                        val hasPhoneIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)
+
+                        val contactId = if (idIndex >= 0) c.getString(idIndex) else ""
+                        val name = if (nameIndex >= 0) c.getString(nameIndex) ?: "" else ""
+                        val hasPhone = if (hasPhoneIndex >= 0) c.getInt(hasPhoneIndex) > 0 else false
+
+                        var phoneNumber = ""
+                        if (hasPhone && contactId.isNotEmpty()) {
+                            val pCursor = contentResolver.query(
+                                android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                                "${android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                                arrayOf(contactId),
+                                null
+                            )
+                            pCursor?.use { pc ->
+                                if (pc.moveToFirst()) {
+                                    val pIndex = pc.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                                    if (pIndex >= 0) {
+                                        phoneNumber = pc.getString(pIndex) ?: ""
+                                    }
+                                }
+                            }
+                        }
+                        if (name.isNotEmpty()) mapViewModel.recipientName = name
+                        if (phoneNumber.isNotEmpty()) mapViewModel.recipientPhone = phoneNumber.replace(" ", "").replace("-", "")
+                        Toast.makeText(context, "Selected contact: $name", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ContactPicker", "Failed to resolve contact", e)
+                Toast.makeText(context, "Could not load contact details", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     if (!mapViewModel.isTermsAccepted) {
         TermsAndConditionsScreen(
@@ -583,6 +640,119 @@ fun CustomerMapScreen() {
                 CustomerScreen.PrivacyPolicy -> {
                     PrivacyPolicyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
+                CustomerScreen.PackageDispatchSetup -> {
+                    PackageDetailsSheet(
+                        isSending = mapViewModel.isSendingPackage,
+                        onIsSendingChange = { mapViewModel.isSendingPackage = it },
+                        pickupNamePhone = "${mapViewModel.customerProfile?.get("name") ?: SessionManager(context).getDriverName() ?: "Customer"} • ${mapViewModel.customerProfile?.get("phone") ?: SessionManager(context).getDriverPhone() ?: ""}",
+                        pickupAddress = mapViewModel.pickupLocation,
+                        onPickupAddressChange = { mapViewModel.pickupLocation = it },
+                        onChangePickup = { mapViewModel.navigateTo(CustomerScreen.RouteSelection) },
+                        recipientName = mapViewModel.recipientName,
+                        onRecipientNameChange = { mapViewModel.recipientName = it },
+                        recipientPhone = mapViewModel.recipientPhone,
+                        onRecipientPhoneChange = { mapViewModel.recipientPhone = it },
+                        onChooseFromContacts = { contactPickerLauncher.launch(null) },
+                        dropOffAddress = mapViewModel.dropOffLocation,
+                        onDropOffAddressChange = { mapViewModel.dropOffLocation = it },
+                        onChangeDropOff = { mapViewModel.navigateTo(CustomerScreen.RouteSelection) },
+                        ghanaPostGps = mapViewModel.ghanaPostGpsMatch,
+                        notifyRecipientSmsWhatsapp = mapViewModel.notifyRecipientSmsWhatsapp,
+                        onNotifyRecipientChange = { mapViewModel.notifyRecipientSmsWhatsapp = it },
+                        category = mapViewModel.packageCategory,
+                        weightSize = mapViewModel.packageWeightSize,
+                        onCategoryChange = {
+                            mapViewModel.packageCategory = it
+                            mapViewModel.selectedVehicleType = when (it) {
+                                "Document", "Small Parcel" -> "Okada"
+                                "Medium Box" -> "Saloon"
+                                "Aboboyaa Cargo" -> "Aboboyaa"
+                                else -> "Okada"
+                            }
+                        },
+                        onWeightSizeChange = { mapViewModel.packageWeightSize = it },
+                        isOtpRequired = mapViewModel.isOtpRequired,
+                        onOtpRequiredChange = { mapViewModel.isOtpRequired = it },
+                        isFragile = mapViewModel.isFragile,
+                        onFragileChange = { mapViewModel.isFragile = it },
+                        notes = mapViewModel.packageNotes,
+                        onNotesChange = { mapViewModel.packageNotes = it },
+                        estimatedFare = mapViewModel.estimatedFare ?: 0.0,
+                        estimatedTime = if (mapViewModel.durationMin > 0) "${mapViewModel.durationMin.toInt()} mins" else "",
+                        estimatedDistance = if (mapViewModel.distanceKm > 0) "${String.format(java.util.Locale.US, "%.1f", mapViewModel.distanceKm)} km" else "",
+                        selectedPaymentMethod = mapViewModel.selectedPaymentMethod,
+                        onPaymentMethodChange = { mapViewModel.selectedPaymentMethod = it },
+                        onConfirm = {
+                            mapViewModel.confirmOrder()
+                            mapViewModel.showPackageDetailsSheet = false
+                            mapViewModel.activeServiceMode = ServiceType.PACKAGE_DELIVERY
+                            mapViewModel.navigateTo(CustomerScreen.MainMap)
+                        },
+                        onBack = {
+                            if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.MainMap)
+                        },
+                        onProfileClick = { mapViewModel.navigateTo(CustomerScreen.Account) },
+                        isPlacing = mapViewModel.isOrderPlacing
+                    )
+                }
+                is CustomerScreen.PublicLiveTracking -> {
+                    val status = mapViewModel.orderStatusData
+                    val userName = mapViewModel.customerProfile?.get("name")?.toString()
+                        ?: SessionManager(context).getDriverName() ?: "Customer"
+                    
+                    val pin = status?.verificationPin?.takeIf { it.isNotBlank() }?.chunked(1)?.joinToString(" ") ?: "----"
+                    
+                    val (calcKm, calcMins) = remember(status?.driverLat, status?.driverLng, status?.dropOffLat, status?.dropOffLng, mapViewModel.distanceKm) {
+                        val dLat = status?.driverLat
+                        val dLng = status?.driverLng
+                        val dropLat = status?.dropOffLat ?: mapViewModel.dropOffLat
+                        val dropLng = status?.dropOffLng ?: mapViewModel.dropOffLng
+                        if (dLat != null && dLng != null && dropLat != null && dropLng != null) {
+                            val km = LocationUtils.calculateDistance(dLat, dLng, dropLat, dropLng) / 1000.0
+                            val mins = (km * 2.5).toInt().coerceAtLeast(1)
+                            Pair(km, mins)
+                        } else {
+                            Pair(mapViewModel.distanceKm, if (mapViewModel.durationMin > 0) mapViewModel.durationMin.toInt() else 15)
+                        }
+                    }
+
+                    val etaTimeStr = remember(calcMins) {
+                        val cal = java.util.Calendar.getInstance()
+                        cal.add(java.util.Calendar.MINUTE, calcMins)
+                        java.text.SimpleDateFormat("~ HH:mm 'GMT'", java.util.Locale.getDefault()).format(cal.time)
+                    }
+
+                    val vehicleStr = remember(status?.driverVehicle, status?.driverVehicleModel, status?.driverVehicleNumber) {
+                        val parts = listOfNotNull(
+                            status?.driverVehicleModel ?: status?.driverVehicle,
+                            status?.driverVehicleNumber
+                        ).filter { it.isNotBlank() }
+                        if (parts.isNotEmpty()) parts.joinToString(" • ") else "Assigning vehicle..."
+                    }
+
+                    CustomerPublicLiveTrackingScreen(
+                        sharedBy = userName,
+                        pickupLocation = status?.pickupLocation ?: mapViewModel.pickupLocation,
+                        dropOffLocation = status?.dropOffLocation ?: mapViewModel.dropOffLocation,
+                        etaMins = calcMins,
+                        etaTimeStr = etaTimeStr,
+                        remainingKm = calcKm,
+                        courierName = status?.driverName ?: "Assigning Courier...",
+                        courierRating = status?.driverRating ?: 5.0,
+                        courierPhone = status?.driverPhone ?: "",
+                        courierVehicle = vehicleStr,
+                        courierPhotoUrl = status?.driverProfilePic,
+                        serviceClass = if (mapViewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) "Express Package Delivery" else "Standard Ride",
+                        completedDeliveries = 100 + (status?.orderId ?: 1) * 12,
+                        otpCode = pin,
+                        onBack = {
+                            if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.MainMap)
+                        },
+                        onGetApp = {
+                            Toast.makeText(context, "Fameko App is active and live!", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
             }
 
             if (showDatePicker) { DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { showDatePicker = false; showTimePicker = true }) { Text("Next") } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState) } }
@@ -606,6 +776,61 @@ fun MainMapContent(
     val voiceNavManager = remember { com.example.famekodriver.core.utils.VoiceNavigationManager(context) }
 
     DisposableEffect(voiceNavManager) { onDispose { voiceNavManager.shutdown() } }
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            try {
+                val contentResolver = context.contentResolver
+                val cursor = contentResolver.query(
+                    uri,
+                    arrayOf(
+                        android.provider.ContactsContract.Contacts._ID,
+                        android.provider.ContactsContract.Contacts.DISPLAY_NAME,
+                        android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
+                    ),
+                    null, null, null
+                )
+                cursor?.use { c ->
+                    if (c.moveToFirst()) {
+                        val idIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+                        val nameIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                        val hasPhoneIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)
+
+                        val contactId = if (idIndex >= 0) c.getString(idIndex) else ""
+                        val name = if (nameIndex >= 0) c.getString(nameIndex) ?: "" else ""
+                        val hasPhone = if (hasPhoneIndex >= 0) c.getInt(hasPhoneIndex) > 0 else false
+
+                        var phoneNumber = ""
+                        if (hasPhone && contactId.isNotEmpty()) {
+                            val pCursor = contentResolver.query(
+                                android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                                "${android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                                arrayOf(contactId),
+                                null
+                            )
+                            pCursor?.use { pc ->
+                                if (pc.moveToFirst()) {
+                                    val pIndex = pc.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                                    if (pIndex >= 0) {
+                                        phoneNumber = pc.getString(pIndex) ?: ""
+                                    }
+                                }
+                            }
+                        }
+                        if (name.isNotEmpty()) viewModel.recipientName = name
+                        if (phoneNumber.isNotEmpty()) viewModel.recipientPhone = phoneNumber.replace(" ", "").replace("-", "")
+                        Toast.makeText(context, "Selected contact: $name", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ContactPicker", "Failed to resolve contact", e)
+                Toast.makeText(context, "Could not load contact details", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
 
@@ -633,13 +858,16 @@ fun MainMapContent(
     LaunchedEffect(Unit) {
         val loader = context.imageLoader
         
-        val motorRequest = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
-        val motorResult = (loader.execute(motorRequest) as? SuccessResult)?.drawable?.toBitmap()
-        if (motorResult != null) motorbikeBitmap = motorResult.scale(40, 40, false)
+        val localMotorDrawable = ContextCompat.getDrawable(context, R.drawable.ic_okada)
+        val motorResult = localMotorDrawable?.toBitmap() ?: run {
+            val motorRequest = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
+            (loader.execute(motorRequest) as? SuccessResult)?.drawable?.toBitmap()
+        }
+        if (motorResult != null) motorbikeBitmap = motorResult.scale(54, 54, false)
 
         val carRequest = ImageRequest.Builder(context).data(ImageLinks.IC_CAR_SALOON).build()
         val carResult = (loader.execute(carRequest) as? SuccessResult)?.drawable?.toBitmap()
-        if (carResult != null) carBitmap = carResult.scale(40, 40, false)
+        if (carResult != null) carBitmap = carResult.scale(54, 54, false)
     }
 
     LaunchedEffect(Unit) {
@@ -856,15 +1084,16 @@ fun MainMapContent(
         val driversToShow = rawDrivers.distinctBy { it.id }
 
         map.getStyle { style ->
-            // Add Okada icon
-            motorbikeBitmap?.let { if (style.getImage("icon-okada") == null) style.addImage("icon-okada", it) }
-            // Add Car icon
-            carBitmap?.let { if (style.getImage("icon-car") == null) style.addImage("icon-car", it) }
+            // Add/update Okada icon from R.drawable.ic_okada
+            motorbikeBitmap?.let { style.addImage("icon-okada", it) }
+            // Add/update Car icon
+            carBitmap?.let { style.addImage("icon-car", it) }
             // Fallback for older code referencing "driver-icon"
-            (carBitmap ?: motorbikeBitmap)?.let { if (style.getImage("driver-icon") == null) style.addImage("driver-icon", it) }
+            (carBitmap ?: motorbikeBitmap)?.let { style.addImage("driver-icon", it) }
 
             val source = style.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("drivers-source")
             if (source != null) {
+                val isPackageDelivery = viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY
                 val features = driversToShow.map { driver ->
                     val feature = org.maplibre.geojson.Feature.fromGeometry(
                         org.maplibre.geojson.Point.fromLngLat(driver.longitude, driver.latitude)
@@ -873,7 +1102,7 @@ fun MainMapContent(
                     
                     val vType = driver.vehicleType?.lowercase() ?: ""
                     val iconId = when {
-                        vType.contains("okada") || vType.contains("bike") || vType.contains("motor") -> "icon-okada"
+                        isPackageDelivery || vType.contains("okada") || vType.contains("bike") || vType.contains("motor") || vType.contains("delivery") || vType.contains("courier") -> "icon-okada"
                         else -> "icon-car"
                     }
                     feature.addStringProperty("icon-id", iconId)
@@ -942,6 +1171,7 @@ fun MainMapContent(
                                 onServiceSelected = { 
                                     viewModel.setServiceMode(it)
                                     if (it == ServiceType.RENTAL) viewModel.navigateTo(CustomerScreen.FleetBrowse) 
+                                    else if (it == ServiceType.PACKAGE_DELIVERY) viewModel.navigateTo(CustomerScreen.PackageDispatchSetup)
                                     else viewModel.navigateTo(CustomerScreen.MainMap) 
                                 },
                                 onScheduleClick = onScheduleClick,
@@ -984,20 +1214,54 @@ fun MainMapContent(
                         CustomerSheetState.TIMED_OUT -> { RideHailingSheetContent(state = currentSheetState, viewModel = viewModel, onNavigateToChat = onNavigateToChat, onScheduleClick = onScheduleClick, onShareTrip = { viewModel.shareTrip(context) }, onCloseScheduled = { viewModel.resetSearch(); viewModel.navigateTo(CustomerScreen.Landing) }, onRetryTimeout = { viewModel.clearActiveOrder() }, onCloseTimeout = { viewModel.resetSearch(); viewModel.clearActiveOrder(); viewModel.navigateTo(CustomerScreen.Landing) }) }
                         CustomerSheetState.ENTERING_PACKAGE_DETAILS -> {
                             PackageDetailsSheet(
+                                isSending = viewModel.isSendingPackage,
+                                onIsSendingChange = { viewModel.isSendingPackage = it },
+                                pickupNamePhone = "${viewModel.customerProfile?.get("name") ?: SessionManager(context).getDriverName() ?: "Customer"} • ${viewModel.customerProfile?.get("phone") ?: SessionManager(context).getDriverPhone() ?: ""}",
+                                pickupAddress = viewModel.pickupLocation,
+                                onPickupAddressChange = { viewModel.pickupLocation = it },
+                                onChangePickup = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
+                                recipientName = viewModel.recipientName,
+                                onRecipientNameChange = { viewModel.recipientName = it },
+                                recipientPhone = viewModel.recipientPhone,
+                                onRecipientPhoneChange = { viewModel.recipientPhone = it },
+                                onChooseFromContacts = { contactPickerLauncher.launch(null) },
+                                dropOffAddress = viewModel.dropOffLocation,
+                                onDropOffAddressChange = { viewModel.dropOffLocation = it },
+                                onChangeDropOff = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
+                                ghanaPostGps = viewModel.ghanaPostGpsMatch,
+                                notifyRecipientSmsWhatsapp = viewModel.notifyRecipientSmsWhatsapp,
+                                onNotifyRecipientChange = { viewModel.notifyRecipientSmsWhatsapp = it },
                                 category = viewModel.packageCategory,
                                 weightSize = viewModel.packageWeightSize,
-                                isFragile = viewModel.isFragile,
-                                recipientName = viewModel.recipientName,
-                                recipientPhone = viewModel.recipientPhone,
-                                notes = viewModel.packageNotes,
-                                onCategoryChange = { viewModel.packageCategory = it },
+                                onCategoryChange = {
+                                    viewModel.packageCategory = it
+                                    viewModel.selectedVehicleType = when (it) {
+                                        "Document", "Small Parcel" -> "Okada"
+                                        "Medium Box" -> "Saloon"
+                                        "Aboboyaa Cargo" -> "Aboboyaa"
+                                        else -> "Okada"
+                                    }
+                                },
                                 onWeightSizeChange = { viewModel.packageWeightSize = it },
+                                isOtpRequired = viewModel.isOtpRequired,
+                                onOtpRequiredChange = { viewModel.isOtpRequired = it },
+                                isFragile = viewModel.isFragile,
                                 onFragileChange = { viewModel.isFragile = it },
-                                onRecipientNameChange = { viewModel.recipientName = it },
-                                onRecipientPhoneChange = { viewModel.recipientPhone = it },
+                                notes = viewModel.packageNotes,
                                 onNotesChange = { viewModel.packageNotes = it },
-                                onConfirm = { viewModel.confirmOrder() },
+                                estimatedFare = viewModel.estimatedFare ?: 0.0,
+                                estimatedTime = if (viewModel.durationMin > 0) "${viewModel.durationMin.toInt()} mins" else "",
+                                estimatedDistance = if (viewModel.distanceKm > 0) "${String.format(java.util.Locale.US, "%.1f", viewModel.distanceKm)} km" else "",
+                                selectedPaymentMethod = viewModel.selectedPaymentMethod,
+                                onPaymentMethodChange = { viewModel.selectedPaymentMethod = it },
+                                onConfirm = {
+                                    viewModel.confirmOrder()
+                                    viewModel.showPackageDetailsSheet = false
+                                    viewModel.activeServiceMode = ServiceType.PACKAGE_DELIVERY
+                                    viewModel.navigateTo(CustomerScreen.MainMap)
+                                },
                                 onBack = { viewModel.showPackageDetailsSheet = false },
+                                onProfileClick = { viewModel.navigateTo(CustomerScreen.Account) },
                                 isPlacing = viewModel.isOrderPlacing
                             )
                         }
@@ -1054,8 +1318,7 @@ fun MainMapContent(
                                 .fillMaxWidth()
                                 .height(56.dp)
                                 .clickable { 
-                                    if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) viewModel.resetSearch() 
-                                    else viewModel.navigateTo(CustomerScreen.RouteSelection) 
+                                    viewModel.navigateTo(CustomerScreen.RouteSelection) 
                                 },
                             shape = RoundedCornerShape(20.dp),
                             color = Color.White,

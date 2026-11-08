@@ -698,7 +698,7 @@ fun DriverProfileScreen(onBack: () -> Unit) {
                                     phone = editPhone,
                                     role = userRole,
                                     company = editCompany,
-                                    vehicleType = if (isFleetOwner) "Fleet" else "Car",
+                                    vehicleType = if (isFleetOwner) "Fleet" else (sessionManager.getVehicleType() ?: "Car"),
                                     profilePicture = profilePicUrl
                                 )
                                 driverName = editName

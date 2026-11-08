@@ -357,6 +357,28 @@ fun CustomerAccountScreen(
                 ) {
                     Column {
                         AccountManagementRow(
+                            icon = Icons.Default.CardGiftcard,
+                            iconColor = Color(0xFF006847),
+                            title = "Package Dispatch Setup",
+                            subtitle = "Send or receive tracked packages across Accra",
+                            badgeText = "RUSH",
+                            badgeColor = Color(0xFFD4F5E2),
+                            badgeTextColor = Color(0xFF00875A),
+                            onClick = { onNavigate(CustomerScreen.PackageDispatchSetup) }
+                        )
+                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                        AccountManagementRow(
+                            icon = Icons.Default.GpsFixed,
+                            iconColor = Color(0xFF0047AB),
+                            title = "Public Live Tracking",
+                            subtitle = "View live GPS courier telemetry & OTP",
+                            badgeText = "LIVE",
+                            badgeColor = Color(0xFFEBF5FF),
+                            badgeTextColor = Color(0xFF0047AB),
+                            onClick = { onNavigate(CustomerScreen.PublicLiveTracking()) }
+                        )
+                        HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                        AccountManagementRow(
                             icon = Icons.Default.DirectionsCar,
                             iconColor = Color(0xFF0284C7),
                             title = "Fameko Rentals",
