@@ -699,6 +699,7 @@ fun CustomerMapScreen() {
                         estimatedFare = mapViewModel.estimatedFare ?: 0.0,
                         estimatedTime = if (mapViewModel.durationMin > 0) "${mapViewModel.durationMin.toInt()} mins" else "",
                         estimatedDistance = if (mapViewModel.distanceKm > 0) "${String.format(java.util.Locale.US, "%.1f", mapViewModel.distanceKm)} km" else "",
+                        rideEstimates = mapViewModel.rideEstimates,
                         selectedPaymentMethod = mapViewModel.selectedPaymentMethod,
                         onPaymentMethodChange = { mapViewModel.selectedPaymentMethod = it },
                         onConfirm = {
@@ -1292,6 +1293,7 @@ fun MainMapContent(
                                 estimatedFare = viewModel.estimatedFare ?: 0.0,
                                 estimatedTime = if (viewModel.durationMin > 0) "${viewModel.durationMin.toInt()} mins" else "",
                                 estimatedDistance = if (viewModel.distanceKm > 0) "${String.format(java.util.Locale.US, "%.1f", viewModel.distanceKm)} km" else "",
+                                rideEstimates = viewModel.rideEstimates,
                                 selectedPaymentMethod = viewModel.selectedPaymentMethod,
                                 onPaymentMethodChange = { viewModel.selectedPaymentMethod = it },
                                 onConfirm = {

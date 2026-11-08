@@ -66,6 +66,7 @@ fun PackageDetailsSheet(
     estimatedFare: Double = 0.0,
     estimatedTime: String = "",
     estimatedDistance: String = "",
+    rideEstimates: List<com.example.famekodriver.core.domain.model.RideEstimateResponse> = emptyList(),
     selectedPaymentMethod: String = "Cash",
     onPaymentMethodChange: (String) -> Unit = {},
     onConfirm: () -> Unit = {},
@@ -192,10 +193,14 @@ fun PackageDetailsSheet(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Vehicle Options List
+                val motorbikeFare = rideEstimates.find { it.serviceId.contains("Okada", true) }?.fare ?: basePrice
+                val carFare = rideEstimates.find { it.serviceId.contains("Saloon", true) || it.serviceId.contains("Economy", true) || it.serviceId.contains("Car", true) }?.fare ?: (basePrice * 1.5)
+                val cargoFare = rideEstimates.find { it.serviceId.contains("Aboboyaa", true) || it.serviceId.contains("Truck", true) }?.fare ?: (basePrice * 2.3)
+
                 val options = listOf(
-                    Triple("Send Motorbike", "For items that fit in a backpack", basePrice),
-                    Triple("Car Delivery", "For larger boxes & delicate packages", basePrice * 1.5),
-                    Triple("Aboboyaa Cargo", "Heavy freight & commercial goods (>15kg)", basePrice * 2.3)
+                    Triple("Send Motorbike", "For items that fit in a backpack", motorbikeFare),
+                    Triple("Car Delivery", "For larger boxes & delicate packages", carFare),
+                    Triple("Aboboyaa Cargo", "Heavy freight & commercial goods (>15kg)", cargoFare)
                 )
 
                 options.forEach { (title, desc, price) ->

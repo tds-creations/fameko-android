@@ -155,8 +155,8 @@ class CustomerMapViewModel(
     var packageNotes by mutableStateOf("")
     var notifyRecipientSmsWhatsapp by mutableStateOf(true)
     var isOtpRequired by mutableStateOf(true)
-    var ghanaPostGpsMatch by mutableStateOf("GA-342-9912")
-    var selectedPaymentMethod by mutableStateOf("MTN MoMo (..6261)")
+    var ghanaPostGpsMatch by mutableStateOf("")
+    var selectedPaymentMethod by mutableStateOf("Cash")
     var showPackageDetailsSheet by mutableStateOf(false)
     
     val savedPlaces: StateFlow<List<SavedPlace>> = savedPlaceRepository.savedPlaces
@@ -846,6 +846,8 @@ class CustomerMapViewModel(
         val dLat = dropOffLat
         val dLng = dropOffLng
 
+        ghanaPostGpsMatch = generateGhanaPostGps(dLat ?: pLat, dLng ?: pLng)
+
         if (pLat == null || pLng == null || dLat == null || dLng == null || pLat == 0.0 || dLat == 0.0) {
             isLoading = false
             return
@@ -989,27 +991,30 @@ class CustomerMapViewModel(
         }
     }
 
+    fun generateGhanaPostGps(lat: Double?, lng: Double?): String {
+        if (lat == null || lng == null || lat == 0.0 || lng == 0.0) return ""
+        val regionPrefix = when {
+            lat in 5.5..5.8 && lng in -0.3..0.0 -> "GA"
+            lat in 6.5..7.0 && lng in -1.8..-1.3 -> "AK"
+            lat in 4.8..5.2 && lng in -2.0..-1.5 -> "WS"
+            lat in 5.0..5.5 && lng in -1.5..-1.0 -> "CC"
+            else -> "GA"
+        }
+        val district = (Math.abs((lat * 1000).toInt() % 899) + 100)
+        val number = (Math.abs((lng * 10000).toInt() % 8999) + 1000)
+        return "$regionPrefix-$district-$number"
+    }
+
     fun confirmOrder() {
-        val pLat = pickupLat ?: 5.6037
-        val pLng = pickupLng ?: -0.1870
-        val eFare = if ((estimatedFare ?: 0.0) > 0.0) estimatedFare!! else 15.00
+        val pLat = pickupLat ?: 0.0
+        val pLng = pickupLng ?: 0.0
         
-        if (pickupLocation.isBlank()) {
-            pickupLocation = "Accra Central"
-        }
-        if (dropOffLocation.isBlank()) {
-            dropOffLocation = "East Legon, Accra"
-        }
-        if (dropOffLat == null || dropOffLat == 0.0) {
-            dropOffLat = 5.6500
-            dropOffLng = -0.1700
-        }
-        if (distanceKm <= 0.0) {
-            distanceKm = 5.2
-        }
-        if (durationMin <= 0.0) {
-            durationMin = 15.0
-        }
+        val calculatedFare = pricingConfig?.let {
+            val raw = it.baseFare + (distanceKm * it.perKmRate) + (durationMin * it.perMinuteRate)
+            raw.coerceAtLeast(it.minFare)
+        } ?: 15.0
+
+        val eFare = if ((estimatedFare ?: 0.0) > 0.0) estimatedFare!! else calculatedFare
         
         isOrderPlacing = true
         viewModelScope.launch {
