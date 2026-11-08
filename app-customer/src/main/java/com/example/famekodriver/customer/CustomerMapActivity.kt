@@ -641,81 +641,12 @@ fun CustomerMapScreen() {
                     PrivacyPolicyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
                 CustomerScreen.PackageDispatchSetup -> {
-                    PackageDetailsSheet(
-                        stage = mapViewModel.packageStage,
-                        onNextStage = {
-                            if (mapViewModel.packageStage == 1) {
-                                mapViewModel.packageStage = 2
-                                mapViewModel.navigateTo(CustomerScreen.RouteSelection)
-                            } else if (mapViewModel.packageStage == 3) {
-                                mapViewModel.packageStage = 4
-                            }
-                        },
-                        onPrevStage = {
-                            if (mapViewModel.packageStage == 4) {
-                                mapViewModel.packageStage = 3
-                            } else if (mapViewModel.packageStage == 3) {
-                                mapViewModel.packageStage = 2
-                                mapViewModel.navigateTo(CustomerScreen.RouteSelection)
-                            } else {
-                                mapViewModel.showPackageDetailsSheet = false
-                            }
-                        },
-                        isSending = mapViewModel.isSendingPackage,
-                        onIsSendingChange = { mapViewModel.isSendingPackage = it },
-                        pickupNamePhone = "${mapViewModel.customerProfile?.get("name") ?: SessionManager(context).getDriverName() ?: "Customer"} • ${mapViewModel.customerProfile?.get("phone") ?: SessionManager(context).getDriverPhone() ?: ""}",
-                        pickupAddress = mapViewModel.pickupLocation,
-                        onPickupAddressChange = { mapViewModel.pickupLocation = it },
-                        onChangePickup = { mapViewModel.navigateTo(CustomerScreen.RouteSelection) },
-                        recipientName = mapViewModel.recipientName,
-                        onRecipientNameChange = { mapViewModel.recipientName = it },
-                        recipientPhone = mapViewModel.recipientPhone,
-                        onRecipientPhoneChange = { mapViewModel.recipientPhone = it },
-                        onChooseFromContacts = { contactPickerLauncher.launch(null) },
-                        dropOffAddress = mapViewModel.dropOffLocation,
-                        onDropOffAddressChange = { mapViewModel.dropOffLocation = it },
-                        onChangeDropOff = { mapViewModel.navigateTo(CustomerScreen.RouteSelection) },
-                        ghanaPostGps = mapViewModel.ghanaPostGpsMatch,
-                        notifyRecipientSmsWhatsapp = mapViewModel.notifyRecipientSmsWhatsapp,
-                        onNotifyRecipientChange = { mapViewModel.notifyRecipientSmsWhatsapp = it },
-                        category = mapViewModel.packageCategory,
-                        weightSize = mapViewModel.packageWeightSize,
-                        onCategoryChange = {
-                            mapViewModel.packageCategory = it
-                            mapViewModel.selectedVehicleType = when {
-                                it.contains("Motorbike", true) -> "Okada"
-                                it.contains("Car", true) -> "Saloon"
-                                it.contains("Aboboyaa", true) -> "Aboboyaa"
-                                else -> "Okada"
-                            }
-                        },
-                        onWeightSizeChange = { mapViewModel.packageWeightSize = it },
-                        isOtpRequired = mapViewModel.isOtpRequired,
-                        onOtpRequiredChange = { mapViewModel.isOtpRequired = it },
-                        isFragile = mapViewModel.isFragile,
-                        onFragileChange = { mapViewModel.isFragile = it },
-                        notes = mapViewModel.packageNotes,
-                        onNotesChange = { mapViewModel.packageNotes = it },
-                        estimatedFare = mapViewModel.estimatedFare ?: 0.0,
-                        estimatedTime = if (mapViewModel.durationMin > 0) "${mapViewModel.durationMin.toInt()} mins" else "",
-                        estimatedDistance = if (mapViewModel.distanceKm > 0) "${String.format(java.util.Locale.US, "%.1f", mapViewModel.distanceKm)} km" else "",
-                        rideEstimates = mapViewModel.rideEstimates,
-                        selectedPaymentMethod = mapViewModel.selectedPaymentMethod,
-                        onPaymentMethodChange = { mapViewModel.selectedPaymentMethod = it },
-                        onConfirm = {
-                            mapViewModel.confirmOrder()
-                            mapViewModel.showPackageDetailsSheet = false
-                            mapViewModel.packageStage = 1
-                            mapViewModel.activeServiceMode = ServiceType.PACKAGE_DELIVERY
-                            mapViewModel.navigateTo(CustomerScreen.MainMap)
-                        },
-                        onBack = {
-                            mapViewModel.showPackageDetailsSheet = false
-                            if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.MainMap)
-                        },
-                        onProfileClick = { mapViewModel.navigateTo(CustomerScreen.Account) },
-                        isPlacing = mapViewModel.isOrderPlacing
-                    )
+                    LaunchedEffect(Unit) {
+                        mapViewModel.setServiceMode(ServiceType.PACKAGE_DELIVERY)
+                        mapViewModel.packageStage = 1
+                        mapViewModel.showPackageDetailsSheet = true
+                        mapViewModel.navigateTo(CustomerScreen.MainMap)
+                    }
                 }
                 is CustomerScreen.PublicLiveTracking -> {
                     val status = mapViewModel.orderStatusData
