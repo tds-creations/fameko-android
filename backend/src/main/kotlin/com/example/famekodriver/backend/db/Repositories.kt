@@ -774,6 +774,7 @@ object DatabaseRepository {
 
             val sql = """
                 SELECT d.*, c.id as customer_id, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare,
+                o.recipient_name, o.recipient_phone, o.package_category, o.package_weight_size, o.is_fragile, o.package_notes, COALESCE(o.is_sending, TRUE) as is_sending,
                 (6371 * acos(cos(radians(?)) * cos(radians(d.pickup_lat)) * cos(radians(d.pickup_lng) - radians(?)) + sin(radians(?)) * sin(radians(d.pickup_lat)))) AS distance
                 FROM deliveries d
                 JOIN orders o ON d.order_id = o.id
@@ -818,7 +819,14 @@ object DatabaseRepository {
                     customerName = rs.getString("customer_name"),
                     customerPhone = rs.getString("customer_phone"),
                     customerProfilePic = rs.getString("customer_profile_pic"),
-                    totalFare = rs.getDouble("total_fare")
+                    totalFare = rs.getDouble("total_fare"),
+                    recipientName = rs.getString("recipient_name"),
+                    recipientPhone = rs.getString("recipient_phone"),
+                    packageCategory = rs.getString("package_category"),
+                    packageWeightSize = rs.getString("package_weight_size"),
+                    isFragile = rs.getBoolean("is_fragile"),
+                    packageNotes = rs.getString("package_notes"),
+                    isSending = rs.getBoolean("is_sending")
                 ))
             }
         }
@@ -1882,7 +1890,7 @@ object DatabaseRepository {
                 val isScheduled = !req.scheduledTime.isNullOrBlank()
                 val initialStatus = if (isScheduled) "SCHEDULED" else "PENDING"
                 
-                val orderSql = "INSERT INTO orders (customer_id, total_amount, status, pickup_location, dropoff_location, verification_pin, scheduled_time) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                val orderSql = "INSERT INTO orders (customer_id, total_amount, status, pickup_location, dropoff_location, verification_pin, scheduled_time, recipient_name, recipient_phone, package_category, package_weight_size, is_fragile, package_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                 val orderStmt = conn.prepareStatement(orderSql)
                 orderStmt.setInt(1, req.customerId.toInt())
                 orderStmt.setDouble(2, req.estimatedFare)
@@ -1902,6 +1910,13 @@ object DatabaseRepository {
                 } else {
                     orderStmt.setNull(7, java.sql.Types.TIMESTAMP)
                 }
+
+                orderStmt.setString(8, req.recipientName)
+                orderStmt.setString(9, req.recipientPhone)
+                orderStmt.setString(10, req.packageCategory)
+                orderStmt.setString(11, req.packageWeightSize)
+                orderStmt.setBoolean(12, req.isFragile)
+                orderStmt.setString(13, req.packageNotes)
                 
                 val rs = orderStmt.executeQuery()
                 if (rs.next()) {

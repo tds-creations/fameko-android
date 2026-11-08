@@ -444,8 +444,8 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun initiateCall(context: Context) {
         val delivery = currentDelivery ?: activeRequest ?: return
-        val phone = delivery.customerPhone ?: delivery.recipientPhone
-        val label = delivery.customerName ?: "Customer"
+        val phone = delivery.currentContactPhone.ifBlank { delivery.customerPhone ?: delivery.recipientPhone }
+        val label = delivery.currentContactName
         com.example.famekodriver.core.utils.PhoneNumberUtils.openDialer(context, phone, label)
     }
 

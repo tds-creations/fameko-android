@@ -1096,8 +1096,8 @@ fun DeliveryControlSheet(
                 
                 Column(modifier = Modifier.weight(1f)) {
                     val statusText = when (delivery.status) {
-                        DeliveryStatus.ASSIGNED -> "PICKUP"
-                        DeliveryStatus.IN_TRANSIT -> "ON TRIP"
+                        DeliveryStatus.ASSIGNED -> delivery.currentContactRole
+                        DeliveryStatus.IN_TRANSIT -> delivery.currentContactRole
                         else -> delivery.status.name
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1115,7 +1115,7 @@ fun DeliveryControlSheet(
                         }
                     }
                     Text(
-                        text = delivery.customerName ?: "Customer",
+                        text = delivery.currentContactName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = BoltDark,
@@ -1172,6 +1172,48 @@ fun DeliveryControlSheet(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                }
+            }
+
+            if (delivery.serviceType == ServiceType.PACKAGE_DELIVERY || !delivery.packageCategory.isNullOrBlank()) {
+                Surface(
+                    color = Color(0xFFF1F5F9),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "📦 ${delivery.packageCategory ?: "Package Delivery"}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BoltDark
+                            )
+                            if (delivery.isFragile) {
+                                Surface(color = Color(0xFFFEF2F2), shape = RoundedCornerShape(4.dp)) {
+                                    Text(
+                                        "⚠️ Fragile",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFEF4444),
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                        if (!delivery.packageNotes.isNullOrBlank()) {
+                            Text(
+                                text = "Note: ${delivery.packageNotes}",
+                                fontSize = 11.sp,
+                                color = Color.Gray,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
