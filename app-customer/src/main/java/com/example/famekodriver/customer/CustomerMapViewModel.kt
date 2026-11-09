@@ -314,7 +314,13 @@ class CustomerMapViewModel(
                 }.distinctBy { it.displayName }.take(5)
             }
 
-            // Restore active session from backend (Redis-backed on server)
+            checkActiveOrder()
+        }
+    }
+
+    fun checkActiveOrder() {
+        val customerId = sessionManager.getCustomerId() ?: return
+        viewModelScope.launch {
             orderRepository.getActiveOrder(customerId).onSuccess { response ->
                 if (response?.success == true && response.status != "DELIVERED" && response.status != "CANCELLED") {
                     val orderId = response.orderId
@@ -338,14 +344,10 @@ class CustomerMapViewModel(
                         navigateTo(CustomerScreen.MainMap)
                         startStatusPolling(orderId)
                     }
-                } else {
-                    // Stale or no active order on server, clear local session
-                    currentOrderId = null
-                    orderStatusData = null
-                    sessionManager.clearActiveOrderId()
+                } else if (currentOrderId != null && (response?.status == "DELIVERED" || response?.status == "CANCELLED")) {
+                    clearActiveOrder()
                 }
             }
-
         }
     }
 

@@ -1379,6 +1379,16 @@ fun Application.configureRouting() {
                 call.respond(mapOf("success" to true))
             }
 
+            get("/active/{customerId}") {
+                val customerId = call.parameters["customerId"]?.toIntOrNull() ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val details = DatabaseRepository.getActiveOrderForCustomer(customerId)
+                if (details != null) {
+                    call.respond(details)
+                } else {
+                    call.respond(OrderStatusResponse(success = false, status = "IDLE"))
+                }
+            }
+
             post("/verify-pin") {
                 val p = call.receiveParameters()
                 val orderId = p["orderId"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)

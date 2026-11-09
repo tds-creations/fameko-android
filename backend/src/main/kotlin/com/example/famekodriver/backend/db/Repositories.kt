@@ -3206,7 +3206,7 @@ object DatabaseRepository {
     fun getOrderStatusDetails(orderId: Int): OrderStatusResponse? {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val sql = """
-                SELECT o.status, o.customer_id, o.verification_pin, o.total_amount, d.id as delivery_id, d.driver_id, dr.full_name, dr.phone, dr.vehicle_type, 
+                SELECT o.status, o.customer_id, o.verification_pin, o.total_amount, o.pickup_location, o.dropoff_location, d.id as delivery_id, d.driver_id, d.pickup_lat, d.pickup_lng, d.dropoff_lat, d.dropoff_lng, dr.full_name, dr.phone, dr.vehicle_type, 
                        dr.vehicle_model, dr.vehicle_number, dr.profile_picture, dr.rating, 
                        ds.latitude, ds.longitude, ds.bearing
                 FROM orders o
@@ -3237,9 +3237,38 @@ object DatabaseRepository {
                     driverBearing = rs.getFloat("bearing"),
                     verificationPin = rs.getString("verification_pin"),
                     deliveryId = rs.getString("delivery_id"),
-                    fare = rs.getDouble("total_amount")
+                    fare = rs.getDouble("total_amount"),
+                    pickupLocation = rs.getString("pickup_location"),
+                    dropOffLocation = rs.getString("dropoff_location"),
+                    pickupLat = rs.getDouble("pickup_lat"),
+                    pickupLng = rs.getDouble("pickup_lng"),
+                    dropOffLat = rs.getDouble("dropoff_lat"),
+                    dropOffLng = rs.getDouble("dropoff_lng")
                 )
             }
+        }
+        return null
+    }
+
+    fun getActiveOrderForCustomer(customerId: Int): OrderStatusResponse? {
+        try {
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = """
+                    SELECT o.id as order_id
+                    FROM orders o
+                    WHERE o.customer_id = ? AND o.status NOT IN ('DELIVERED', 'CANCELLED')
+                    ORDER BY o.id DESC LIMIT 1
+                """.trimIndent()
+                val stmt = conn.prepareStatement(sql)
+                stmt.setInt(1, customerId)
+                val rs = stmt.executeQuery()
+                if (rs.next()) {
+                    val orderId = rs.getInt("order_id")
+                    return getOrderStatusDetails(orderId)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         return null
     }
