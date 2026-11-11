@@ -666,10 +666,10 @@ object DatabaseRepository {
             val vehicleFilter = if (vehicleType != null) {
                 val vType = vehicleType.lowercase()
                 when {
-                    vType.contains("economy") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%economy%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%') AND (d.vehicle_category ILIKE 'Economy' OR d.vehicle_category IS NULL)"
-                    vType.contains("comfort") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%comfort%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%') AND d.vehicle_category ILIKE 'Comfort'"
+                    vType.contains("economy") || vType.contains("ride") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%economy%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%' OR d.vehicle_type ILIKE '%okada%' OR d.vehicle_type ILIKE '%bike%' OR d.vehicle_type ILIKE '%motor%')"
+                    vType.contains("comfort") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%comfort%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%')"
                     vType.contains("car") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%taxi%' OR d.vehicle_type ILIKE '%saloon%')"
-                    vType.contains("okada") || vType.contains("bike") -> "AND (d.vehicle_type ILIKE '%okada%' OR d.vehicle_type ILIKE '%bike%')"
+                    vType.contains("okada") || vType.contains("bike") || vType.contains("motor") -> "AND (d.vehicle_type ILIKE '%okada%' OR d.vehicle_type ILIKE '%bike%' OR d.vehicle_type ILIKE '%motor%')"
                     vType.contains("pragya") -> "AND (d.vehicle_type ILIKE '%pragya%' OR d.vehicle_type ILIKE '%tricycle%')"
                     vType.contains("aboboyaa") -> "AND d.vehicle_type ILIKE '%aboboyaa%'"
                     vType.contains("truck") -> "AND d.vehicle_type ILIKE '%truck%'"
@@ -678,15 +678,14 @@ object DatabaseRepository {
                 }
             } else ""
 
-            // Use H3 as a pre-filter but with a radius-aware K-ring to avoid missing drivers
+            // Combine H3 filter, Redis IDs, and spatial coordinates for maximum reach
             val h3Index = H3Helper.getIndex(lat, lng)
-            val k = (radius / 1.1).toInt().coerceAtLeast(1).coerceAtMost(10) // Approx km to K-ring
+            val k = (radius / 1.1).toInt().coerceAtLeast(1).coerceAtMost(15)
             val neighbors = H3Helper.getNeighborsInRadius(h3Index, k)
             
-            // Combine H3 filter with Redis IDs for maximum reach
             val h3List = neighbors.joinToString(",") { "'$it'" }
             val redisIdList = if (redisIds.isNotEmpty()) redisIds.joinToString(",") else "0"
-            val geoFilter = "AND (ds.h3_index IN ($h3List) OR d.id IN ($redisIdList))"
+            val geoFilter = "AND (ds.h3_index IN ($h3List) OR d.id IN ($redisIdList) OR ds.latitude IS NOT NULL)"
 
             val useDistanceLimit = radius < 500.0 && !(lat == 0.0 && lng == 0.0)
 
@@ -3293,17 +3292,16 @@ object DatabaseRepository {
     }
 
     fun getDriverIdForOrder(orderId: Int): Int? {
-        DatabaseInitializer.getDataSource().connection.use { conn ->
-            val rsDel = conn.prepareStatement("SELECT driver_id FROM deliveries WHERE order_id = ? AND driver_id IS NOT NULL AND driver_id > 0").apply { setInt(1, orderId) }.executeQuery()
-            if (rsDel.next()) {
-                val dId = rsDel.getInt(1)
-                if (dId > 0) return dId
+        try {
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val rsDel = conn.prepareStatement("SELECT driver_id FROM deliveries WHERE order_id = ? AND driver_id IS NOT NULL AND driver_id > 0").apply { setInt(1, orderId) }.executeQuery()
+                if (rsDel.next()) {
+                    val dId = rsDel.getInt(1)
+                    if (dId > 0) return dId
+                }
             }
-            val rsOrd = conn.prepareStatement("SELECT driver_id FROM orders WHERE id = ? AND driver_id IS NOT NULL AND driver_id > 0").apply { setInt(1, orderId) }.executeQuery()
-            if (rsOrd.next()) {
-                val dId = rsOrd.getInt(1)
-                if (dId > 0) return dId
-            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         return null
     }

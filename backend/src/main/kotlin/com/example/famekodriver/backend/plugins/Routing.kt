@@ -1262,8 +1262,8 @@ fun Application.configureRouting() {
                         if (!isScheduled) {
                             application.launch {
                                 var attempt = 1
-                                var currentRadius = 3.0 // Start small
-                                val maxAttempts = 3
+                                var currentRadius = 5.0
+                                val maxAttempts = 5
                                 
                                 val config = DatabaseRepository.getPricingConfig()
                                 val commissionPercent = config.driverCommissionPercent
