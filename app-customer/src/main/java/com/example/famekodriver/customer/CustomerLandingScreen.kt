@@ -404,113 +404,267 @@ fun SpecialOffersSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp),
+                .padding(bottom = 12.dp, start = 2.dp, end = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Special Offers & Services",
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 color = Color(0xFF0F172A)
             )
             Text(
                 text = "See all",
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 color = Color(0xFF059669),
                 modifier = Modifier.clickable { onSeeAllClick() }
             )
         }
 
-        // Horizontal Scrollable Photo Banners
-        Row(
+        // 1. Featured Big Hero Visual Banner (Okada Express)
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                .height(175.dp)
+                .clickable(enabled = enabled) { onServiceSelected(ServiceType.PACKAGE_DELIVERY) },
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(2.dp),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
         ) {
-            // Card 1: Okada Express
-            PromoCard(
-                badgeText = "OKADA EXPRESS • FROM GH₵ 15",
-                badgeColor = Color(0xFFEF4444),
-                imageUrl = ImageLinks.DELIVERY,
-                enabled = enabled,
-                onClick = { onServiceSelected(ServiceType.PACKAGE_DELIVERY) }
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = ImageLinks.HERO_OKADA_EXPRESS,
+                    contentDescription = "Okada Express Delivery",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
 
-            // Card 2: Aboboyaa Cargo
-            PromoCard(
-                badgeText = "ABOBOYAA CARGO • HEAVY FREIGHT",
-                badgeColor = Color(0xFFD97706),
-                imageUrl = ImageLinks.IC_ABOBOYAA,
-                enabled = enabled,
-                onClick = { onServiceSelected(ServiceType.PACKAGE_DELIVERY) }
-            )
-
-            // Card 3: Comfort Rides
-            PromoCard(
-                badgeText = "COMFORT RIDES • FAST PICKUP",
-                badgeColor = Color(0xFF2563EB),
-                imageUrl = ImageLinks.RIDE,
-                enabled = enabled,
-                onClick = { onServiceSelected(ServiceType.RIDE_HAILING) }
-            )
-        }
-    }
-}
-
-@Composable
-fun PromoCard(
-    badgeText: String,
-    badgeColor: Color,
-    imageUrl: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(280.dp)
-            .height(150.dp)
-            .clickable(enabled = enabled) { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = badgeText,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            // Bottom Gradient Overlay for badge contrast
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.65f)
+                // Dark Gradient Overlay for readable white text
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.25f),
+                                    Color.Black.copy(alpha = 0.85f)
+                                )
                             )
                         )
-                    )
-            )
-            Surface(
-                color = badgeColor,
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(12.dp)
-            ) {
-                Text(
-                    text = badgeText,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.5.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Top Pill + Action Arrow
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = Color(0xFFDC2626), // Red badge
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text(
+                                text = "OKADA EXPRESS • FROM GH₵ 15",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        Surface(
+                            color = Color.White.copy(alpha = 0.25f),
+                            shape = CircleShape,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Bottom Headlines
+                    Column {
+                        Text(
+                            text = "TAP TO SEND YOUR PACKAGES",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 17.sp,
+                            color = Color.White,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Fast doorstep motorbike dispatch across Accra. Real-time GPS tracking.",
+                            fontSize = 11.sp,
+                            color = Color(0xFFE2E8F0),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 2. 2-Column Split Feature Cards
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Card 1: Aboboyaa Cargo Delivery
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(155.dp)
+                    .clickable(enabled = enabled) { onServiceSelected(ServiceType.PACKAGE_DELIVERY) },
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(2.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = ImageLinks.HERO_ABOBOYAA_CARGO,
+                        contentDescription = "Aboboyaa Cargo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.85f)
+                                    )
+                                )
+                            )
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Surface(
+                            color = Color(0xFFD97706), // Amber badge
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.align(Alignment.Start)
+                        ) {
+                            Text(
+                                text = "CARGO TRIKE",
+                                color = Color.White,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = "ABOBOYAA IN CARGO",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Bulky goods & market freight delivered seamlessly.",
+                                fontSize = 10.sp,
+                                color = Color(0xFFCBD5E1),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Card 2: Comfort Air-conditioned Rides
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(155.dp)
+                    .clickable(enabled = enabled) { onServiceSelected(ServiceType.RIDE_HAILING) },
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(2.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = ImageLinks.HERO_COMFORT_RIDE,
+                        contentDescription = "Comfort Rides",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.85f)
+                                    )
+                                )
+                            )
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Surface(
+                            color = Color(0xFF10B981), // Emerald badge
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.align(Alignment.Start)
+                        ) {
+                            Text(
+                                text = "FROM GH₵ 18",
+                                color = Color.White,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = "COMFORT RIDES",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Beat the Accra heat in air-conditioned luxury.",
+                                fontSize = 10.sp,
+                                color = Color(0xFFCBD5E1),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
             }
         }
     }
