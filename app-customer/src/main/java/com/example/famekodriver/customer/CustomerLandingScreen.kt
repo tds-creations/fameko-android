@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -225,6 +226,14 @@ fun CustomerLandingScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Interactive Yango-Style Promo & Feature Image Banners
+        YangoStylePromoGrid(
+            onServiceSelected = onServiceSelected,
+            enabled = !isRentalActive
+        )
         
         Spacer(modifier = Modifier.height(24.dp))
     }
@@ -380,6 +389,235 @@ fun RecentPlaceItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+@Composable
+fun YangoStylePromoGrid(
+    onServiceSelected: (ServiceType) -> Unit,
+    enabled: Boolean = true
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Services & Special Offers",
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = Color(0xFF0F172A),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // 1. Hero Promo Banner: TAP TO SEND YOUR PACKAGES
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+                .clickable(enabled = enabled) { onServiceSelected(ServiceType.PACKAGE_DELIVERY) },
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFF1E293B)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        color = Color(0xFFEF4444),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Text(
+                            text = "EXPRESS DISPATCH",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                    Text(
+                        text = "TAP TO SEND YOUR PACKAGES",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        color = Color.White,
+                        lineHeight = 22.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Door-to-door courier dispatch across Accra",
+                        fontSize = 11.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+
+                AsyncImage(
+                    model = ImageLinks.DELIVERY,
+                    contentDescription = "Package Delivery",
+                    modifier = Modifier
+                        .size(110.dp)
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 2. Secondary 2-Column Banner Grid
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Left Banner: ABOBOYAA & CARGO
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(130.dp)
+                    .clickable(enabled = enabled) { onServiceSelected(ServiceType.PACKAGE_DELIVERY) },
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF334155)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "ABOBOYAA CARGO",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Heavy freight & large items",
+                            fontSize = 10.sp,
+                            color = Color(0xFFCBD5E1)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        AsyncImage(
+                            model = ImageLinks.IC_ABOBOYAA,
+                            contentDescription = "Aboboyaa Cargo",
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+
+            // Right Banner: FORGOT YOUR KEYS?
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(130.dp)
+                    .clickable(enabled = enabled) { onServiceSelected(ServiceType.PACKAGE_DELIVERY) },
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF0F172A)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "FORGOT YOUR KEYS?",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Express item pick-up",
+                            fontSize = 10.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        AsyncImage(
+                            model = ImageLinks.IC_OKADA,
+                            contentDescription = "Express Rider",
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 3. Full-Day Rental Banner
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(95.dp)
+                .clickable { onServiceSelected(ServiceType.RENTAL) },
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFF0284C7)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    ) {
+                        Text(
+                            text = "CAR RENTAL",
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = "NEED A CAR FOR A FULL DAY?",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Rent saloon cars & SUVs with dedicated driver",
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+
+                AsyncImage(
+                    model = ImageLinks.RENTAL,
+                    contentDescription = "Car Rental",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
     }
 }
