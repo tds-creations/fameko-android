@@ -425,6 +425,13 @@ fun SearchingSheetContent(viewModel: CustomerMapViewModel, onCancel: () -> Unit)
     }
 }
 
+private data class TripStatusInfo(
+    val title: String,
+    val bgColor: Color,
+    val textColor: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
 @Composable
 fun DriverInfoSheetContent(
     data: OrderStatusResponse, 
@@ -439,7 +446,63 @@ fun DriverInfoSheetContent(
     val isDelivery = serviceType == ServiceType.PACKAGE_DELIVERY
     val showPin = pin != null && (data.status == "ASSIGNED" || data.status == "ARRIVED")
 
+    val statusInfo = when (data.status?.uppercase()) {
+        "ASSIGNED" -> TripStatusInfo(
+            if (isDelivery) "🛵 COURIER EN ROUTE TO PICKUP" else "🚗 DRIVER EN ROUTE TO PICKUP",
+            Color(0xFFECFDF5),
+            Color(0xFF006847),
+            Icons.Default.MyLocation
+        )
+        "ARRIVED" -> TripStatusInfo(
+            if (isDelivery) "📍 COURIER ARRIVED AT PICKUP SPOT" else "📍 DRIVER ARRIVED AT PICKUP SPOT",
+            Color(0xFFEFF6FF),
+            Color(0xFF1D4ED8),
+            Icons.Default.PinDrop
+        )
+        "IN_TRANSIT", "ON_TRIP" -> TripStatusInfo(
+            if (isDelivery) "📦 EN ROUTE TO DESTINATION" else "🚕 TRIP IN PROGRESS (EN ROUTE)",
+            Color(0xFFFFF7ED),
+            Color(0xFFC2410C),
+            Icons.Default.Navigation
+        )
+        "DELIVERED", "COMPLETED" -> TripStatusInfo(
+            if (isDelivery) "✅ PACKAGE DELIVERED SUCCESSFULLY" else "✅ TRIP COMPLETED",
+            Color(0xFFECFDF5),
+            Color(0xFF006847),
+            Icons.Default.CheckCircle
+        )
+        else -> TripStatusInfo(
+            "⚡ TRIP IN PROGRESS",
+            Color(0xFFF1F5F9),
+            Color(0xFF0F172A),
+            Icons.Default.Navigation
+        )
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
+        // Prominent Trip/Delivery Live Status Indicator Banner
+        Surface(
+            color = statusInfo.bgColor,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, statusInfo.textColor.copy(alpha = 0.25f)),
+            modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(statusInfo.icon, null, tint = statusInfo.textColor, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = statusInfo.title,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = statusInfo.textColor,
+                    letterSpacing = 0.5.sp
+                )
+            }
+        }
+
         if (isDelivery && showPin) {
             Surface(
                 color = FamekoBlue.copy(alpha = 0.1f),
