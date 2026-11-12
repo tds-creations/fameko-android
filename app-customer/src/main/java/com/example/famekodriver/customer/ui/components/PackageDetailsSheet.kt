@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.famekodriver.customer.ui.theme.*
@@ -230,13 +231,37 @@ fun PackageDetailsSheet(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                                Text(
+                                    text = title,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = Color(0xFF0F172A),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
                                     Surface(color = Color(0xFFECFDF5), shape = RoundedCornerShape(6.dp)) {
-                                        Text("${if (title.contains("Motorbike")) "8" else "12"} min", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DispatchGreen, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                        Text(
+                                            text = "${if (title.contains("Motorbike")) "8" else "12"} min",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DispatchGreen,
+                                            softWrap = false,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
                                     }
+                                    Text(
+                                        text = desc,
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF64748B),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
-                                Text(desc, fontSize = 11.sp, color = Color(0xFF64748B), maxLines = 1)
                             }
                             Text("GH₵ ${String.format(java.util.Locale.US, "%.0f", finalDisplayPrice)}", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
                         }
