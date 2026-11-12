@@ -1,18 +1,22 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:width="28dp"
+    android:height="18dp"
+    android:viewportWidth="30"
+    android:viewportHeight="20">
+    <!-- Red Stripe -->
     <path
-        android:fillColor="#FF0000"
-        android:pathData="M0,0h24v8h-24z"/>
+        android:fillColor="#CE1126"
+        android:pathData="M0,0h30v6.67h-30z"/>
+    <!-- Gold Stripe -->
     <path
-        android:fillColor="#FFFF00"
-        android:pathData="M0,8h24v8h-24z"/>
+        android:fillColor="#FCD116"
+        android:pathData="M0,6.67h30v6.66h-30z"/>
+    <!-- Green Stripe -->
     <path
-        android:fillColor="#008000"
-        android:pathData="M0,16h24v8h-24z"/>
+        android:fillColor="#006B3F"
+        android:pathData="M0,13.33h30v6.67h-30z"/>
+    <!-- Black Star -->
     <path
         android:fillColor="#000000"
-        android:pathData="M12,12l-1.5,4.5l3.5,-3l-4,0l3.5,3z"/>
+        android:pathData="M15.0,7.2L15.79,9.64L18.36,9.64L16.28,11.15L17.08,13.59L15.0,12.08L12.92,13.59L13.72,11.15L11.64,9.64L14.21,9.64Z"/>
 </vector>

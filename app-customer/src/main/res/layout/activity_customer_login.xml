@@ -53,8 +53,9 @@
 
                 <ImageView
                     android:id="@+id/ivFlag"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="28dp"
+                    android:layout_height="18dp"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/ic_ghana_flag" />
 
                 <TextView
