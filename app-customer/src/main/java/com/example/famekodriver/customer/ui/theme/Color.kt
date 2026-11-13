@@ -9,5 +9,5 @@ val BoltYellow = Color(0xFFFFD439)
 val BoltOrange = Color(0xFFFF6B35)
 val FamekoBlue = Color(0xFF0047AB) // Cobalt Blue from Logo
 val FamekoGold = Color(0xFFFFD700) // Gold from Logo
-val FamekoLightBlue = Color(0xFFEBF3FF)
+val FamekoLightBlue = Color(0xFFE6F0FA) // Soft Light Blue shade of Cobalt Blue (#0047AB)
 val FamekoDark = Color(0xFF003366)
