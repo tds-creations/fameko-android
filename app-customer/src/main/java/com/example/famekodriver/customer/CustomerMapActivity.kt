@@ -395,7 +395,7 @@ fun CustomerMapScreen() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(FamekoLightBlue)
-                            .padding(horizontal = 40.dp, vertical = 10.dp)
+                            .padding(horizontal = 40.dp, vertical = 4.dp)
                             .navigationBarsPadding(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -415,15 +415,15 @@ fun CustomerMapScreen() {
                                 onClick = { mapViewModel.navigateTo(CustomerScreen.MainMap) },
                                 shape = RoundedCornerShape(50.dp),
                                 color = Color(0xFF059669),
-                                shadowElevation = 4.dp
+                                shadowElevation = 2.dp
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Icon(Icons.Default.DirectionsCar, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                    Text("Rides", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Icon(Icons.Default.DirectionsCar, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                    Text("Rides", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                 }
                             }
                         } else {
@@ -1423,18 +1423,18 @@ fun BottomNavItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clickable(onClick = onClick)
-            .padding(4.dp)
+            .padding(2.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
             tint = if (selected) Color(0xFF059669) else Color.Gray,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = if (selected) Color(0xFF059669) else Color.Gray
         )
