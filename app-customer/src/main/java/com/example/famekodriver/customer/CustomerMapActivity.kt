@@ -386,14 +386,15 @@ fun CustomerMapScreen() {
             
             if (showBottomBar) {
                 Surface(
-                    color = Color.White,
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp,
+                    color = FamekoLightBlue,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .background(FamekoLightBlue)
                             .padding(horizontal = 40.dp, vertical = 10.dp)
                             .navigationBarsPadding(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1112,7 +1113,7 @@ fun MainMapContent(
                              else if (currentSheetState == CustomerSheetState.PICKING_ADDRESS && 
                                      viewModel.pickupLat != null && viewModel.dropOffLat != null) 110.dp
                              else 0.dp,
-            sheetContainerColor = Color.White,
+            sheetContainerColor = if (currentSheetState == CustomerSheetState.LANDING) FamekoLightBlue else Color.White,
             sheetShadowElevation = 32.dp,
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             sheetDragHandle = { Box(Modifier.padding(vertical = 12.dp).width(40.dp).height(4.dp).background(Color.LightGray.copy(alpha = 0.5f), CircleShape)) },

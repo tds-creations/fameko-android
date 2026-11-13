@@ -33,6 +33,7 @@ import com.example.famekodriver.core.utils.ImageLinks
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
 import com.example.famekodriver.customer.ui.theme.FamekoBlue
+import com.example.famekodriver.customer.ui.theme.FamekoLightBlue
 import java.util.Locale
 
 @Composable
@@ -51,7 +52,7 @@ fun CustomerLandingScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(FamekoLightBlue)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
