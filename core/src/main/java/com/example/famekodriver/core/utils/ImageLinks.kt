@@ -2,7 +2,7 @@ package com.example.famekodriver.core.utils
 
 object ImageLinks {
     const val ANI_SIGNUP = "https://i.postimg.cc/QtcVL4Vw/ani-signup.png"
-    const val DELIVERY = "https://i.postimg.cc/VNrdgL8p/delivery.jpg"
+    const val DELIVERY = "https://i.postimg.cc/d3sQ6Kxw/FAMEKO-Delivery-Fleet-Showcase.png"
     const val IC_ABOBOYAA = "https://i.postimg.cc/W1fd0qQB/ic-aboboyaa.jpg"
     const val IC_BICYCLE = "https://i.postimg.cc/vZS45xJG/ic-bicycle.jpg"
     const val IC_CAR_SALOON = "https://i.postimg.cc/Mprn1fCS/ic-car-saloon.png"
@@ -23,8 +23,9 @@ object ImageLinks {
     const val DRIVER_LOGIN_CAROUSEL_2 = "https://i.postimg.cc/nhRJFvFW/7.jpg"
     const val DRIVER_LOGIN_CAROUSEL_3 = "https://i.postimg.cc/K8vbh9bb/6.jpg"
     const val MILLIE_LOGIN = "https://i.postimg.cc/pTKyNGyS/millie-login.png"
-    const val RENTAL = "https://i.postimg.cc/5tY6gNJ2/rental.jpg"
-    const val RIDE = "https://i.postimg.cc/CKBz7L0R/ride.jpg"
+    const val RENTAL = "https://i.postimg.cc/3N8r1Hbn/Luxury-Blue-Bentley-with-Gold-Accents.png"
+    const val RIDE = "https://i.postimg.cc/k4FXW5wH/Glossy-Navy-Electric-SUV-with-Gold-Accents.png"
+    const val SCHEDULE = "https://i.postimg.cc/HnYWzCP2/FAMEKO-Range-Rover-Desk-Set.png"
     const val HERO_OKADA_EXPRESS = "https://lh3.googleusercontent.com/aida-public/AB6AXuCFKgDzw5CZpnLpQSI8nUvqtUh2HMT8-QkbYNa1My_egEIm5w1EtvrhcSUpSYLgDLi75VY5svmgkZw-tRSxypWagcEHCohct2m7lMZd1wwu_HzdF4TdzuJ59WCXse9qCkiWNVI_qixQAGtjllg3PsCsDJxSSIca93EiUU6IqzxAyFImMgJGgBfFDCdZQuXcm-909TWGlWADB65yQle28FXzAs1kEvw_DTlz3VzqWcpo"
     const val HERO_ABOBOYAA_CARGO = "https://lh3.googleusercontent.com/aida-public/AB6AXuDbEYgmurV5qagOxI0NP4lc2-NfnhBCuOlr_AWnmRBJHWZ9wWDWp-K1SOe6OCXWNukSPYYmx4GiW0udW-dJvzD0Au0tLKNNm6tVztzgF2K82iIpQbCRVxEVshhJiNoW2mCc4VdZMqLY8mzwDz2P_Qyd7vn99IUDaO17I4ST0mS8T242M0-oVTcB8loN5Lkk-Yyr8dqBEcyqSbtiI8Adp8SnILwJAhrNCvKpn7hK-otc"
     const val HERO_COMFORT_RIDE = "https://lh3.googleusercontent.com/aida-public/AB6AXuCi4h2yjBqxelACJGOwdHTEVnVBXzOrDvqjx3kxOPpLKaF604doZLXon1jEMjAUIfGBzrpaL_tzxkipf0wFk1by4JHs3LrX67whfkBZDt2CyyFjgelUT3N9eBwbsKOqdDNW6R9IhsgKeJG5JjEb6LFlBnNlafeiXLizShLpGCFvd0n8hw8Ho1DdmrG2_DyEEe8BXi7wEgyiwabYY8IhFW3xagw9MOVbtfvVqjMx-CHL"

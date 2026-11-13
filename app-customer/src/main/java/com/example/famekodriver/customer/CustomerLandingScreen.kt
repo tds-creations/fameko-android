@@ -187,7 +187,7 @@ fun CustomerLandingScreen(
             ServiceGridItem(
                 title = "Schedule",
                 description = if (isRentalActive) "Rental in progress" else "Book ahead",
-                icon = Icons.Default.CalendarMonth,
+                imageUrl = ImageLinks.SCHEDULE,
                 modifier = Modifier.weight(1f),
                 enabled = !isRentalActive,
                 onClick = { onScheduleClick() }
