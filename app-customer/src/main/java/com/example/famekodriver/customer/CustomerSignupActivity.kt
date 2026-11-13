@@ -195,9 +195,8 @@ class CustomerSignupActivity : AppCompatActivity() {
     private fun setupCarousel() {
         val viewPager = findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.viewPagerCarousel)
         val images = listOf(
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_1,
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_2,
-            ImageLinks.CUSTOMER_LOGIN_CAROUSEL_3
+            ImageLinks.CUSTOMER_SIGNUP_CAROUSEL_1,
+            ImageLinks.CUSTOMER_SIGNUP_CAROUSEL_2
         )
 
         viewPager.adapter = com.example.famekodriver.core.utils.CarouselAdapter(images)

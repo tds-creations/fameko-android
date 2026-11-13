@@ -17,6 +17,8 @@ object ImageLinks {
     const val CUSTOMER_LOGIN_CAROUSEL_1 = "https://i.postimg.cc/rFYy13G9/FAMEKO-Affordable-Rides-Ad.png"
     const val CUSTOMER_LOGIN_CAROUSEL_2 = "https://i.postimg.cc/PJXfykFS/FAMEKO-Comfort-Ride-App-Ad.png"
     const val CUSTOMER_LOGIN_CAROUSEL_3 = "https://i.postimg.cc/rFYy13G9/FAMEKO-Affordable-Rides-Ad.png"
+    const val CUSTOMER_SIGNUP_CAROUSEL_1 = "https://i.postimg.cc/rFpFtM4y/Fameko-Ride-Hailing-Logo-Poster.png"
+    const val CUSTOMER_SIGNUP_CAROUSEL_2 = "https://i.postimg.cc/2jGS6V1j/FAMEKO-Ride-Hailing-App-Launch.png"
     const val DRIVER_LOGIN_CAROUSEL_1 = "https://i.postimg.cc/dVHYs8sx/8.jpg"
     const val DRIVER_LOGIN_CAROUSEL_2 = "https://i.postimg.cc/nhRJFvFW/7.jpg"
     const val DRIVER_LOGIN_CAROUSEL_3 = "https://i.postimg.cc/K8vbh9bb/6.jpg"
