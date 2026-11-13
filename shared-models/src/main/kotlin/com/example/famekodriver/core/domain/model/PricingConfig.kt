@@ -9,6 +9,7 @@ data class PricingConfig(
     val milestoneInterval: Int,
     val milestoneDiscountPercent: Int,
     val peakMultiplier: Double,
+    val airportTollFee: Double = 10.0,
 
     // Financial Config
     val driverCommissionPercent: Double,

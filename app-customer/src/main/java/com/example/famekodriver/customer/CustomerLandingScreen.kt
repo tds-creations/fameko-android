@@ -159,7 +159,7 @@ fun CustomerLandingScreen(
                     Column {
                         Text("Kotoka Int. Airport (ACC)", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
                         Spacer(Modifier.height(2.dp))
-                        Text("Fast pickup • ~18 mins away", fontSize = 12.sp, color = Color.Gray)
+                        Text("Fast pickup • ~18 mins away • ✈️ Includes GH₵ 10 Toll", fontSize = 11.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -308,21 +308,25 @@ fun ServiceGridItem(
 ) {
     Surface(
         modifier = modifier
-            .height(115.dp)
+            .height(132.dp)
             .clickable(enabled = enabled) { onClick() },
-        shape = RoundedCornerShape(18.dp),
-        color = if (enabled) BoltLightGray else BoltLightGray.copy(alpha = 0.5f)
+        shape = RoundedCornerShape(20.dp),
+        color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Column(
-            modifier = Modifier.padding(12.dp).alpha(if (enabled) 1f else 0.5f),
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 10.dp)
+                .alpha(if (enabled) 1f else 0.5f),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(64.dp),
                     tint = BoltDark
                 )
             } else if (imageUrl != null) {
@@ -330,23 +334,28 @@ fun ServiceGridItem(
                     model = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .clip(RoundedCornerShape(14.dp)),
+                    contentScale = ContentScale.Fit
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = BoltDark
-            )
-            Text(
-                text = description,
-                fontSize = 10.sp,
-                color = Color.Gray
-            )
+            
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 14.sp,
+                    color = BoltDark,
+                    maxLines = 1
+                )
+                Text(
+                    text = description,
+                    fontSize = 10.sp,
+                    color = Color.Gray,
+                    maxLines = 1
+                )
+            }
         }
     }
 }

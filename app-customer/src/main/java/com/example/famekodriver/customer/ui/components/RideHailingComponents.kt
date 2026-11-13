@@ -199,6 +199,28 @@ fun ServiceSelectionSheet(
             }
         }
         
+        val hasAirportToll = estimates.any { it.hasAirportToll }
+
+        if (hasAirportToll) {
+            Surface(
+                color = Color(0xFFEFF6FF),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Color(0xFF3B82F6).copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("✈️", fontSize = 16.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Includes mandatory GH₵ 10 Airport Toll Fee",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = Color(0xFF1D4ED8)
+                    )
+                }
+            }
+        }
+
         if (peakMultiplier > 1.0) {
             Surface(
                 color = BoltOrange.copy(alpha = 0.1f),

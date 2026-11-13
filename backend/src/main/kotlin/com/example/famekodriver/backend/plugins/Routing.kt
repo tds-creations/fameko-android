@@ -1198,38 +1198,46 @@ fun Application.configureRouting() {
             val lng = p["lng"]?.toDoubleOrNull() ?: 0.0
             val dist = p["dist"]?.toDoubleOrNull() ?: 0.0
             val dur = p["dur"]?.toDoubleOrNull() ?: 0.0
+            val pickupLoc = p["pickupLocation"] ?: p["pickup"] ?: ""
+            val dropOffLoc = p["dropOffLocation"] ?: p["dropoff"] ?: ""
+            val dropLat = p["dropLat"]?.toDoubleOrNull() ?: p["dropOffLat"]?.toDoubleOrNull() ?: 0.0
+            val dropLng = p["dropLng"]?.toDoubleOrNull() ?: p["dropOffLng"]?.toDoubleOrNull() ?: 0.0
 
             val config = DatabaseRepository.getPricingConfig()
             val peak = config.peakMultiplier
-            
+            val isAirportToll = com.example.famekodriver.core.domain.model.TollUtils.isAirportTollZone(pickupLoc, lat, lng) || 
+                                com.example.famekodriver.core.domain.model.TollUtils.isAirportTollZone(dropOffLoc, dropLat, dropLng)
+            val tollFee = if (isAirportToll) config.airportTollFee else 0.0
+
             val categories = DatabaseRepository.getRideCategories()
             val estimates = categories
                 .filter { cat ->
                     // Set distance limits for specific vehicle types
-                    // Pragya (tricycle) is limited to 10km
                     if (cat.serviceId.equals("Pragya", ignoreCase = true) && dist > 10.0) return@filter false
-                    // Bicycle is limited to 5km
                     if (cat.serviceId.equals("Bicycle", ignoreCase = true) && dist > 5.0) return@filter false
                     true
                 }
                 .map { cat ->
-                    // Find nearest driver for this category to get real ETA
                     val nearest = if (lat != 0.0) {
                         DatabaseRepository.getNearbyDrivers(lat, lng, 10.0, cat.serviceId).firstOrNull()
                     } else null
                     
-                    val eta = nearest?.pickupEtaMin?.toInt() ?: 5 // Fallback to 5 if no drivers nearby or location missing
+                    val eta = nearest?.pickupEtaMin?.toInt() ?: 5
+                    val baseFare = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak)
+                    val totalFare = baseFare + tollFee
 
                     RideEstimateResponse(
                         serviceId = cat.serviceId,
                         name = cat.name,
                         description = cat.description ?: "",
-                        fare = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak),
+                        fare = totalFare,
                         pickupEtaMin = eta,
                         icon = cat.icon ?: "car",
                         serviceType = cat.serviceType,
                         isAvailableInRegion = true,
-                        availabilityStatus = if (nearest != null) "AVAILABLE" else "BUSY"
+                        availabilityStatus = if (nearest != null) "AVAILABLE" else "BUSY",
+                        hasAirportToll = isAirportToll,
+                        tollFee = tollFee
                     )
                 }
             

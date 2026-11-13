@@ -386,17 +386,16 @@ fun CustomerMapScreen() {
             
             if (showBottomBar) {
                 Surface(
-                    color = FamekoLightBlue,
-                    tonalElevation = 0.dp,
-                    shadowElevation = 0.dp,
+                    color = FamekoBlue,
+                    shadowElevation = 8.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(FamekoLightBlue)
-                            .padding(horizontal = 40.dp, vertical = 4.dp)
-                            .navigationBarsPadding(),
+                            .background(FamekoBlue)
+                            .navigationBarsPadding()
+                            .padding(horizontal = 36.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1428,15 +1427,15 @@ fun BottomNavItem(
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (selected) Color(0xFF059669) else Color.Gray,
-            modifier = Modifier.size(20.dp)
+            tint = if (selected) Color.White else Color.White.copy(alpha = 0.65f),
+            modifier = Modifier.size(22.dp)
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
-            fontSize = 10.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            color = if (selected) Color(0xFF059669) else Color.Gray
+            fontSize = 11.sp,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
+            color = if (selected) Color.White else Color.White.copy(alpha = 0.65f)
         )
     }
 }
