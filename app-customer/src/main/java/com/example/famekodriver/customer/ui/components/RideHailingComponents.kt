@@ -212,7 +212,7 @@ fun ServiceSelectionSheet(
                     Text("✈️", fontSize = 16.sp)
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "Includes mandatory GH₵ 10 Airport Toll Fee",
+                        "Includes mandatory GH₵ 20 Airport Toll Fee",
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         color = Color(0xFF1D4ED8)

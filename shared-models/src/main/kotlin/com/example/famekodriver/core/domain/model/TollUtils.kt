@@ -20,7 +20,7 @@ object TollUtils {
     fun calculateTollFee(
         pickupLocation: String?, pickupLat: Double?, pickupLng: Double?,
         dropOffLocation: String?, dropOffLat: Double?, dropOffLng: Double?,
-        standardToll: Double = 10.0
+        standardToll: Double = 20.0
     ): Double {
         val isPickupToll = isAirportTollZone(pickupLocation, pickupLat, pickupLng)
         val isDropOffToll = isAirportTollZone(dropOffLocation, dropOffLat, dropOffLng)

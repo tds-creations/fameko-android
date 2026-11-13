@@ -159,7 +159,7 @@ fun CustomerLandingScreen(
                     Column {
                         Text("Kotoka Int. Airport (ACC)", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
                         Spacer(Modifier.height(2.dp))
-                        Text("Fast pickup • ~18 mins away • ✈️ Includes GH₵ 10 Toll", fontSize = 11.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
+                        Text("Fast pickup • ~18 mins away • ✈️ Includes GH₵ 20 Toll", fontSize = 11.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
                     }
                 }
 
