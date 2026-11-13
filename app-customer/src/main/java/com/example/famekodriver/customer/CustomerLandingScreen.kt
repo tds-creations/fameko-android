@@ -45,6 +45,7 @@ fun CustomerLandingScreen(
     recentPlaces: List<LocationSuggestion> = emptyList(),
     rideEstimates: List<RideEstimateResponse> = emptyList(),
     onSearchClick: () -> Unit = {},
+    onSavedClick: () -> Unit = {},
     onPlaceClick: (LocationSuggestion) -> Unit = {}
 ) {
     val isRentalActive = activeRental != null
@@ -52,9 +53,9 @@ fun CustomerLandingScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(FamekoLightBlue)
+            .background(Color.White)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 80.dp)
     ) {
         activeRental?.let { rental ->
             Card(
@@ -124,7 +125,7 @@ fun CustomerLandingScreen(
                 icon = Icons.Default.Star,
                 containerColor = Color(0xFFFEF3C7),
                 contentColor = Color(0xFFD97706),
-                onClick = onSearchClick
+                onClick = onSavedClick
             )
         }
 

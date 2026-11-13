@@ -139,6 +139,7 @@ sealed class CustomerScreen {
     object Payment : CustomerScreen()
     object Safety : CustomerScreen()
     object ManagePlaces : CustomerScreen()
+    object SavedPlacesSpeedDial : CustomerScreen()
     data class SaveLocationSearch(val label: String, val placeId: String? = null) : CustomerScreen()
     object FamilyProfile : CustomerScreen()
     object WorkProfile : CustomerScreen()
@@ -621,6 +622,14 @@ fun CustomerMapScreen() {
                         onBack = { mapViewModel.navigateTo(CustomerScreen.Account) },
                         onAddPlace = { label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label)) },
                         onEditPlace = { id, label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label, id.toString())) }
+                    )
+                }
+                CustomerScreen.SavedPlacesSpeedDial -> {
+                    com.example.famekodriver.customer.ui.screens.SavedPlacesSpeedDialScreen(
+                        viewModel = mapViewModel,
+                        onBack = { mapViewModel.navigateTo(CustomerScreen.Landing) },
+                        onAddPlace = { label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label)) },
+                        onSelectPlace = { mapViewModel.navigateTo(CustomerScreen.MainMap) }
                     )
                 }
                 is CustomerScreen.SaveLocationSearch -> {
@@ -1112,12 +1121,12 @@ fun MainMapContent(
                              else if (currentSheetState == CustomerSheetState.PICKING_ADDRESS && 
                                      viewModel.pickupLat != null && viewModel.dropOffLat != null) 110.dp
                              else 0.dp,
-            sheetContainerColor = if (currentSheetState == CustomerSheetState.LANDING) FamekoLightBlue else Color.White,
+            sheetContainerColor = Color.White,
             sheetShadowElevation = 32.dp,
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             sheetDragHandle = { Box(Modifier.padding(vertical = 12.dp).width(40.dp).height(4.dp).background(Color.LightGray.copy(alpha = 0.5f), CircleShape)) },
             sheetContent = {
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).navigationBarsPadding().imePadding().pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp).imePadding().pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }
                 ) {
                     when (currentSheetState) {
                         CustomerSheetState.LANDING -> {
@@ -1134,6 +1143,7 @@ fun MainMapContent(
                                 recentPlaces = viewModel.recentPlaces,
                                 rideEstimates = viewModel.rideEstimates,
                                 onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
+                                onSavedClick = { viewModel.navigateTo(CustomerScreen.SavedPlacesSpeedDial) },
                                 onPlaceClick = { 
                                     viewModel.setServiceMode(ServiceType.RIDE_HAILING)
                                     viewModel.selectSuggestion(it, isPickup = false)
@@ -1156,7 +1166,7 @@ fun MainMapContent(
                                         QuickShortcutItem("Home", Icons.Default.Home, BoltGreen) { if (viewModel.savedPlaces.value.any { it.label.equals("Home", true) }) { viewModel.applyShortcut("Home") { if (hasLocationPermission) { @SuppressLint("MissingPermission") fusedLocationClient.lastLocation.addOnSuccessListener { loc -> loc?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) } } } } } else { Toast.makeText(context, "Please set your Home address in Manage Places", Toast.LENGTH_SHORT).show(); viewModel.navigateTo(CustomerScreen.ManagePlaces) } }
                                         QuickShortcutItem("Work", Icons.Default.Work, FamekoBlue) { if (viewModel.savedPlaces.value.any { it.label.equals("Work", true) }) { viewModel.applyShortcut("Work") { if (hasLocationPermission) { @SuppressLint("MissingPermission") fusedLocationClient.lastLocation.addOnSuccessListener { loc -> loc?.let { viewModel.useCurrentLocation(it, forPickup = true, stopIndex = -1) } } } } } else { Toast.makeText(context, "Please set your Home address in Manage Places", Toast.LENGTH_SHORT).show(); viewModel.navigateTo(CustomerScreen.ManagePlaces) } }
                                         QuickShortcutItem("Recent", Icons.Default.History, Color.Gray) { viewModel.navigateTo(CustomerScreen.RouteSelection); viewModel.selectedTab = 0; viewModel.updateDropOffLocation("") }
-                                        QuickShortcutItem("Saved", Icons.Default.Star, BoltYellow) { viewModel.navigateTo(CustomerScreen.RouteSelection); viewModel.selectedTab = 1; viewModel.updateDropOffLocation("") }
+                                        QuickShortcutItem("Saved", Icons.Default.Star, BoltYellow) { viewModel.navigateTo(CustomerScreen.SavedPlacesSpeedDial) }
                                     }
                                     Spacer(Modifier.height(12.dp))
                                 }
