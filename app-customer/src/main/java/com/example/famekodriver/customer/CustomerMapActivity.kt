@@ -1099,7 +1099,7 @@ fun MainMapContent(
         scaffoldState = sheetScaffoldState,
             sheetPeekHeight = if (viewModel.isFullscreenMap) { if (viewModel.activeRental != null) 110.dp else 0.dp }
                              else if (!isBaseMapScreen) 0.dp
-                             else if (currentSheetState == CustomerSheetState.LANDING) 120.dp
+                             else if (currentSheetState == CustomerSheetState.LANDING) (screenHeight * 0.75f).coerceAtLeast(520.dp)
                              else if (currentSheetState == CustomerSheetState.IDLE || 
                                      (currentSheetState == CustomerSheetState.PICKING_ADDRESS && (viewModel.pickupLat == null || viewModel.dropOffLat == null))) 120.dp
                              else if (currentSheetState == CustomerSheetState.SELECTING_SERVICE || 

@@ -52,6 +52,7 @@ fun CustomerLandingScreen(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         activeRental?.let { rental ->
