@@ -310,9 +310,6 @@ fun CustomerMapScreen() {
     }
 
     var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
-    val timePickerState = rememberTimePickerState()
 
     val mapView = remember { MapView(context) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -661,24 +658,30 @@ fun CustomerMapScreen() {
                     
                     val pin = status?.verificationPin?.takeIf { it.isNotBlank() }?.chunked(1)?.joinToString(" ") ?: "----"
                     
-                    val (calcKm, calcMins) = remember(status?.driverLat, status?.driverLng, status?.dropOffLat, status?.dropOffLng, mapViewModel.distanceKm) {
+                    val (calcKm, calcMins) = remember(status?.driverLat, status?.driverLng, status?.dropOffLat, status?.dropOffLng, mapViewModel.distanceKm, mapViewModel.durationMin) {
                         val dLat = status?.driverLat
                         val dLng = status?.driverLng
                         val dropLat = status?.dropOffLat ?: mapViewModel.dropOffLat
                         val dropLng = status?.dropOffLng ?: mapViewModel.dropOffLng
-                        if (dLat != null && dLng != null && dropLat != null && dropLng != null) {
+                        if (status != null && dLat != null && dLng != null && dropLat != null && dropLng != null) {
                             val km = LocationUtils.calculateDistance(dLat, dLng, dropLat, dropLng) / 1000.0
                             val mins = (km * 2.5).toInt().coerceAtLeast(1)
                             Pair(km, mins)
+                        } else if (status != null && mapViewModel.durationMin > 0) {
+                            Pair(mapViewModel.distanceKm, mapViewModel.durationMin.toInt())
                         } else {
-                            Pair(mapViewModel.distanceKm, if (mapViewModel.durationMin > 0) mapViewModel.durationMin.toInt() else 15)
+                            Pair(0.0, 0)
                         }
                     }
 
                     val etaTimeStr = remember(calcMins) {
-                        val cal = java.util.Calendar.getInstance()
-                        cal.add(java.util.Calendar.MINUTE, calcMins)
-                        java.text.SimpleDateFormat("~ HH:mm 'GMT'", java.util.Locale.getDefault()).format(cal.time)
+                        if (calcMins > 0) {
+                            val cal = java.util.Calendar.getInstance()
+                            cal.add(java.util.Calendar.MINUTE, calcMins)
+                            java.text.SimpleDateFormat("~ HH:mm 'GMT'", java.util.Locale.getDefault()).format(cal.time)
+                        } else {
+                            "No active trip"
+                        }
                     }
 
                     val vehicleStr = remember(status?.driverVehicle, status?.driverVehicleModel, status?.driverVehicleNumber) {
@@ -702,7 +705,7 @@ fun CustomerMapScreen() {
                         courierVehicle = vehicleStr,
                         courierPhotoUrl = status?.driverProfilePic,
                         serviceClass = if (mapViewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) "Express Package Delivery" else "Standard Ride",
-                        completedDeliveries = 100 + (status?.orderId ?: 1) * 12,
+                        completedDeliveries = status?.orderId ?: 0,
                         otpCode = pin,
                         onBack = {
                             if (!mapViewModel.navigateBack()) mapViewModel.navigateTo(CustomerScreen.MainMap)
@@ -714,8 +717,18 @@ fun CustomerMapScreen() {
                 }
             }
 
-            if (showDatePicker) { DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { showDatePicker = false; showTimePicker = true }) { Text("Next") } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }) { DatePicker(state = datePickerState) } }
-            if (showTimePicker) { AlertDialog(onDismissRequest = { showTimePicker = false }, confirmButton = { TextButton(onClick = { val dateStr = datePickerState.selectedDateMillis?.let { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()); val timeStr = "%02d:%02d".format(timePickerState.hour, timePickerState.minute); val scheduledTime = "$dateStr $timeStr"; mapViewModel.updateScheduledRideTime(scheduledTime); mapViewModel.setServiceMode(ServiceType.RIDE_HAILING); mapViewModel.navigateTo(CustomerScreen.MainMap); mapViewModel.isSearchMode = true; showTimePicker = false }) { Text("Confirm") } }, dismissButton = { TextButton(onClick = { showTimePicker = false; showDatePicker = true }) { Text("Back") } }, text = { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("Select Time", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp)); TimePicker(state = timePickerState) } } ) }
+            if (showDatePicker) {
+                UpgradedScheduleRideDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    onConfirmSchedule = { scheduledTime ->
+                        mapViewModel.updateScheduledRideTime(scheduledTime)
+                        mapViewModel.setServiceMode(ServiceType.RIDE_HAILING)
+                        mapViewModel.navigateTo(CustomerScreen.MainMap)
+                        mapViewModel.isSearchMode = true
+                        showDatePicker = false
+                    }
+                )
+            }
         }
     }
 }

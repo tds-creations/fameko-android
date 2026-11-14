@@ -408,14 +408,14 @@ fun CustomerPublicLiveTrackingScreen(
 
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                "$etaMins mins",
+                                if (etaMins > 0) "$etaMins mins" else "--",
                                 fontSize = 32.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF0F172A)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                etaTimeStr,
+                                if (etaMins > 0) etaTimeStr else "No active trip in progress",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF64748B),
@@ -426,7 +426,7 @@ fun CustomerPublicLiveTrackingScreen(
 
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            "$remainingKm km",
+                            if (etaMins > 0) "$remainingKm km" else "0.0 km",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF0F172A)
@@ -444,7 +444,7 @@ fun CustomerPublicLiveTrackingScreen(
                 // Traffic status pill
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = LightGreenBg,
+                    color = if (etaMins > 0) LightGreenBg else Color(0xFFF1F5F9),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -453,10 +453,10 @@ fun CustomerPublicLiveTrackingScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🚦", fontSize = 14.sp)
+                            Text(if (etaMins > 0) "🚦" else "📍", fontSize = 14.sp)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                "Traffic flowing steadily via Tetteh...",
+                                if (etaMins > 0) "Optimal route selected • $etaMins mins estimated" else "Awaiting active ride or delivery request",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF1E293B)
@@ -465,13 +465,13 @@ fun CustomerPublicLiveTrackingScreen(
 
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = PillGreenBg
+                            color = if (etaMins > 0) PillGreenBg else Color(0xFFE2E8F0)
                         ) {
                             Text(
-                                "On Schedule",
+                                if (etaMins > 0) "On Schedule" else "Standby",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = TextGreenColor,
+                                color = if (etaMins > 0) TextGreenColor else Color(0xFF64748B),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
@@ -659,8 +659,8 @@ fun CustomerPublicLiveTrackingScreen(
                             Icon(Icons.Default.History, contentDescription = null, tint = TextGreenColor, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text("Accra Experience", fontSize = 10.sp, color = Color(0xFF64748B))
-                                Text("$completedDeliveries Completed", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                Text("Courier Experience", fontSize = 10.sp, color = Color(0xFF64748B))
+                                Text(if (completedDeliveries > 0) "$completedDeliveries Completed" else "New Courier", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                             }
                         }
                     }

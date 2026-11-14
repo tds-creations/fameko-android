@@ -18,8 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -307,57 +310,44 @@ fun ServiceGridItem(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    Surface(
+    Column(
         modifier = modifier
-            .height(132.dp)
-            .clickable(enabled = enabled) { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
-        shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            .clickable(enabled = enabled) { onClick() }
+            .alpha(if (enabled) 1f else 0.5f),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 10.dp)
-                .alpha(if (enabled) 1f else 0.5f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(64.dp),
-                    tint = BoltDark
-                )
-            } else if (imageUrl != null) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(72.dp)
-                        .clip(RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Fit
-                )
-            }
-            
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 14.sp,
-                    color = BoltDark,
-                    maxLines = 1
-                )
-                Text(
-                    text = description,
-                    fontSize = 10.sp,
-                    color = Color.Gray,
-                    maxLines = 1
-                )
-            }
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(64.dp),
+                tint = BoltDark
+            )
+        } else if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                contentScale = ContentScale.Fit
+            )
         }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = title,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 14.sp,
+            color = BoltDark,
+            maxLines = 1
+        )
+        Text(
+            text = description,
+            fontSize = 10.sp,
+            color = Color.Gray,
+            maxLines = 1
+        )
     }
 }
 

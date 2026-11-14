@@ -130,43 +130,70 @@ fun CustomerAccountScreen(
                         }
                     }
 
-                    // Profile Picture Avatar with camera badge
-                    Box(modifier = Modifier.size(72.dp)) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFF0A192F),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .border(2.dp, Color(0xFF10B981), CircleShape)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        IconButton(
+                            onClick = { onNavigate(CustomerScreen.Notifications) },
+                            modifier = Modifier.size(42.dp)
                         ) {
-                            if (!profilePicUrl.isNullOrEmpty()) {
-                                AsyncImage(
-                                    model = profilePicUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFFEFF6FF),
+                                modifier = Modifier.fillMaxSize(),
+                                border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                            ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text(initials.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Notifications",
+                                        tint = Color(0xFF2563EB),
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.White,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .align(Alignment.BottomEnd),
-                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.CameraAlt,
-                                    contentDescription = "Upload Photo",
-                                    tint = BoltDark,
-                                    modifier = Modifier.size(12.dp)
-                                )
+
+                        // Profile Picture Avatar with camera badge
+                        Box(modifier = Modifier.size(68.dp)) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFF0A192F),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .border(2.dp, Color(0xFF10B981), CircleShape)
+                            ) {
+                                if (!profilePicUrl.isNullOrEmpty()) {
+                                    AsyncImage(
+                                        model = profilePicUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(initials.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                                    }
+                                }
+                            }
+
+                            Surface(
+                                shape = CircleShape,
+                                color = Color.White,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .align(Alignment.BottomEnd),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = "Upload Photo",
+                                        tint = BoltDark,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
                             }
                         }
                     }

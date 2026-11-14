@@ -341,63 +341,288 @@ fun NotificationsScreen(
     onDelete: (Int) -> Unit,
     onBack: () -> Unit
 ) {
+    var selectedFilter by remember { mutableStateOf("ALL") } // ALL, RIDES, PROMOS, SYSTEM
+    var readIds by remember { mutableStateOf(setOf<Int>()) }
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
+
+    val filteredNotifications = remember(notifications, selectedFilter) {
+        when (selectedFilter) {
+            "RIDES" -> notifications.filter { it.type.contains("RIDE", true) || it.type.contains("TRIP", true) || it.type.contains("ORDER", true) }
+            "PROMOS" -> notifications.filter { it.type.contains("PROMO", true) || it.type.contains("OFFER", true) }
+            "SYSTEM" -> notifications.filter { it.type.contains("SYSTEM", true) || it.type.contains("ERROR", true) || it.type.contains("REGIONAL", true) }
+            else -> notifications
+        }
+    }
+
+    val unreadCount = remember(notifications, readIds) {
+        notifications.count { it.id !in readIds }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Notifications", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Notifications", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF0F172A))
+                        if (unreadCount > 0) {
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                color = Color(0xFF2563EB),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "$unreadCount New",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(38.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                },
+                actions = {
+                    if (notifications.isNotEmpty()) {
+                        IconButton(onClick = {
+                            readIds = readIds + notifications.map { it.id }
+                        }) {
+                            Icon(Icons.Default.DoneAll, contentDescription = "Mark all as read", tint = Color(0xFF2563EB))
+                        }
+                        IconButton(onClick = { showClearConfirmDialog = true }) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Clear all", tint = Color(0xFFEF4444))
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
-        containerColor = Color.White
+        containerColor = Color(0xFFF8FAFC)
     ) { padding ->
-        if (notifications.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.NotificationsNone, null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-                    Spacer(Modifier.height(16.dp))
-                    Text("No notifications yet", color = Color.Gray)
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Category Filter Chips Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(notifications, key = { it.id }) { notification ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = { },
-                                onLongClick = { onDelete(notification.id) }
-                            ),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier.size(8.dp).clip(CircleShape).background(
-                                        when(notification.type) {
-                                            "ERROR", "REGIONAL" -> Color.Red
-                                            "SUCCESS" -> Color(0xFF10B981)
-                                            else -> Color(0xFF2563EB)
-                                        }
-                                    )
+                NotificationFilterChip("All", "ALL", selectedFilter) { selectedFilter = it }
+                NotificationFilterChip("Rides & Orders", "RIDES", selectedFilter) { selectedFilter = it }
+                NotificationFilterChip("Promos", "PROMOS", selectedFilter) { selectedFilter = it }
+                NotificationFilterChip("System Alerts", "SYSTEM", selectedFilter) { selectedFilter = it }
+            }
+
+            if (filteredNotifications.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFEFF6FF),
+                            modifier = Modifier.size(80.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.NotificationsNone,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp),
+                                    tint = Color(0xFF2563EB)
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Text(notification.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
-                            Spacer(Modifier.height(4.dp))
-                            Text(notification.message, color = Color.DarkGray, fontSize = 14.sp)
-                            Spacer(Modifier.height(8.dp))
-                            Text(notification.createdAt, fontSize = 10.sp, color = Color.Gray, modifier = Modifier.align(Alignment.End))
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = if (selectedFilter == "ALL") "No notifications yet" else "No $selectedFilter notifications",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = Color(0xFF0F172A)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "We'll notify you when your trip status changes, exclusive promotions arrive, or important alerts occur.",
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.fillMaxWidth(0.85f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(filteredNotifications, key = { it.id }) { notification ->
+                        val isUnread = notification.id !in readIds
+                        
+                        // Icon & Styling based on type
+                        val (icon, iconBg, iconColor) = when {
+                            notification.type.contains("RIDE", true) || notification.type.contains("TRIP", true) -> 
+                                Triple(Icons.Default.DirectionsCar, Color(0xFFEFF6FF), Color(0xFF2563EB))
+                            notification.type.contains("PROMO", true) || notification.type.contains("OFFER", true) -> 
+                                Triple(Icons.Default.LocalOffer, Color(0xFFFFFBEB), Color(0xFFD97706))
+                            notification.type.contains("ERROR", true) || notification.type.contains("ALERT", true) || notification.type.contains("REGIONAL", true) -> 
+                                Triple(Icons.Default.Warning, Color(0xFFFEF2F2), Color(0xFFDC2626))
+                            notification.type.contains("SUCCESS", true) -> 
+                                Triple(Icons.Default.CheckCircle, Color(0xFFECFDF5), Color(0xFF059669))
+                            notification.type.contains("DELIVERY", true) || notification.type.contains("PACKAGE", true) -> 
+                                Triple(Icons.Default.LocalShipping, Color(0xFFF3E8FF), Color(0xFF9333EA))
+                            else -> 
+                                Triple(Icons.Default.Notifications, Color(0xFFF1F5F9), Color(0xFF475569))
+                        }
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (isUnread) readIds = readIds + notification.id
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isUnread) Color.White else Color(0xFFF8FAFC)
+                            ),
+                            shape = RoundedCornerShape(20.dp),
+                            elevation = CardDefaults.cardElevation(if (isUnread) 2.dp else 0.dp),
+                            border = BorderStroke(1.dp, if (isUnread) Color(0xFFBFDBFE) else Color(0xFFE2E8F0))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = iconBg,
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(22.dp))
+                                    }
+                                }
+
+                                Spacer(Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = notification.title,
+                                                fontWeight = if (isUnread) FontWeight.ExtraBold else FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                color = Color(0xFF0F172A)
+                                            )
+                                            if (isUnread) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(8.dp)
+                                                        .clip(CircleShape)
+                                                        .background(Color(0xFF2563EB))
+                                                )
+                                            }
+                                        }
+
+                                        IconButton(
+                                            onClick = { onDelete(notification.id) },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.Close, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = notification.message,
+                                        color = Color(0xFF334155),
+                                        fontSize = 13.sp,
+                                        lineHeight = 18.sp
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = notification.createdAt,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text("Clear All Notifications?", fontWeight = FontWeight.Bold) },
+            text = { Text("This will permanently remove all notifications from your list.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        notifications.forEach { onDelete(it.id) }
+                        showClearConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) {
+                    Text("Clear All", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color.White
+        )
+    }
+}
+
+@Composable
+private fun NotificationFilterChip(
+    label: String,
+    value: String,
+    selectedValue: String,
+    onSelect: (String) -> Unit
+) {
+    val isSelected = value == selectedValue
+    Surface(
+        modifier = Modifier.clickable { onSelect(value) },
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) Color(0xFF2563EB) else Color.White,
+        border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        shadowElevation = if (isSelected) 2.dp else 0.dp
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isSelected) Color.White else Color(0xFF475569),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+        )
     }
 }

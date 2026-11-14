@@ -9,8 +9,11 @@ fun Application.configureOrderScheduler() {
     launch(Dispatchers.IO) {
         while (isActive) {
             try {
-                checkAndTimeoutOrders()
-                autoCompleteReachedTrips()
+                // Ensure only 1 cluster instance runs background order scheduler
+                if (com.example.famekodriver.backend.services.RedisManager.tryDistributedLock("order_scheduler_lock", ttlSeconds = 55)) {
+                    checkAndTimeoutOrders()
+                    autoCompleteReachedTrips()
+                }
             } catch (e: Exception) {
                 log.error("Error in order scheduler: ${e.message}", e)
             }

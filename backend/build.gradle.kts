@@ -10,6 +10,7 @@ version = "1.0.0"
 application {
     mainClass.set("com.example.famekodriver.backend.ApplicationKt")
 }
+extra["mainClassName"] = "com.example.famekodriver.backend.ApplicationKt"
 
 dependencies {
     implementation(project(":shared-models"))

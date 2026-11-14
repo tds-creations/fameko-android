@@ -314,4 +314,129 @@ object RedisManager {
             null
         }
     }
+
+    // --- HORIZONTAL SCALING: DISTRIBUTED LOCKS ---
+
+    /**
+     * Try acquiring a distributed lock across cluster instances using Redis SET key value NX EX ttl
+     */
+    fun tryDistributedLock(lockKey: String, ttlSeconds: Long = 10): Boolean {
+        return try {
+            pool.resource.use { jedis ->
+                val params = SetParams().nx().ex(ttlSeconds)
+                val result = jedis.set("dist_lock:$lockKey", "LOCKED_${System.currentTimeMillis()}", params)
+                result == "OK"
+            }
+        } catch (e: Throwable) {
+            println("Redis Distributed Lock Error: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Release a distributed lock
+     */
+    fun releaseDistributedLock(lockKey: String) {
+        try {
+            pool.resource.use { jedis ->
+                jedis.del("dist_lock:$lockKey")
+            }
+        } catch (e: Throwable) {
+            println("Redis Distributed Unlock Error: ${e.message}")
+        }
+    }
+
+    // --- HORIZONTAL SCALING: REDIS PUB/SUB WEBSOCKET BUS ---
+
+    private const val WS_PUB_SUB_CHANNEL = "fameko_ws_events"
+
+    /**
+     * Publish a WebSocket message payload to all backend instances via Redis Pub/Sub
+     */
+    fun publishWsEvent(userId: String, type: String, payloadJson: String) {
+        try {
+            pool.resource.use { jedis ->
+                val envelope = com.google.gson.Gson().toJson(
+                    mapOf("userId" to userId, "type" to type, "payloadJson" to payloadJson)
+                )
+                jedis.publish(WS_PUB_SUB_CHANNEL, envelope)
+            }
+        } catch (e: Throwable) {
+            println("Redis WS Publish Error: ${e.message}")
+        }
+    }
+
+    /**
+     * Subscribe to Redis Pub/Sub WebSocket channel on node startup
+     */
+    fun startWsSubscriber(onMessageReceived: (userId: String, type: String, payloadJson: String) -> Unit) {
+        Thread {
+            while (true) {
+                try {
+                    pool.resource.use { jedis ->
+                        jedis.subscribe(object : redis.clients.jedis.JedisPubSub() {
+                            override fun onMessage(channel: String?, message: String?) {
+                                if (channel == WS_PUB_SUB_CHANNEL && !message.isNullOrBlank()) {
+                                    try {
+                                        val map = com.google.gson.Gson().fromJson(message, Map::class.java)
+                                        val userId = map["userId"]?.toString() ?: ""
+                                        val type = map["type"]?.toString() ?: ""
+                                        val payloadJson = map["payloadJson"]?.toString() ?: ""
+                                        if (userId.isNotBlank()) {
+                                            onMessageReceived(userId, type, payloadJson)
+                                        }
+                                    } catch (e: Exception) {
+                                        println("Redis PubSub Parse Error: ${e.message}")
+                                    }
+                                }
+                            }
+                        }, WS_PUB_SUB_CHANNEL)
+                    }
+                } catch (e: Throwable) {
+                    println("Redis WS Subscriber Error: ${e.message}. Reconnecting in 3s...")
+                    try { Thread.sleep(3000) } catch (_: Exception) {}
+                }
+            }
+        }.apply {
+            name = "RedisWsSubscriberThread"
+            isDaemon = true
+            start()
+        }
+    }
+
+    // --- HORIZONTAL SCALING: WEBRTC CALL SESSION STORE ---
+
+    fun setCallParticipants(callId: String, initiatorId: String, recipientId: String) {
+        try {
+            pool.resource.use { jedis ->
+                jedis.hset("call:$callId", "initiator", initiatorId)
+                jedis.hset("call:$callId", "recipient", recipientId)
+                jedis.expire("call:$callId", 300)
+            }
+        } catch (e: Throwable) {
+            println("Redis Call Set Error: ${e.message}")
+        }
+    }
+
+    fun getCallParticipants(callId: String): Pair<String, String>? {
+        return try {
+            pool.resource.use { jedis ->
+                val initiator = jedis.hget("call:$callId", "initiator")
+                val recipient = jedis.hget("call:$callId", "recipient")
+                if (initiator != null && recipient != null) Pair(initiator, recipient) else null
+            }
+        } catch (e: Throwable) {
+            null
+        }
+    }
+
+    fun removeCall(callId: String) {
+        try {
+            pool.resource.use { jedis ->
+                jedis.del("call:$callId")
+            }
+        } catch (e: Throwable) {
+            println("Redis Call Del Error: ${e.message}")
+        }
+    }
 }

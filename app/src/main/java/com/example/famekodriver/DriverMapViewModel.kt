@@ -124,24 +124,13 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         countdownJob = viewModelScope.launch {
             while (true) {
                 try {
-                    // Try multiple formats for PostgreSQL timestamp (e.g. 2023-10-27 10:00:00 or ISO-8601)
-                    val expiryDate = try {
-                        // Standard format with milliseconds
-                        val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S")
-                        LocalDateTime.parse(expiry, fmt)
-                    } catch (e1: Exception) {
-                        try {
-                            // Standard format without milliseconds
-                            val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                            LocalDateTime.parse(expiry, fmt)
-                        } catch (e2: Exception) {
-                            // ISO-8601 Fallback
-                            LocalDateTime.parse(expiry.replace(" ", "T"))
-                        }
-                    }
+                    val expiryMillis = try {
+                        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).parse(expiry)?.time
+                            ?: java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S", java.util.Locale.getDefault()).parse(expiry)?.time
+                            ?: 0L
+                    } catch (_: Exception) { 0L }
                     
-                    val now = LocalDateTime.now()
-                    val secondsRemaining = ChronoUnit.SECONDS.between(now, expiryDate)
+                    val secondsRemaining = (expiryMillis - System.currentTimeMillis()) / 1000
                     
                     if (secondsRemaining <= 0) {
                         dailyFeeRemainingSeconds = 0
@@ -384,6 +373,10 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                     navigationPath = emptyList()
                 } else {
                     currentDelivery = delivery.copy(status = nextStatus)
+                    if (nextStatus == DeliveryStatus.ARRIVED) {
+                        clearRouteAndNavigation()
+                        showPinDialog = true
+                    }
                 }
             }.onFailure {
                 Log.e("TripStatus", "Status update FAILED for ${delivery.id}", it)
@@ -400,6 +393,15 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                     updateDeliveryStatus(DeliveryStatus.IN_TRANSIT)
                     showPinDialog = false
                     enteredPin = ""
+
+                    // Draw actual trip route to destination AFTER PIN has been entered & verified
+                    val pLat = delivery.pickupLat ?: 0.0
+                    val pLng = delivery.pickupLng ?: 0.0
+                    val dLat = delivery.dropOffLat ?: 0.0
+                    val dLng = delivery.dropOffLng ?: 0.0
+                    if (pLat != 0.0 && dLat != 0.0) {
+                        calculateRoute(LatLng(pLat, pLng), LatLng(dLat, dLng))
+                    }
                 }
                 isVerifyingPin = false
             }.onFailure {

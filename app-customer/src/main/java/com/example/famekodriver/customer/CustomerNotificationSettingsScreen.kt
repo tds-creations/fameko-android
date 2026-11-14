@@ -211,6 +211,49 @@ fun CustomerNotificationSettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
+
+            // Section 4: TEST NOTIFICATIONS
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("PREVIEW & TEST", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp, modifier = Modifier.padding(horizontal = 4.dp))
+                    Card(
+                        modifier = Modifier.clickable {
+                            com.example.famekodriver.core.utils.NotificationHelper.showNotification(
+                                context = context,
+                                title = "Fameko Test Notification 🚗",
+                                message = "Your push notifications are configured & active! Real-time trip status alerts will appear here.",
+                                type = "TRIP"
+                            )
+                            Toast.makeText(context, "Test Notification Sent!", Toast.LENGTH_SHORT).show()
+                        },
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFF2563EB),
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Send Test Notification", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                                Spacer(Modifier.height(2.dp))
+                                Text("Tap to trigger a live sample notification on your device", fontSize = 12.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

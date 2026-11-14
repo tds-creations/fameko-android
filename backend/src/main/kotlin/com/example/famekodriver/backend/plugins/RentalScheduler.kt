@@ -11,7 +11,10 @@ fun Application.configureRentalScheduler() {
     launch(Dispatchers.IO) {
         while (isActive) {
             try {
-                checkAndEndExpiredRentals()
+                // Ensure only 1 cluster instance runs background rental expiry scheduler
+                if (com.example.famekodriver.backend.services.RedisManager.tryDistributedLock("rental_scheduler_lock", ttlSeconds = 280)) {
+                    checkAndEndExpiredRentals()
+                }
             } catch (e: Exception) {
                 log.error("Error in rental expiry scheduler: ${e.message}", e)
             }

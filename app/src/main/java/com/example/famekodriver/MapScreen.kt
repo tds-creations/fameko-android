@@ -298,16 +298,38 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(viewModel.currentDelivery, viewModel.activeRequest) {
+    LaunchedEffect(viewModel.currentDelivery?.status, viewModel.activeRequest?.status) {
         val delivery = viewModel.currentDelivery ?: viewModel.activeRequest
         if (delivery != null && delivery.status != DeliveryStatus.CANCELLED && delivery.status != DeliveryStatus.DELIVERED) {
-            val pLat = delivery.pickupLat ?: 0.0
-            val pLng = delivery.pickupLng ?: 0.0
-            val dLat = delivery.dropOffLat ?: 0.0
-            val dLng = delivery.dropOffLng ?: 0.0
-
-            if (pLat != 0.0 && pLng != 0.0 && dLat != 0.0 && dLng != 0.0) {
-                viewModel.calculateRoute(LatLng(pLat, pLng), LatLng(dLat, dLng))
+            when (delivery.status) {
+                DeliveryStatus.ASSIGNED -> {
+                    // Driver heading to pickup location
+                    val driverLat = viewModel.driverLatLng?.latitude ?: delivery.pickupLat ?: 0.0
+                    val driverLng = viewModel.driverLatLng?.longitude ?: delivery.pickupLng ?: 0.0
+                    val pLat = delivery.pickupLat ?: 0.0
+                    val pLng = delivery.pickupLng ?: 0.0
+                    if (driverLat != 0.0 && pLat != 0.0) {
+                        viewModel.calculateRoute(LatLng(driverLat, driverLng), LatLng(pLat, pLng))
+                    }
+                }
+                DeliveryStatus.ARRIVED -> {
+                    // Driver arrived at pickup, waiting for PIN entry!
+                    // Clear path so actual trip route is drawn only AFTER PIN verification
+                    viewModel.clearRouteAndNavigation()
+                }
+                DeliveryStatus.IN_TRANSIT -> {
+                    // PIN entered & verified! Draw actual trip route to destination
+                    val pLat = delivery.pickupLat ?: 0.0
+                    val pLng = delivery.pickupLng ?: 0.0
+                    val dLat = delivery.dropOffLat ?: 0.0
+                    val dLng = delivery.dropOffLng ?: 0.0
+                    if (pLat != 0.0 && dLat != 0.0) {
+                        viewModel.calculateRoute(LatLng(pLat, pLng), LatLng(dLat, dLng))
+                    }
+                }
+                else -> {
+                    viewModel.clearRouteAndNavigation()
+                }
             }
         } else {
             viewModel.clearRouteAndNavigation()
@@ -651,7 +673,7 @@ fun MapScreen(
                     onChat = { onNavigateToChat(delivery.orderId, delivery.customerName ?: "Customer") },
                     onStatusUpdate = { viewModel.updateDeliveryStatus(it) },
                     onCancel = { viewModel.cancelActiveTrip() },
-                    onArrived = { viewModel.showPinDialog = true },
+                    onArrived = { viewModel.updateDeliveryStatus(DeliveryStatus.ARRIVED) },
                     onNavigateClick = { viewModel.isFullscreenMap = !viewModel.isFullscreenMap }
                 )
             }
