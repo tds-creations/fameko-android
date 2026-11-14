@@ -2,6 +2,7 @@ package com.example.famekodriver.customer.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import com.example.famekodriver.customer.ui.theme.*
 import com.google.android.gms.location.Priority
 import com.google.android.gms.location.LocationServices
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaveLocationSearchScreen(
     label: String,
@@ -45,96 +47,211 @@ fun SaveLocationSearchScreen(
     viewModel: CustomerMapViewModel,
     onBack: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var customLabel by remember { mutableStateOf(label) }
+    var selectedSuggestion by remember { mutableStateOf<LocationSuggestion?>(null) }
+
     val suggestions = viewModel.dropOffSuggestions
     val recentPlaces = viewModel.recentPlaces
-    val isDefaultLabel = label == "Home" || label == "Work"
+    val isDefaultLabel = label.equals("Home", true) || label.equals("Work", true)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.Close, contentDescription = "Close")
-            }
-            Text(
-                text = if (placeId != null) "Edit $label" else "Set $label",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+    LaunchedEffect(Unit) {
+        viewModel.updateDropOffLocation("")
+    }
 
-        if (!isDefaultLabel) {
-            OutlinedTextField(
-                value = customLabel,
-                onValueChange = { customLabel = it },
-                label = { Text("Name this place") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = {
-                searchQuery = it
-                viewModel.updateDropOffLocation(it)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("Search location", color = Color.Gray) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
-            trailingIcon = if (searchQuery.isNotEmpty()) {
-                { 
-                    IconButton(onClick = { 
-                        searchQuery = ""
-                        viewModel.updateDropOffLocation("")
-                    }) { 
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.Gray) 
-                    } 
-                }
-            } else null,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = FamekoBlue,
-                unfocusedBorderColor = Color.LightGray,
-                focusedContainerColor = BoltLightGray,
-                unfocusedContainerColor = BoltLightGray
-            ),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            val listToUse = if (searchQuery.isEmpty()) recentPlaces else suggestions
-            
-            items(listToUse) { suggestion ->
-                LocationSearchItem(
-                    suggestion = suggestion,
-                    onClick = {
-                        if (placeId != null) {
-                            viewModel.updateSavedPlace(placeId, customLabel, suggestion)
-                        } else {
-                            viewModel.savePlace(suggestion, customLabel)
-                        }
-                        onBack()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = if (placeId != null) "Edit $label Location" else "Save $label Location",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF0F172A)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF0F172A))
                     }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
+        },
+        bottomBar = {
+            Surface(
+                color = Color.White,
+                shadowElevation = 16.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(modifier = Modifier.padding(16.dp).navigationBarsPadding()) {
+                    Button(
+                        onClick = {
+                            val target = selectedSuggestion ?: LocationSuggestion(
+                                displayName = searchQuery.ifBlank { "East Legon, Accra" },
+                                latitude = "5.6358",
+                                longitude = "-0.1601",
+                                name = customLabel
+                            )
+                            if (placeId != null) {
+                                viewModel.updateSavedPlace(placeId, customLabel, target)
+                            } else {
+                                viewModel.savePlace(target, customLabel)
+                            }
+                            android.widget.Toast.makeText(context, "Saved $customLabel location", android.widget.Toast.LENGTH_SHORT).show()
+                            onBack()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (placeId != null) "Update Saved Location" else "Save Location",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
+            }
+        },
+        containerColor = Color(0xFFF8FAFC)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            if (!isDefaultLabel) {
+                OutlinedTextField(
+                    value = customLabel,
+                    onValueChange = { customLabel = it },
+                    label = { Text("Label / Name (e.g. Gym, Parents' House)") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = FamekoBlue,
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    singleLine = true
                 )
-                HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+            }
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = {
+                    searchQuery = it
+                    selectedSuggestion = null
+                    viewModel.updateDropOffLocation(it)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search location in Accra (e.g. Airport, East Legon)", color = Color.Gray, fontSize = 13.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = FamekoBlue) },
+                trailingIcon = if (searchQuery.isNotEmpty()) {
+                    {
+                        IconButton(onClick = {
+                            searchQuery = ""
+                            selectedSuggestion = null
+                            viewModel.updateDropOffLocation("")
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.Gray)
+                        }
+                    }
+                } else null,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = FamekoBlue,
+                    unfocusedBorderColor = Color(0xFFCBD5E1),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                ),
+                shape = RoundedCornerShape(14.dp),
+                singleLine = true
+            )
+
+            // Selected Location Preview Card
+            selectedSuggestion?.let { selected ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFECFDF5)),
+                    border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF059669),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("SELECTED LOCATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF047857))
+                            Text(selected.displayName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF065F46), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = if (searchQuery.isBlank()) "POPULAR & RECENT SPOTS" else "LOCATION SUGGESTIONS",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            )
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val listToUse = when {
+                    suggestions.isNotEmpty() -> suggestions
+                    searchQuery.isNotBlank() -> recentPlaces.filter { it.displayName.contains(searchQuery, true) }
+                    else -> recentPlaces
+                }
+
+                items(listToUse) { suggestion ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedSuggestion = suggestion
+                                searchQuery = suggestion.displayName
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedSuggestion == suggestion) Color(0xFFEFF6FF) else Color.White
+                        ),
+                        border = BorderStroke(1.dp, if (selectedSuggestion == suggestion) FamekoBlue else Color(0xFFE2E8F0))
+                    ) {
+                        LocationSearchItem(
+                            suggestion = suggestion,
+                            onClick = {
+                                selectedSuggestion = suggestion
+                                searchQuery = suggestion.displayName
+                            }
+                        )
+                    }
+                }
             }
         }
     }

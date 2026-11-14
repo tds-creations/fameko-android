@@ -714,7 +714,8 @@ class CustomerMapViewModel(
 
     private fun fetchDropOffSuggestions(query: String) {
         dropOffSearchJob?.cancel()
-        if (query.isBlank()) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) {
             val suggestions = if (selectedTab == 0) {
                 recentPlaces
             } else {
@@ -725,17 +726,26 @@ class CustomerMapViewModel(
             dropOffSuggestions = suggestions
             return
         }
-        if (query.length > 2) {
-            dropOffSearchJob = viewModelScope.launch {
-                delay(500.milliseconds)
-                repository.getGeocodeSuggestions(query, biasLat = pickupLat, biasLng = pickupLng).onSuccess {
-                    dropOffSuggestions = it 
-                }.onFailure {
-                    dropOffSuggestions = emptyList()
+
+        dropOffSearchJob = viewModelScope.launch {
+            delay(150.milliseconds)
+            repository.getGeocodeSuggestions(trimmed, biasLat = pickupLat, biasLng = pickupLng).onSuccess { list ->
+                if (list.isNotEmpty()) {
+                    dropOffSuggestions = list
+                } else {
+                    val local = listOf(
+                        LocationSuggestion("East Legon, Accra", "5.6358", "-0.1601", "East Legon", "recent"),
+                        LocationSuggestion("Kotoka Int. Airport (ACC), Accra", "5.6037", "-0.1870", "Kotoka Airport", "recent"),
+                        LocationSuggestion("Accra Mall, Spintex Rd, Accra", "5.6225", "-0.1772", "Accra Mall", "recent"),
+                        LocationSuggestion("Kaneshie Market, Accra", "5.5601", "-0.2335", "Kaneshie", "recent"),
+                        LocationSuggestion("Dansoman Roundabout, Accra", "5.5458", "-0.2601", "Dansoman", "recent"),
+                        LocationSuggestion("Lapaz Station, Accra", "5.6088", "-0.2325", "Lapaz", "recent")
+                    ).filter { spot -> spot.displayName.contains(trimmed, ignoreCase = true) || (spot.name?.contains(trimmed, ignoreCase = true) == true) }
+                    dropOffSuggestions = local
                 }
+            }.onFailure {
+                dropOffSuggestions = emptyList()
             }
-        } else {
-            dropOffSuggestions = emptyList()
         }
     }
 
