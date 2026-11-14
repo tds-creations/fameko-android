@@ -244,16 +244,42 @@ fun SaveLocationSearchScreen(
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
             )
 
+            val accraPresets = listOf(
+                LocationSuggestion("Kotoka Int. Airport (ACC), Accra", "5.6037", "-0.1870", "Kotoka Airport", "recent"),
+                LocationSuggestion("East Legon, Accra", "5.6358", "-0.1601", "East Legon", "recent"),
+                LocationSuggestion("Accra Mall, Spintex Rd, Accra", "5.6225", "-0.1772", "Accra Mall", "recent"),
+                LocationSuggestion("Airport City, Accra", "5.6030", "-0.1840", "Airport City", "recent"),
+                LocationSuggestion("Spintex Road, Accra", "5.6300", "-0.1300", "Spintex", "recent"),
+                LocationSuggestion("Kaneshie Market, Accra", "5.5601", "-0.2335", "Kaneshie", "recent"),
+                LocationSuggestion("Dansoman Roundabout, Accra", "5.5458", "-0.2601", "Dansoman", "recent"),
+                LocationSuggestion("Lapaz Station, Accra", "5.6088", "-0.2325", "Lapaz", "recent"),
+                LocationSuggestion("Osu Oxford Street, Accra", "5.5560", "-0.1830", "Osu", "recent"),
+                LocationSuggestion("Circle Kwame Nkrumah Interchange, Accra", "5.5580", "-0.2070", "Circle", "recent"),
+                LocationSuggestion("Madina Zongo Junction, Accra", "5.6680", "-0.1680", "Madina", "recent"),
+                LocationSuggestion("Achimota Retail Centre, Accra", "5.6220", "-0.2240", "Achimota", "recent"),
+                LocationSuggestion("Cantonments, Accra", "5.5780", "-0.1760", "Cantonments", "recent"),
+                LocationSuggestion("Labone, Accra", "5.5620", "-0.1700", "Labone", "recent"),
+                LocationSuggestion("Ridge, Accra", "5.5570", "-0.1980", "Ridge", "recent"),
+                LocationSuggestion("Dome Pillar 2, Accra", "5.6420", "-0.2290", "Dome", "recent"),
+                LocationSuggestion("Tema Station, Accra Central", "5.5480", "-0.2010", "Tema Station", "recent"),
+                LocationSuggestion("Korle Bu Teaching Hospital, Accra", "5.5380", "-0.2260", "Korle Bu", "recent")
+            )
+
+            val pool = (suggestions + recentPlaces + accraPresets).distinctBy { it.displayName }
+
+            val listToUse = if (searchQuery.isBlank()) {
+                pool.take(10)
+            } else {
+                val filtered = pool.filter { spot ->
+                    spot.displayName.contains(searchQuery, ignoreCase = true) || (spot.name?.contains(searchQuery, ignoreCase = true) == true)
+                }
+                filtered.ifEmpty { pool.take(6) }
+            }
+
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                val listToUse = when {
-                    suggestions.isNotEmpty() -> suggestions
-                    searchQuery.isNotBlank() -> recentPlaces.filter { it.displayName.contains(searchQuery, true) }
-                    else -> recentPlaces
-                }
-
                 items(listToUse) { suggestion ->
                     Card(
                         modifier = Modifier
