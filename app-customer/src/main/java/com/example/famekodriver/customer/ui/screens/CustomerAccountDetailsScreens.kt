@@ -691,7 +691,8 @@ fun CustomerManagePlacesScreen(
     viewModel: CustomerMapViewModel,
     onBack: () -> Unit,
     onAddPlace: (String) -> Unit,
-    onEditPlace: (Int, String) -> Unit
+    onEditPlace: (Int, String) -> Unit,
+    onSelectPlace: (SavedPlace) -> Unit = {}
 ) {
     val context = LocalContext.current
     val uiState by viewModel.savedPlacesUiState.collectAsState()
@@ -699,6 +700,7 @@ fun CustomerManagePlacesScreen(
 
     val homePlace = savedPlacesLocal.find { it.label.equals("Home", ignoreCase = true) }
     val workPlace = savedPlacesLocal.find { it.label.equals("Work", ignoreCase = true) }
+    val otherPlaces = savedPlacesLocal.filter { !it.label.equals("Home", ignoreCase = true) && !it.label.equals("Work", ignoreCase = true) }
 
     Box(
         modifier = Modifier
@@ -727,13 +729,16 @@ fun CustomerManagePlacesScreen(
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text("Manage Places", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                    Column {
+                        Text("Saved Places", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF0F172A))
+                        Text("1-Tap speed dial & location manager", fontSize = 11.sp, color = Color(0xFF64748B))
+                    }
                 }
 
                 IconButton(onClick = { onAddPlace("Favorite") }) {
-                    Surface(shape = CircleShape, color = Color(0xFFF1F5F9), modifier = Modifier.size(40.dp)) {
+                    Surface(shape = CircleShape, color = Color(0xFFEFF6FF), modifier = Modifier.size(40.dp)) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Add, contentDescription = "Add New", tint = FamekoBlue, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -743,8 +748,8 @@ fun CustomerManagePlacesScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
-                border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFECFDF5)),
+                border = BorderStroke(1.dp, Color(0xFFA7F3D0))
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -752,35 +757,36 @@ fun CustomerManagePlacesScreen(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = Color(0xFF2563EB).copy(alpha = 0.15f),
+                        color = Color(0xFF059669).copy(alpha = 0.15f),
                         modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.FlashOn, null, tint = Color(0xFF059669), modifier = Modifier.size(20.dp))
                         }
                     }
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "Quickly access and set your favorite pickup and drop-off destinations for 1-tap bookings.",
+                        "Tap any saved place to instantly calculate route & book ride or package dispatch.",
                         fontSize = 12.sp,
-                        color = Color(0xFF1E40AF),
+                        color = Color(0xFF065F46),
                         lineHeight = 16.sp,
+                        fontWeight = FontWeight.Medium,
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            // Section 1: QUICK ACCESS & FAVORITES
+            // Section 1: PRIMARY ROUTINE SPOTS
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(modifier = Modifier.size(6.dp).background(Color(0xFF2563EB), CircleShape))
-                    Text("QUICK ACCESS & FAVORITES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                    Text("PRIMARY ROUTINE SPOTS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
                 }
-                Text("${savedPlacesLocal.size} Saved", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Text("${savedPlacesLocal.size} Saved", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
             }
 
             Card(
@@ -793,48 +799,92 @@ fun CustomerManagePlacesScreen(
                     // Home
                     SavedPlaceRowItem(
                         icon = Icons.Default.Home,
-                        iconColor = Color(0xFF2563EB),
+                        iconColor = Color(0xFF059669),
                         title = "Home",
-                        subtitle = homePlace?.address ?: "Temple Street, Santa Maria, Sowutuom",
-                        badge = "Primary",
-                        subBadge = "● Set as routine pickup",
-                        onClick = { if (homePlace != null) onEditPlace(homePlace.id.toInt(), "Home") else onAddPlace("Home") }
+                        subtitle = homePlace?.address ?: "East Legon, Accra",
+                        badge = "SPEED DIAL",
+                        subBadge = "● Tap for 1-click booking",
+                        onSelect = {
+                            if (homePlace != null) {
+                                viewModel.selectSavedPlace(homePlace)
+                            } else {
+                                viewModel.applyShortcut("Home")
+                            }
+                            onSelectPlace(homePlace ?: SavedPlace(id = "home", customerId = "0", label = "Home", address = "East Legon", latitude = 5.6358, longitude = -0.1601))
+                        },
+                        onEdit = { if (homePlace != null) onEditPlace(homePlace.id.toInt(), "Home") else onAddPlace("Home") },
+                        onDelete = { homePlace?.let { viewModel.deleteSavedPlace(it.id) } }
                     )
                     HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                     // Work
                     SavedPlaceRowItem(
                         icon = Icons.Default.Work,
-                        iconColor = Color(0xFF7C3AED),
+                        iconColor = Color(0xFF2563EB),
                         title = "Work",
-                        subtitle = workPlace?.address ?: "Trako Street, Nyamekye, Abeka",
-                        subBadge = "Usual hours: 8:00 AM - 5:30 PM",
-                        onClick = { if (workPlace != null) onEditPlace(workPlace.id.toInt(), "Work") else onAddPlace("Work") }
+                        subtitle = workPlace?.address ?: "Airport City, Accra",
+                        badge = "SPEED DIAL",
+                        subBadge = "● Tap for 1-click booking",
+                        onSelect = {
+                            if (workPlace != null) {
+                                viewModel.selectSavedPlace(workPlace)
+                            } else {
+                                viewModel.applyShortcut("Work")
+                            }
+                            onSelectPlace(workPlace ?: SavedPlace(id = "work", customerId = "0", label = "Work", address = "Airport City", latitude = 5.6037, longitude = -0.1870))
+                        },
+                        onEdit = { if (workPlace != null) onEditPlace(workPlace.id.toInt(), "Work") else onAddPlace("Work") },
+                        onDelete = { workPlace?.let { viewModel.deleteSavedPlace(it.id) } }
                     )
                 }
             }
 
-            // Section 2: OTHER PLACES
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(modifier = Modifier.size(6.dp).background(Color.Gray, CircleShape))
-                    Text("OTHER PLACES", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+            // Section 2: FAVORITES & CUSTOM SPOTS
+            if (otherPlaces.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(modifier = Modifier.size(6.dp).background(Color(0xFFD97706), CircleShape))
+                        Text("FAVORITES & CUSTOM SPOTS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+                    }
                 }
 
-                Surface(
-                    onClick = { onAddPlace("Favorite") },
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFEFF6FF),
-                    border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
-                    Text("+ Add new", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                    Column {
+                        otherPlaces.forEachIndexed { index, place ->
+                            SavedPlaceRowItem(
+                                icon = when (place.label.lowercase()) {
+                                    "gym" -> Icons.Default.FitnessCenter
+                                    "airport" -> Icons.Default.Flight
+                                    else -> Icons.Default.Star
+                                },
+                                iconColor = Color(0xFFD97706),
+                                title = place.label,
+                                subtitle = place.address,
+                                badge = "SPEED DIAL",
+                                onSelect = {
+                                    viewModel.selectSavedPlace(place)
+                                    onSelectPlace(place)
+                                },
+                                onEdit = { onEditPlace(place.id.toIntOrNull() ?: 0, place.label) },
+                                onDelete = { viewModel.deleteSavedPlace(place.id) }
+                            )
+                            if (index < otherPlaces.size - 1) {
+                                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                            }
+                        }
+                    }
                 }
             }
 
-            // Add new saved place card
+            // Section 3: ADD NEW PLACE CARD
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -866,7 +916,7 @@ fun CustomerManagePlacesScreen(
             }
 
             // Suggested categories
-            Text("SUGGESTED CATEGORIES", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
+            Text("QUICK ADD CATEGORIES", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 1.sp)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -875,22 +925,9 @@ fun CustomerManagePlacesScreen(
             ) {
                 SuggestedCategoryChip("💪 Gym") { onAddPlace("Gym") }
                 SuggestedCategoryChip("❤️ Partner's Place") { onAddPlace("Partner") }
-                SuggestedCategoryChip("✈️ Airport (Accra)") { onAddPlace("Airport") }
+                SuggestedCategoryChip("✈️ Kotoka Airport") { onAddPlace("Airport") }
             }
 
-            // Footer Status
-            Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
-                    Text("Accra GPS sync active", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-                }
-                Text("Privacy & Sharing", fontSize = 11.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Bold)
-            }
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -916,34 +953,36 @@ fun SavedPlaceRowItem(
     subtitle: String,
     badge: String? = null,
     subBadge: String? = null,
-    onClick: () -> Unit
+    onSelect: () -> Unit = {},
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(16.dp),
+            .clickable { onSelect() }
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = iconColor.copy(alpha = 0.1f),
+            color = iconColor.copy(alpha = 0.12f),
             modifier = Modifier.size(44.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
             }
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
                 badge?.let {
                     Surface(
-                        color = Color(0xFFECFDF5),
+                        color = Color(0xFFF1F5F9),
                         shape = RoundedCornerShape(6.dp)
                     ) {
-                        Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        Text(it, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                     }
                 }
             }
@@ -951,12 +990,26 @@ fun SavedPlaceRowItem(
             Text(subtitle, color = Color.Gray, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             subBadge?.let {
                 Spacer(Modifier.height(2.dp))
-                Text(it, fontSize = 11.sp, color = Color(0xFF2563EB), fontWeight = FontWeight.Bold)
+                Text(it, fontSize = 11.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
             }
         }
-        Icon(Icons.Default.DeleteOutline, null, tint = Color.LightGray, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.LightGray, modifier = Modifier.size(12.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+            }
+            Surface(
+                shape = CircleShape,
+                color = FamekoBlue,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable { onSelect() }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Directions, contentDescription = "Book Trip", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
     }
 }
 

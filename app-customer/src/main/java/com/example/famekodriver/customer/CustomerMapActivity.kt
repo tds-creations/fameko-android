@@ -616,19 +616,12 @@ fun CustomerMapScreen() {
                 CustomerScreen.Safety -> {
                     CustomerSafetyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
                 }
-                CustomerScreen.ManagePlaces -> {
+                CustomerScreen.ManagePlaces, CustomerScreen.SavedPlacesSpeedDial -> {
                     CustomerManagePlacesScreen(
-                        viewModel = mapViewModel,
-                        onBack = { mapViewModel.navigateTo(CustomerScreen.Account) },
-                        onAddPlace = { label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label)) },
-                        onEditPlace = { id, label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label, id.toString())) }
-                    )
-                }
-                CustomerScreen.SavedPlacesSpeedDial -> {
-                    com.example.famekodriver.customer.ui.screens.SavedPlacesSpeedDialScreen(
                         viewModel = mapViewModel,
                         onBack = { mapViewModel.navigateTo(CustomerScreen.Landing) },
                         onAddPlace = { label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label)) },
+                        onEditPlace = { id, label -> mapViewModel.navigateTo(CustomerScreen.SaveLocationSearch(label, id.toString())) },
                         onSelectPlace = { mapViewModel.navigateTo(CustomerScreen.MainMap) }
                     )
                 }
