@@ -86,35 +86,60 @@ fun SaveLocationSearchScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Box(modifier = Modifier.padding(16.dp).navigationBarsPadding()) {
-                    Button(
-                        onClick = {
-                            val target = selectedSuggestion ?: LocationSuggestion(
-                                displayName = searchQuery.ifBlank { "East Legon, Accra" },
-                                latitude = "5.6358",
-                                longitude = "-0.1601",
-                                name = customLabel
-                            )
-                            if (placeId != null) {
-                                viewModel.updateSavedPlace(placeId, customLabel, target)
-                            } else {
-                                viewModel.savePlace(target, customLabel)
-                            }
-                            android.widget.Toast.makeText(context, "Saved $customLabel location", android.widget.Toast.LENGTH_SHORT).show()
-                            onBack()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
-                        shape = RoundedCornerShape(14.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = if (placeId != null) "Update Saved Location" else "Save Location",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
+                        if (placeId != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.deleteSavedPlace(placeId)
+                                    android.widget.Toast.makeText(context, "Deleted $customLabel location", android.widget.Toast.LENGTH_SHORT).show()
+                                    onBack()
+                                },
+                                modifier = Modifier
+                                    .weight(0.4f)
+                                    .height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, Color(0xFFEF4444)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444))
+                            ) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Delete", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                val target = selectedSuggestion ?: LocationSuggestion(
+                                    displayName = searchQuery.ifBlank { "East Legon, Accra" },
+                                    latitude = "5.6358",
+                                    longitude = "-0.1601",
+                                    name = customLabel
+                                )
+                                if (placeId != null) {
+                                    viewModel.updateSavedPlace(placeId, customLabel, target)
+                                } else {
+                                    viewModel.savePlace(target, customLabel)
+                                }
+                                android.widget.Toast.makeText(context, "Saved $customLabel location", android.widget.Toast.LENGTH_SHORT).show()
+                                onBack()
+                            },
+                            modifier = Modifier
+                                .weight(if (placeId != null) 0.6f else 1f)
+                                .height(52.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (placeId != null) "Update Location" else "Save Location",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }

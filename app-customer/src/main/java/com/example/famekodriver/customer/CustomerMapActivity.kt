@@ -615,6 +615,7 @@ fun CustomerMapScreen() {
                 }
                 CustomerScreen.Safety -> {
                     CustomerSafetyScreen(onBack = { mapViewModel.navigateTo(CustomerScreen.Account) })
+
                 }
                 CustomerScreen.ManagePlaces, CustomerScreen.SavedPlacesSpeedDial -> {
                     CustomerManagePlacesScreen(

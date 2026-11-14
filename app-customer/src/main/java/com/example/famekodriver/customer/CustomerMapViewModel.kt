@@ -617,8 +617,23 @@ class CustomerMapViewModel(
         fetchPickupSuggestions(query)
     }
 
+    private fun fetchPickupSuggestions(query: String) {
+        pickupSearchJob?.cancel()
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) {
+            pickupSuggestions = recentPlaces
+            return
+        }
+        pickupSearchJob = viewModelScope.launch {
+            repository.getGeocodeSuggestions(trimmed, biasLat = pickupLat, biasLng = pickupLng).onSuccess { 
+                pickupSuggestions = it 
+            }.onFailure {
+                pickupSuggestions = emptyList()
+            }
+        }
+    }
+
     fun updateDropOffLocation(query: String) {
-        if (query == dropOffLocation) return
         dropOffLocation = query
         dropOffLat = null
         dropOffLng = null
@@ -633,7 +648,6 @@ class CustomerMapViewModel(
         newStops[index] = query
         stops = newStops
         
-        // Clear point if text is edited manually
         if (stopPoints.containsKey(index)) {
             stopPoints = stopPoints.toMutableMap().apply { remove(index) }
         }
@@ -653,7 +667,6 @@ class CustomerMapViewModel(
         newStops.removeAt(index)
         stops = newStops
         
-        // Shift stop points
         val newPoints = mutableMapOf<Int, LatLng>()
         stopPoints.forEach { (idx, latLng) ->
             when {
@@ -685,66 +698,49 @@ class CustomerMapViewModel(
         }
     }
 
-    private fun fetchPickupSuggestions(query: String) {
-        pickupSearchJob?.cancel()
-        if (query.isBlank()) {
-            val suggestions = if (selectedTab == 0) {
-                recentPlaces
-            } else {
-                savedPlaces.value.map { 
-                    LocationSuggestion(displayName = it.address, latitude = it.latitude.toString(), longitude = it.longitude.toString(), name = it.label, type = "saved")
-                }
-            }
-            pickupSuggestions = suggestions
-            return
-        }
-        if (query.length > 2) {
-            pickupSearchJob = viewModelScope.launch {
-                delay(500.milliseconds)
-                repository.getGeocodeSuggestions(query, biasLat = pickupLat, biasLng = pickupLng).onSuccess { 
-                    pickupSuggestions = it 
-                }.onFailure {
-                    pickupSuggestions = emptyList()
-                }
-            }
-        } else {
-            pickupSuggestions = emptyList()
-        }
-    }
-
     private fun fetchDropOffSuggestions(query: String) {
         dropOffSearchJob?.cancel()
         val trimmed = query.trim()
+        
+        val defaultAccraSpots = listOf(
+            LocationSuggestion("East Legon, Accra", "5.6358", "-0.1601", "East Legon", "recent"),
+            LocationSuggestion("Kotoka Int. Airport (ACC), Accra", "5.6037", "-0.1870", "Kotoka Airport", "recent"),
+            LocationSuggestion("Accra Mall, Spintex Rd, Accra", "5.6225", "-0.1772", "Accra Mall", "recent"),
+            LocationSuggestion("Airport City, Accra", "5.6030", "-0.1840", "Airport City", "recent"),
+            LocationSuggestion("Spintex Road, Accra", "5.6300", "-0.1300", "Spintex", "recent"),
+            LocationSuggestion("Kaneshie Market, Accra", "5.5601", "-0.2335", "Kaneshie", "recent"),
+            LocationSuggestion("Dansoman Roundabout, Accra", "5.5458", "-0.2601", "Dansoman", "recent"),
+            LocationSuggestion("Lapaz Station, Accra", "5.6088", "-0.2325", "Lapaz", "recent"),
+            LocationSuggestion("Osu Oxford Street, Accra", "5.5560", "-0.1830", "Osu", "recent"),
+            LocationSuggestion("Circle Kwame Nkrumah Interchange, Accra", "5.5580", "-0.2070", "Circle", "recent"),
+            LocationSuggestion("Madina Zongo Junction, Accra", "5.6680", "-0.1680", "Madina", "recent"),
+            LocationSuggestion("Achimota Retail Centre, Accra", "5.6220", "-0.2240", "Achimota", "recent"),
+            LocationSuggestion("Cantonments, Accra", "5.5780", "-0.1760", "Cantonments", "recent"),
+            LocationSuggestion("Labone, Accra", "5.5620", "-0.1700", "Labone", "recent"),
+            LocationSuggestion("Ridge, Accra", "5.5570", "-0.1980", "Ridge", "recent"),
+            LocationSuggestion("Dome Pillar 2, Accra", "5.6420", "-0.2290", "Dome", "recent"),
+            LocationSuggestion("Tema Station, Accra Central", "5.5480", "-0.2010", "Tema Station", "recent"),
+            LocationSuggestion("Korle Bu Teaching Hospital, Accra", "5.5380", "-0.2260", "Korle Bu", "recent")
+        )
+
+        val baseList = (recentPlaces + defaultAccraSpots).distinctBy { it.displayName }
+
         if (trimmed.isEmpty()) {
-            val suggestions = if (selectedTab == 0) {
-                recentPlaces
-            } else {
-                savedPlaces.value.map { 
-                    LocationSuggestion(displayName = it.address, latitude = it.latitude.toString(), longitude = it.longitude.toString(), name = it.label, type = "saved")
-                }
-            }
-            dropOffSuggestions = suggestions
+            dropOffSuggestions = baseList
             return
         }
 
+        // Instant local matching
+        val matchingLocal = baseList.filter { spot ->
+            spot.displayName.contains(trimmed, ignoreCase = true) || (spot.name?.contains(trimmed, ignoreCase = true) == true)
+        }
+        dropOffSuggestions = matchingLocal.ifEmpty { baseList }
+
         dropOffSearchJob = viewModelScope.launch {
-            delay(150.milliseconds)
             repository.getGeocodeSuggestions(trimmed, biasLat = pickupLat, biasLng = pickupLng).onSuccess { list ->
                 if (list.isNotEmpty()) {
-                    dropOffSuggestions = list
-                } else {
-                    val local = listOf(
-                        LocationSuggestion("East Legon, Accra", "5.6358", "-0.1601", "East Legon", "recent"),
-                        LocationSuggestion("Kotoka Int. Airport (ACC), Accra", "5.6037", "-0.1870", "Kotoka Airport", "recent"),
-                        LocationSuggestion("Accra Mall, Spintex Rd, Accra", "5.6225", "-0.1772", "Accra Mall", "recent"),
-                        LocationSuggestion("Kaneshie Market, Accra", "5.5601", "-0.2335", "Kaneshie", "recent"),
-                        LocationSuggestion("Dansoman Roundabout, Accra", "5.5458", "-0.2601", "Dansoman", "recent"),
-                        LocationSuggestion("Lapaz Station, Accra", "5.6088", "-0.2325", "Lapaz", "recent")
-                    ).filter { spot -> spot.displayName.contains(trimmed, ignoreCase = true) || (spot.name?.contains(trimmed, ignoreCase = true) == true) }
-                    dropOffSuggestions = local
+                    dropOffSuggestions = (list + matchingLocal).distinctBy { it.displayName }
                 }
-            }.onFailure {
-                dropOffSuggestions = emptyList()
             }
         }
     }
