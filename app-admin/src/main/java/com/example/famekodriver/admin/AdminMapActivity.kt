@@ -74,9 +74,9 @@ class AdminMapActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Initialize OSMDroid configuration
+        // Initialize OSMDroid configuration with custom User-Agent to comply with OSM Tile Usage Policy
         Configuration.getInstance().load(this, getPreferences(MODE_PRIVATE))
-        Configuration.getInstance().userAgentValue = packageName
+        Configuration.getInstance().userAgentValue = "FamekoAdminPlatform/2.0 (com.fameko.mobility.admin; contact@fameko.com)"
 
         // Start SOS Monitoring Service
         val serviceIntent = Intent(this, AdminSOSService::class.java)
@@ -222,7 +222,7 @@ fun AdminMapScreen(
     val context = LocalContext.current
     
     // Ensure OSMDroid is configured
-    Configuration.getInstance().userAgentValue = context.packageName
+    Configuration.getInstance().userAgentValue = "FamekoAdminPlatform/2.0 (com.fameko.mobility.admin; contact@fameko.com)"
 
     val mapView = remember { MapView(context) }
 
