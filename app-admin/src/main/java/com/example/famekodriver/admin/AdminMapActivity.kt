@@ -10,7 +10,9 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +33,7 @@ import com.example.famekodriver.core.utils.ImageLinks
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -922,10 +925,16 @@ fun AdminCustomersScreen(viewModel: AdminViewModel = viewModel()) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDeliveriesScreen(viewModel: AdminViewModel = viewModel()) {
+    val context = LocalContext.current
     var deliveries by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
+
+    val tabs = listOf("ALL", "ACTIVE", "PENDING", "DELIVERED", "CANCELLED")
 
     LaunchedEffect(Unit) {
         viewModel.getAdminDeliveries().onSuccess {
@@ -934,36 +943,210 @@ fun AdminDeliveriesScreen(viewModel: AdminViewModel = viewModel()) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Live Orders", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(16.dp))
+    val filteredDeliveries = deliveries.filter { order ->
+        val status = (order["status"] as? String ?: "PENDING").uppercase()
+        when (selectedTab) {
+            1 -> status == "ASSIGNED" || status == "ARRIVED" || status == "IN_TRANSIT" || status == "ON_TRIP"
+            2 -> status == "PENDING" || status == "SCHEDULED"
+            3 -> status == "DELIVERED" || status == "COMPLETED"
+            4 -> status == "CANCELLED"
+            else -> true
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Customer Orders", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                Text("${deliveries.size} Total Platform Orders", fontSize = 12.sp, color = Color.Gray)
+            }
+
+            IconButton(onClick = {
+                isLoading = true
+                scope.launch {
+                    viewModel.getAdminDeliveries().onSuccess {
+                        deliveries = it
+                        isLoading = false
+                    }
+                }
+            }) {
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = FamekoPrimary)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Filter Tabs
+        ScrollableTabRow(
+            selectedTabIndex = selectedTab,
+            edgePadding = 0.dp,
+            containerColor = Color.Transparent,
+            divider = {}
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = {
+                        Text(
+                            text = title,
+                            fontWeight = if (selectedTab == index) FontWeight.Black else FontWeight.Bold,
+                            color = if (selectedTab == index) FamekoPrimary else Color.Gray,
+                            fontSize = 12.sp
+                        )
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         if (isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = FamekoPrimary)
             }
-        } else if (deliveries.isEmpty()) {
+        } else if (filteredDeliveries.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No active orders")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Inbox, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(48.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text("No orders match this filter", color = Color.Gray, fontWeight = FontWeight.Bold)
+                }
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(deliveries) { delivery ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(2.dp)
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("#${delivery["id"]}", fontWeight = FontWeight.Bold, color = FamekoPrimary)
-                                Text(delivery["status"] as? String ?: "PENDING", fontWeight = FontWeight.Bold, color = Color(0xFF3182CE), fontSize = 12.sp)
+                items(filteredDeliveries) { order ->
+                    AdminOrderCard(
+                        order = order,
+                        onCallPhone = { phone ->
+                            if (!phone.isNullOrBlank()) {
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+                                context.startActivity(intent)
                             }
-                            Spacer(Modifier.height(8.dp))
-                            Text("From: ${delivery["pickup"]}", fontSize = 12.sp)
-                            Text("To: ${delivery["dropoff"]}", fontSize = 12.sp)
                         }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminOrderCard(
+    order: Map<String, Any>,
+    onCallPhone: (String?) -> Unit
+) {
+    val orderId = order["id"]?.toString() ?: "0"
+    val status = (order["status"] as? String ?: "PENDING").uppercase()
+    val amount = (order["amount"] as? Number)?.toDouble() ?: 0.0
+    val pickup = order["pickup"] as? String ?: "Pickup Spot"
+    val dropoff = order["dropoff"] as? String ?: "Dropoff Spot"
+    val customerName = order["customer_name"] as? String ?: "Customer"
+    val customerPhone = order["customer_phone"] as? String ?: ""
+    val driverName = order["driver_name"] as? String ?: "Unassigned"
+    val driverPhone = order["driver_phone"] as? String ?: ""
+    val vehicleType = order["vehicle_type"] as? String ?: "Ride"
+    val recipientName = order["recipient_name"] as? String
+    val recipientPhone = order["recipient_phone"] as? String
+
+    val (statusColor, statusBg) = when (status) {
+        "DELIVERED", "COMPLETED" -> Pair(Color(0xFF059669), Color(0xFFECFDF5))
+        "ASSIGNED", "ARRIVED", "IN_TRANSIT", "ON_TRIP" -> Pair(Color(0xFF2563EB), Color(0xFFEFF6FF))
+        "CANCELLED" -> Pair(Color(0xFFDC2626), Color(0xFFFEF2F2))
+        else -> Pair(Color(0xFFD97706), Color(0xFFFEF3C7))
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            // Header: ID + Status + Fare
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("#$orderId", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
+                    Surface(color = statusBg, shape = RoundedCornerShape(6.dp)) {
+                        Text(status, fontSize = 10.sp, fontWeight = FontWeight.Black, color = statusColor, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+                    }
+                }
+                Text("GH₵ %.2f".format(amount), fontWeight = FontWeight.Black, fontSize = 17.sp, color = Color(0xFF0F172A))
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Surface(color = Color(0xFFF8FAFC), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Category: $vehicleType",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF475569),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Route Details
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, null, tint = Color(0xFF059669), modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(pickup, fontSize = 12.sp, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Flag, null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(dropoff, fontSize = 12.sp, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFF1F5F9))
+
+            // Participants Details
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                // Customer Column
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("CUSTOMER", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text(customerName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    if (customerPhone.isNotEmpty()) {
+                        Text(customerPhone, fontSize = 11.sp, color = Color(0xFF2563EB), modifier = Modifier.clickable { onCallPhone(customerPhone) })
+                    }
+                }
+
+                // Driver Column
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("DRIVER", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    Text(driverName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    if (driverPhone.isNotEmpty()) {
+                        Text(driverPhone, fontSize = 11.sp, color = Color(0xFF2563EB), modifier = Modifier.clickable { onCallPhone(driverPhone) })
+                    }
+                }
+            }
+
+            // Recipient Info if available
+            if (!recipientName.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Surface(color = Color(0xFFEFF6FF), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PersonPin, null, tint = Color(0xFF2563EB), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Recipient: $recipientName (${recipientPhone ?: ""})", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E40AF))
                     }
                 }
             }

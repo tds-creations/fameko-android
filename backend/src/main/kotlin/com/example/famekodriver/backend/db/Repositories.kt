@@ -427,28 +427,49 @@ object DatabaseRepository {
     }
 
     fun getActiveDeliveries(): List<Map<String, Any>> {
+        return getAllOrders()
+    }
+
+    fun getAllOrders(): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
-        DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = """
-                SELECT d.*, o.total_amount, dr.full_name as driver_name 
-                FROM deliveries d 
-                JOIN orders o ON d.order_id = o.id 
-                LEFT JOIN drivers dr ON d.driver_id = dr.id
-                WHERE d.status != 'DELIVERED' AND d.status != 'CANCELLED'
-                ORDER BY d.id DESC
-            """.trimIndent()
-            val rs = conn.createStatement().executeQuery(sql)
-            while (rs.next()) {
-                list.add(mapOf(
-                    "id" to rs.getInt("id"), 
-                    "pickup" to rs.getString("pickup_location"), 
-                    "dropoff" to rs.getString("dropoff_location"), 
-                    "status" to rs.getString("status"), 
-                    "amount" to rs.getDouble("total_amount"),
-                    "service_type" to (rs.getString("service_type") ?: "RIDE_HAILING"),
-                    "driver_name" to (rs.getString("driver_name") ?: "Unassigned")
-                ))
+        try {
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = """
+                    SELECT o.id as order_id, o.status, o.total_amount, o.pickup_location, o.dropoff_location, o.created_at,
+                           o.recipient_name, o.recipient_phone, o.package_category, o.is_fragile, o.package_notes, o.requested_vehicle_type,
+                           c.name as customer_name, c.phone as customer_phone,
+                           d.id as delivery_id, d.driver_id, dr.full_name as driver_name, dr.phone_number as driver_phone, dr.vehicle_type
+                    FROM orders o
+                    LEFT JOIN customers c ON o.customer_id = c.id
+                    LEFT JOIN deliveries d ON o.id = d.order_id
+                    LEFT JOIN drivers dr ON d.driver_id = dr.id
+                    ORDER BY o.id DESC
+                """.trimIndent()
+                val rs = conn.createStatement().executeQuery(sql)
+                while (rs.next()) {
+                    val map = mutableMapOf<String, Any>()
+                    map["id"] = rs.getInt("order_id")
+                    map["status"] = rs.getString("status") ?: "PENDING"
+                    map["amount"] = rs.getDouble("total_amount")
+                    map["pickup"] = rs.getString("pickup_location") ?: "Pickup Spot"
+                    map["dropoff"] = rs.getString("dropoff_location") ?: "Dropoff Spot"
+                    map["created_at"] = rs.getString("created_at") ?: ""
+                    map["customer_name"] = rs.getString("customer_name") ?: "Customer"
+                    map["customer_phone"] = rs.getString("customer_phone") ?: ""
+                    map["driver_name"] = rs.getString("driver_name") ?: "Searching for Driver..."
+                    map["driver_phone"] = rs.getString("driver_phone") ?: ""
+                    map["driver_vehicle"] = rs.getString("vehicle_type") ?: ""
+                    rs.getString("recipient_name")?.let { map["recipient_name"] = it }
+                    rs.getString("recipient_phone")?.let { map["recipient_phone"] = it }
+                    rs.getString("package_category")?.let { map["package_category"] = it }
+                    map["vehicle_type"] = rs.getString("requested_vehicle_type") ?: rs.getString("package_category") ?: "Ride"
+                    map["is_fragile"] = rs.getBoolean("is_fragile")
+                    rs.getString("package_notes")?.let { map["package_notes"] = it }
+                    list.add(map)
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         return list
     }
