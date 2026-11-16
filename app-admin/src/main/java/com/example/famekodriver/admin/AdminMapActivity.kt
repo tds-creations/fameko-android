@@ -37,6 +37,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.platform.LocalView
+import android.net.Uri
+import com.example.famekodriver.core.network.NetworkClient
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,19 +48,16 @@ import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.SOSAlert
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.util.MapTileIndex
-import org.osmdroid.views.CustomZoomButtonsController
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import java.util.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
+import java.util.*
 
 sealed class AdminScreen(val route: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: String) {
     object Dashboard : AdminScreen("dashboard", Icons.Default.Dashboard, "Dashboard")
@@ -76,9 +75,8 @@ class AdminMapActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Initialize OSMDroid configuration with custom User-Agent to comply with OSM Tile Usage Policy
-        Configuration.getInstance().load(this, getPreferences(MODE_PRIVATE))
-        Configuration.getInstance().userAgentValue = "FamekoAdminPlatform/2.0 (com.fameko.mobility.admin; contact@fameko.com)"
+        // Initialize MapLibre Vector Map Engine
+        MapLibre.getInstance(this)
 
         // Start SOS Monitoring Service
         val serviceIntent = Intent(this, AdminSOSService::class.java)
@@ -99,7 +97,7 @@ class AdminMapActivity : ComponentActivity() {
 fun AdminMainContent() {
     var currentScreen by remember { mutableStateOf<AdminScreen>(AdminScreen.Dashboard) }
     var selectedDriverId by remember { mutableStateOf<Int?>(null) }
-    var targetMapLocation by remember { mutableStateOf<GeoPoint?>(null) }
+    var targetMapLocation by remember { mutableStateOf<LatLng?>(null) }
     val adminViewModel: AdminViewModel = viewModel()
     val context = LocalContext.current
     val view = LocalView.current
@@ -163,7 +161,7 @@ fun AdminMainContent() {
                         val targetLng = (liveDriver?.get("lng") as? Double) ?: alertLng
                         
                         if (targetLat != 0.0) {
-                            targetMapLocation = GeoPoint(targetLat, targetLng)
+                            targetMapLocation = LatLng(targetLat, targetLng)
                             currentScreen = AdminScreen.Map
                         } else {
                             Toast.makeText(context, "Location unavailable", Toast.LENGTH_SHORT).show()
@@ -217,158 +215,303 @@ class AdminViewModel : ViewModel() {
 @Composable
 fun AdminMapScreen(
     viewModel: AdminViewModel = viewModel(),
-    targetLocation: GeoPoint? = null
+    targetLocation: LatLng? = null,
+    onInspectDriver: (Int) -> Unit = {}
 ) {
     var weather by remember { mutableStateOf<com.example.famekodriver.core.domain.model.WeatherResponse?>(null) }
     var lastWeatherUpdate by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    
-    // Ensure OSMDroid is configured
-    Configuration.getInstance().userAgentValue = "FamekoAdminPlatform/2.0 (com.fameko.mobility.admin; contact@fameko.com)"
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
 
-    val mapView = remember { MapView(context) }
+    val mapView = remember { org.maplibre.android.maps.MapView(context) }
+    var mapLibreMap by remember { mutableStateOf<org.maplibre.android.maps.MapLibreMap?>(null) }
+    var selectedDriver by remember { mutableStateOf<Map<String, Any?>?>(null) }
+
+    DisposableEffect(lifecycle, mapView) {
+        mapView.onCreate(null)
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_START -> mapView.onStart()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> mapView.onStop()
+                androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                else -> {}
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+        }
+    }
+
+    var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var carBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(Unit) {
+        val localMotorDrawable = ContextCompat.getDrawable(context, R.drawable.ic_okada)
+        val resultMotor = localMotorDrawable?.toBitmap() ?: run {
+            val loader = context.imageLoader
+            val request = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
+            (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+        }
+        if (resultMotor != null) {
+            motorbikeBitmap = Bitmap.createScaledBitmap(resultMotor, 32, 32, false)
+        }
+
+        val resultCar = run {
+            val loader = context.imageLoader
+            val request = ImageRequest.Builder(context).data(ImageLinks.IC_CAR_SALOON).build()
+            (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+        }
+        if (resultCar != null) {
+            carBitmap = Bitmap.createScaledBitmap(resultCar, 32, 32, false)
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
             viewModel.refreshLiveLocations()
-            
-            // Fetch weather for Accra center
             viewModel.getCurrentWeather(5.6037, -0.1870)
                 .onSuccess {
                     weather = it
                     lastWeatherUpdate = java.text.SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
                 }
-            
-            delay(10000L) // Refresh every 10 seconds
+            delay(10000L)
         }
     }
 
-    LaunchedEffect(targetLocation) {
-        targetLocation?.let {
-            mapView.controller.animateTo(it)
-            mapView.controller.setZoom(16.0)
+    // Update live drivers on MapLibre GPU style layer
+    LaunchedEffect(mapLibreMap, viewModel.liveDrivers, motorbikeBitmap, carBitmap) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        map.getStyle { style ->
+            motorbikeBitmap?.let { style.addImage("icon-okada", it) }
+            carBitmap?.let { style.addImage("icon-car", it) }
+            (carBitmap ?: motorbikeBitmap)?.let { style.addImage("driver-icon", it) }
+
+            val source = style.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("drivers-source")
+            if (source != null) {
+                val features = viewModel.liveDrivers.mapNotNull { driver ->
+                    val lat = driver["lat"] as? Double ?: 0.0
+                    val lng = driver["lng"] as? Double ?: 0.0
+                    if (lat == 0.0 || lng == 0.0) return@mapNotNull null
+
+                    val feature = org.maplibre.geojson.Feature.fromGeometry(
+                        org.maplibre.geojson.Point.fromLngLat(lng, lat)
+                    )
+                    val vType = (driver["vehicle"] as? String)?.lowercase() ?: ""
+                    val iconId = when {
+                        vType.contains("okada") || vType.contains("bike") || vType.contains("motorcycle") || vType.contains("rider") || vType.contains("motorbike") || vType.contains("motor") -> "icon-okada"
+                        else -> "icon-car"
+                    }
+                    feature.addStringProperty("icon-id", iconId)
+                    feature.addStringProperty("driver-id", driver["id"].toString())
+                    feature.addStringProperty("driver-name", (driver["name"] ?: "Driver").toString())
+                    feature.addNumberProperty("bearing", (driver["bearing"] as? Number)?.toFloat() ?: 0f)
+                    feature
+                }
+                source.setGeoJson(org.maplibre.geojson.FeatureCollection.fromFeatures(features))
+            }
         }
     }
 
-    DisposableEffect(Unit) {
-        mapView.onResume()
-        onDispose {
-            mapView.onPause()
-            mapView.onDetach()
-        }
-    }
-
-    var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(Unit) {
-        val localMotorDrawable = ContextCompat.getDrawable(context, R.drawable.ic_okada)
-        val result = localMotorDrawable?.toBitmap() ?: run {
-            val loader = context.imageLoader
-            val request = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
-            (loader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
-        }
-        if (result != null) {
-            motorbikeBitmap = Bitmap.createScaledBitmap(result, 32, 32, false)
+    // Camera animation for target location
+    LaunchedEffect(mapLibreMap, targetLocation) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        targetLocation?.let { loc ->
+            val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                .target(org.maplibre.android.geometry.LatLng(loc.latitude, loc.longitude))
+                .zoom(16.0)
+                .build()
+            map.animateCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(cameraPosition))
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = {
-                val cartoSource = object : OnlineTileSourceBase(
-                    "CartoDBVoyager",
-                    1, 19, 256, ".png",
-                    arrayOf(
-                        "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
-                        "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
-                        "https://c.basemaps.cartocdn.com/rastertiles/voyager/",
-                        "https://d.basemaps.cartocdn.com/rastertiles/voyager/"
-                    )
-                ) {
-                    override fun getTileURLString(pMapTileIndex: Long): String {
-                        return baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex) + "/" + MapTileIndex.getY(pMapTileIndex) + mImageFilenameEnding
-                    }
-                }
                 mapView.apply {
-                    setTileSource(cartoSource)
-                    setMultiTouchControls(true)
-                    zoomController.setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
-                    controller.setZoom(12.0)
-                    controller.setCenter(GeoPoint(5.6037, -0.1870)) // Accra center
-                    setBuiltInZoomControls(true)
-                }
-            },
-            modifier = Modifier.fillMaxSize().background(Color.LightGray),
-            update = { mv ->
-                mv.overlays.clear()
-                viewModel.liveDrivers.forEach { driver ->
-                    val lat = driver["lat"] as? Double ?: 0.0
-                    val lng = driver["lng"] as? Double ?: 0.0
-                    if (lat != 0.0) {
-                        val marker = Marker(mv).apply {
-                            position = GeoPoint(lat, lng)
-                            title = driver["name"] as? String ?: "Driver"
-                            snippet = "Vehicle: ${driver["vehicle"] ?: "N/A"}"
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            
-                            val vehicleType = (driver["vehicle"] as? String)?.lowercase() ?: ""
-                            if (vehicleType.contains("okada") || vehicleType.contains("bike") || vehicleType.contains("motorcycle") || vehicleType.contains("rider") || vehicleType.contains("motorbike") || vehicleType.contains("motor")) {
-                                motorbikeBitmap?.let { 
-                                    icon = BitmapDrawable(context.resources, it)
+                    getMapAsync { map ->
+                        mapLibreMap = map
+                        val styleUrl = "https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBAZFVDV2NzZ09mRGhEaU9MdDsVGbKlskhOMbwzZ3vdhit8?key=${NetworkClient.TOMTOM_API_KEY}"
+                        map.setStyle(styleUrl) { style ->
+                            motorbikeBitmap?.let { style.addImage("icon-okada", it) }
+                            carBitmap?.let { style.addImage("icon-car", it) }
+                            (carBitmap ?: motorbikeBitmap)?.let { style.addImage("driver-icon", it) }
+
+                            style.addSource(org.maplibre.android.style.sources.GeoJsonSource("drivers-source"))
+                            val layer = org.maplibre.android.style.layers.SymbolLayer("drivers-layer", "drivers-source").apply {
+                                withProperties(
+                                    org.maplibre.android.style.layers.PropertyFactory.iconImage(
+                                        org.maplibre.android.style.expressions.Expression.coalesce(
+                                            org.maplibre.android.style.expressions.Expression.get("icon-id"),
+                                            org.maplibre.android.style.expressions.Expression.literal("icon-car")
+                                        )
+                                    ),
+                                    org.maplibre.android.style.layers.PropertyFactory.iconRotate(
+                                        org.maplibre.android.style.expressions.Expression.get("bearing")
+                                    ),
+                                    org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
+                                    org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true)
+                                )
+                            }
+                            style.addLayer(layer)
+                        }
+
+                        map.addOnMapClickListener { point ->
+                            val screenPoint = map.projection.toScreenLocation(point)
+                            val features = map.queryRenderedFeatures(screenPoint, "drivers-layer")
+                            if (features.isNotEmpty()) {
+                                val clickedId = features.first().getStringProperty("driver-id")
+                                val driverMatch = viewModel.liveDrivers.find { it["id"].toString() == clickedId }
+                                if (driverMatch != null) {
+                                    selectedDriver = driverMatch
+                                    return@addOnMapClickListener true
                                 }
                             }
+                            selectedDriver = null
+                            false
                         }
-                        mv.overlays.add(marker)
+
+                        // Center on Accra
+                        val initialPos = org.maplibre.android.camera.CameraPosition.Builder()
+                            .target(org.maplibre.android.geometry.LatLng(5.6037, -0.1870))
+                            .zoom(12.0)
+                            .build()
+                        map.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(initialPos))
                     }
                 }
-                mv.invalidate()
-            }
+            },
+            modifier = Modifier.fillMaxSize()
         )
-        
+
+        // Overlay Cards (Active Drivers & Weather)
         Column(
-            modifier = Modifier.padding(16.dp).align(Alignment.TopEnd),
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopEnd),
             horizontalAlignment = Alignment.End
         ) {
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+                elevation = CardDefaults.cardElevation(4.dp)
             ) {
                 Text(
                     "Active Drivers: ${viewModel.liveDrivers.size}",
-                    modifier = Modifier.padding(8.dp),
-                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(10.dp),
+                    fontWeight = FontWeight.ExtraBold,
                     color = FamekoPrimary
                 )
             }
-            
+
             Spacer(Modifier.height(8.dp))
-            
+
             weather?.let { w ->
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+                    elevation = CardDefaults.cardElevation(4.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.Cloud, 
-                            contentDescription = null, 
+                            Icons.Default.Cloud,
+                            contentDescription = null,
                             tint = Color(0xFF3182CE),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text(
-                                "${w.main.temp.toInt()}°C - ${w.weather.firstOrNull()?.main ?: ""}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                "${w.name} (Updated: $lastWeatherUpdate)",
-                                fontSize = 10.sp,
-                                color = Color.Gray
-                            )
+                            Text("${w.main.temp.toInt()}°C - ${w.weather.firstOrNull()?.main ?: ""}", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            lastWeatherUpdate?.let {
+                                Text("Accra (Updated: $it)", fontSize = 10.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Driver Inspection Sheet
+        selectedDriver?.let { driver ->
+            val dName = driver["name"] as? String ?: "Driver"
+            val dPhone = driver["phone"] as? String ?: driver["phoneNumber"] as? String ?: ""
+            val dVehicle = driver["vehicle"] as? String ?: "Okada Motorbike"
+            val dPlate = driver["plate"] as? String ?: driver["plateNumber"] as? String ?: "GT-1234-24"
+            val dId = driver["id"].toString().toIntOrNull() ?: 0
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                shadowElevation = 16.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = FamekoPrimary.copy(alpha = 0.1f),
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Person, null, tint = FamekoPrimary, modifier = Modifier.size(24.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(dName, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Color(0xFF0F172A))
+                                Text("$dVehicle • $dPlate", fontSize = 12.sp, color = Color.Gray)
+                            }
+                        }
+
+                        IconButton(onClick = { selectedDriver = null }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                if (dPhone.isNotEmpty()) {
+                                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$dPhone"))
+                                    context.startActivity(intent)
+                                }
+                            },
+                            modifier = Modifier.weight(1f).height(46.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = FamekoPrimary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Call, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Call Driver", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                onInspectDriver(dId)
+                            },
+                            modifier = Modifier.weight(1f).height(46.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.AssignmentInd, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Inspect Profile", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
