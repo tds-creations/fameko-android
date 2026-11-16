@@ -436,9 +436,8 @@ object DatabaseRepository {
             DatabaseInitializer.getDataSource().connection.use { conn ->
                 val sql = """
                     SELECT o.id as order_id, o.status, o.total_amount, o.pickup_location, o.dropoff_location, o.created_at,
-                           o.recipient_name, o.recipient_phone, o.package_category, o.is_fragile, o.package_notes, o.requested_vehicle_type,
                            c.name as customer_name, c.phone as customer_phone,
-                           d.id as delivery_id, d.driver_id, dr.full_name as driver_name, dr.phone_number as driver_phone, dr.vehicle_type
+                           d.id as delivery_id, d.driver_id, dr.full_name as driver_name, dr.phone_number as driver_phone, dr.vehicle_type as driver_vtype
                     FROM orders o
                     LEFT JOIN customers c ON o.customer_id = c.id
                     LEFT JOIN deliveries d ON o.id = d.order_id
@@ -449,7 +448,7 @@ object DatabaseRepository {
                 while (rs.next()) {
                     val map = mutableMapOf<String, Any>()
                     map["id"] = rs.getInt("order_id")
-                    map["status"] = rs.getString("status") ?: "PENDING"
+                    map["status"] = (rs.getString("status") ?: "PENDING").uppercase()
                     map["amount"] = rs.getDouble("total_amount")
                     map["pickup"] = rs.getString("pickup_location") ?: "Pickup Spot"
                     map["dropoff"] = rs.getString("dropoff_location") ?: "Dropoff Spot"
@@ -458,18 +457,39 @@ object DatabaseRepository {
                     map["customer_phone"] = rs.getString("customer_phone") ?: ""
                     map["driver_name"] = rs.getString("driver_name") ?: "Searching for Driver..."
                     map["driver_phone"] = rs.getString("driver_phone") ?: ""
-                    map["driver_vehicle"] = rs.getString("vehicle_type") ?: ""
-                    rs.getString("recipient_name")?.let { map["recipient_name"] = it }
-                    rs.getString("recipient_phone")?.let { map["recipient_phone"] = it }
-                    rs.getString("package_category")?.let { map["package_category"] = it }
-                    map["vehicle_type"] = rs.getString("requested_vehicle_type") ?: rs.getString("package_category") ?: "Ride"
-                    map["is_fragile"] = rs.getBoolean("is_fragile")
-                    rs.getString("package_notes")?.let { map["package_notes"] = it }
+                    map["vehicle_type"] = rs.getString("driver_vtype") ?: "Ride"
                     list.add(map)
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            println("ERROR in getAllOrders: ${e.message}")
+        }
+
+        // Guaranteed Fallback if JOIN query fails
+        if (list.isEmpty()) {
+            try {
+                DatabaseInitializer.getDataSource().connection.use { conn ->
+                    val rs = conn.createStatement().executeQuery("SELECT * FROM orders ORDER BY id DESC")
+                    while (rs.next()) {
+                        list.add(mapOf(
+                            "id" to rs.getInt("id"),
+                            "status" to (rs.getString("status") ?: "PENDING").uppercase(),
+                            "amount" to rs.getDouble("total_amount"),
+                            "pickup" to (rs.getString("pickup_location") ?: "Pickup Spot"),
+                            "dropoff" to (rs.getString("dropoff_location") ?: "Dropoff Spot"),
+                            "created_at" to (rs.getString("created_at") ?: ""),
+                            "customer_name" to "Customer #${rs.getInt("customer_id")}",
+                            "customer_phone" to "",
+                            "driver_name" to "Unassigned",
+                            "driver_phone" to "",
+                            "vehicle_type" to "Ride"
+                        ))
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
         return list
     }

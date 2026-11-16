@@ -946,10 +946,10 @@ fun AdminDeliveriesScreen(viewModel: AdminViewModel = viewModel()) {
     val filteredDeliveries = deliveries.filter { order ->
         val status = (order["status"] as? String ?: "PENDING").uppercase()
         when (selectedTab) {
-            1 -> status == "ASSIGNED" || status == "ARRIVED" || status == "IN_TRANSIT" || status == "ON_TRIP"
-            2 -> status == "PENDING" || status == "SCHEDULED"
-            3 -> status == "DELIVERED" || status == "COMPLETED"
-            4 -> status == "CANCELLED"
+            1 -> status.contains("ASSIGN") || status.contains("ARRIV") || status.contains("TRANSIT") || status.contains("ON_TRIP")
+            2 -> status.contains("PENDING") || status.contains("SCHEDULE")
+            3 -> status.contains("DELIVER") || status.contains("COMPLET")
+            4 -> status.contains("CANCEL")
             else -> true
         }
     }
