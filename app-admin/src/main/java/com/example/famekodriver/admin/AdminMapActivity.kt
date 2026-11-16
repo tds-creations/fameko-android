@@ -47,8 +47,10 @@ import com.example.famekodriver.core.domain.model.SOSAlert
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -272,8 +274,22 @@ fun AdminMapScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = {
+                val cartoSource = object : OnlineTileSourceBase(
+                    "CartoDBVoyager",
+                    1, 19, 256, ".png",
+                    arrayOf(
+                        "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
+                        "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
+                        "https://c.basemaps.cartocdn.com/rastertiles/voyager/",
+                        "https://d.basemaps.cartocdn.com/rastertiles/voyager/"
+                    )
+                ) {
+                    override fun getTileURLString(pMapTileIndex: Long): String {
+                        return baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex) + "/" + MapTileIndex.getY(pMapTileIndex) + mImageFilenameEnding
+                    }
+                }
                 mapView.apply {
-                    setTileSource(TileSourceFactory.MAPNIK)
+                    setTileSource(cartoSource)
                     setMultiTouchControls(true)
                     zoomController.setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
                     controller.setZoom(12.0)

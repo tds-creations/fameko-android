@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -95,7 +96,7 @@ fun AdminDashboardScreen(
             QuickActionCard("Customers", Icons.Default.Group, Color(0xFF3182CE), Modifier.weight(1f)) {
                 onNavigateToCustomers()
             }
-            QuickActionCard("Fleet", Icons.Default.DirectionsCar, Color(0xFF38A169), Modifier.weight(1f)) {
+            QuickActionCard("Fleet Owners", Icons.Default.DirectionsCar, Color(0xFF38A169), Modifier.weight(1f)) {
                 onNavigateToFleet()
             }
         }
@@ -104,19 +105,37 @@ fun AdminDashboardScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(Modifier.padding(16.dp)) {
-                Text("System Health", fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).background(Color(0xFF38A169), RoundedCornerShape(5.dp)))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Backend Services: Online", fontSize = 14.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("System Health & Cluster Status", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                    Surface(color = Color(0xFFECFDF5), shape = RoundedCornerShape(6.dp)) {
+                        Text("ALL OPERATIONAL", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SystemHealthBadge("Backend Ktor Server", true)
+                    SystemHealthBadge("PostgreSQL Database", true)
+                    SystemHealthBadge("Redis Push Server", true)
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SystemHealthBadge(name: String, isOnline: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.size(8.dp).background(if (isOnline) Color(0xFF10B981) else Color.Red, CircleShape))
+        Text(name, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
     }
 }
 
