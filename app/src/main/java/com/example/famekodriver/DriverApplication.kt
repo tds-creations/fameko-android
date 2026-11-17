@@ -33,9 +33,10 @@ class DriverApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
 
-        // 1. Initialize MapLibre FIRST with required parameters for version 11.x
+        // 1. Initialize MapLibre FIRST with required parameters for version 11.x & Controlled Background Asset Pre-fetching
         MapLibre.getInstance(this, null, WellKnownTileServer.MapLibre)
         MapCacheManager.initCache(this)
+        com.example.famekodriver.core.utils.AssetPrefetchManager.prefetchDriverAssets(this)
 
         // 2. Configure HTTP Client with User-Agent and Automatic TomTom Key Injection
         val client = OkHttpClient.Builder()
