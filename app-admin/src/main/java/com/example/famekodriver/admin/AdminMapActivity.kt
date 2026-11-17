@@ -68,6 +68,7 @@ sealed class AdminScreen(val route: String, val icon: androidx.compose.ui.graphi
     object Approvals : AdminScreen("approvals", Icons.Default.CheckCircle, "Approvals")
     object Customers : AdminScreen("customers", Icons.Default.Group, "Customers")
     object Deliveries : AdminScreen("deliveries", Icons.Default.LocalShipping, "Orders")
+    object DbExplorer : AdminScreen("db_explorer", Icons.Default.Storage, "DB Audit")
     object SOS : AdminScreen("sos", Icons.Default.Warning, "SOS")
     object Rentals : AdminScreen("rentals", Icons.Default.CarRental, "Fleet")
     object DriverDetails : AdminScreen("driver_details", Icons.Default.Person, "Driver Details")
@@ -121,6 +122,7 @@ fun AdminMainContent() {
                     AdminScreen.Map, 
                     AdminScreen.Approvals, 
                     AdminScreen.Deliveries,
+                    AdminScreen.DbExplorer,
                     AdminScreen.SOS
                 )
                 screens.forEach { screen ->
@@ -155,6 +157,7 @@ fun AdminMainContent() {
                     }
                 )
                 AdminScreen.Deliveries -> AdminDeliveriesScreen(viewModel = adminViewModel)
+                AdminScreen.DbExplorer -> AdminDbExplorerScreen(viewModel = adminViewModel)
                 AdminScreen.SOS -> AdminSOSScreen(
                     viewModel = adminViewModel,
                     onLocate = { driverId, alertLat, alertLng ->
@@ -213,6 +216,8 @@ class AdminViewModel : ViewModel() {
     suspend fun rejectPayment(id: Int) = repository.rejectPayment(id)
     suspend fun resolveSOS(id: Int) = repository.resolveSOS(id)
     suspend fun getCurrentWeather(lat: Double, lon: Double) = repository.getCurrentWeather(lat, lon)
+    suspend fun getAdminDbTables() = repository.getAdminDbTables()
+    suspend fun getAdminTableData(tableName: String) = repository.getAdminTableData(tableName)
 }
 
 @Composable
@@ -1151,6 +1156,248 @@ fun AdminOrderCard(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminDbExplorerScreen(viewModel: AdminViewModel = viewModel()) {
+    val scope = rememberCoroutineScope()
+    var tables by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedTable by remember { mutableStateOf("orders") }
+    var tableData by remember { mutableStateOf<List<Map<String, Any?>>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
+    var selectedRow by remember { mutableStateOf<Map<String, Any?>?>(null) }
+
+    val defaultTables = listOf("orders", "deliveries", "customers", "drivers", "driver_stats", "fleet_owners", "rentals", "rental_vehicles", "payments", "chat_messages", "movement_logs", "pricing_config")
+
+    // Fetch Tables
+    LaunchedEffect(Unit) {
+        viewModel.getAdminDbTables().onSuccess { fetched ->
+            if (fetched.isNotEmpty()) {
+                tables = fetched
+                selectedTable = fetched.firstOrNull { it.lowercase() == "orders" } ?: fetched.first()
+            } else {
+                tables = defaultTables
+            }
+        }.onFailure {
+            tables = defaultTables
+        }
+    }
+
+    // Fetch Table Data when selectedTable changes
+    LaunchedEffect(selectedTable) {
+        if (selectedTable.isNotEmpty()) {
+            isLoading = true
+            viewModel.getAdminTableData(selectedTable).onSuccess { data ->
+                tableData = data
+                isLoading = false
+            }.onFailure {
+                tableData = emptyList()
+                isLoading = false
+            }
+        }
+    }
+
+    val displayTables = if (tables.isNotEmpty()) tables else defaultTables
+
+    val filteredRows = if (searchQuery.isBlank()) {
+        tableData
+    } else {
+        tableData.filter { row ->
+            row.values.any { valStr ->
+                valStr?.toString()?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("DB Audit Explorer", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                Text("${filteredRows.size} Records in $selectedTable", fontSize = 11.sp, color = Color.Gray)
+            }
+
+            IconButton(onClick = {
+                isLoading = true
+                scope.launch {
+                    viewModel.getAdminTableData(selectedTable).onSuccess { data ->
+                        tableData = data
+                        isLoading = false
+                    }
+                }
+            }) {
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = FamekoPrimary)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Table Selection Chips
+        ScrollableTabRow(
+            selectedTabIndex = displayTables.indexOf(selectedTable).coerceAtLeast(0),
+            edgePadding = 0.dp,
+            containerColor = Color.Transparent,
+            divider = {}
+        ) {
+            displayTables.forEach { tableName ->
+                val isSelected = selectedTable.equals(tableName, ignoreCase = true)
+                Tab(
+                    selected = isSelected,
+                    onClick = { selectedTable = tableName },
+                    text = {
+                        Text(
+                            text = tableName,
+                            fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                            color = if (isSelected) FamekoPrimary else Color.Gray,
+                            fontSize = 12.sp
+                        )
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Search Input
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search by ID, phone, status, PIN...", fontSize = 12.sp, color = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = FamekoPrimary) },
+            trailingIcon = if (searchQuery.isNotEmpty()) {
+                {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Default.Close, null, tint = Color.Gray)
+                    }
+                }
+            } else null,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = FamekoPrimary,
+                unfocusedBorderColor = Color(0xFFE2E8F0),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            ),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        if (isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = FamekoPrimary)
+            }
+        } else if (filteredRows.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Storage, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(48.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text("No records found in $selectedTable", color = Color.Gray, fontWeight = FontWeight.Bold)
+                }
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(filteredRows) { rowData ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedRow = rowData },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Column(Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(color = FamekoPrimary.copy(alpha = 0.1f), shape = RoundedCornerShape(6.dp)) {
+                                    Text(
+                                        text = "ID: ${rowData["id"] ?: rowData["order_id"] ?: rowData["driver_id"] ?: rowData["customer_id"] ?: "ROW"}",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 11.sp,
+                                        color = FamekoPrimary,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Icon(Icons.Default.ChevronRight, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            // Display first 6 key-value pairs
+                            rowData.entries.take(6).forEach { (key, value) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(key, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                                    Text(
+                                        value?.toString() ?: "null",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF0F172A),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(start = 12.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Full Row Audit Inspection Dialog
+    selectedRow?.let { row ->
+        AlertDialog(
+            onDismissRequest = { selectedRow = null },
+            title = { Text("Audit Record Detail ($selectedTable)", fontWeight = FontWeight.Black, fontSize = 16.sp) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    row.forEach { (key, value) ->
+                        Surface(
+                            color = Color(0xFFF8FAFC),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Column(Modifier.padding(10.dp)) {
+                                Text(key.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = FamekoPrimary)
+                                Spacer(Modifier.height(2.dp))
+                                Text(value?.toString() ?: "null", fontSize = 12.sp, color = Color(0xFF0F172A))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { selectedRow = null }) {
+                    Text("Close")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 }
 

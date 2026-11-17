@@ -1577,6 +1577,24 @@ class DriverRepository private constructor() {
         }
     }
 
+    suspend fun getAdminDbTables(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getAdminDbTables()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getAdminTableData(tableName: String): Result<List<Map<String, Any?>>> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getAdminTableData(tableName)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getAdminRentals(): Result<List<Map<String, Any>>> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.getAdminRentals()

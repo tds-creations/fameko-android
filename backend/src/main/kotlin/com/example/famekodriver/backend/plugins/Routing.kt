@@ -756,6 +756,16 @@ fun Application.configureRouting() {
             get("/financials") {
                 call.respond(DatabaseRepository.getFinancialStats(null, null))
             }
+
+            get("/db/tables") {
+                call.respond(DatabaseRepository.getAllTables())
+            }
+
+            get("/db/table/{name}") {
+                val name = call.parameters["name"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val data = DatabaseRepository.getTableDataAsMaps(name)
+                call.respond(data)
+            }
         }
 
         get("/api/weather") {

@@ -199,6 +199,33 @@ object DatabaseRepository {
         return Pair(columns, rows)
     }
 
+    fun getTableDataAsMaps(tableName: String, limit: Int = 200): List<Map<String, Any?>> {
+        val list = mutableListOf<Map<String, Any?>>()
+        try {
+            val validTables = getAllTables()
+            val sanitized = tableName.trim().lowercase()
+            if (validTables.none { it.lowercase() == sanitized }) return emptyList()
+
+            DatabaseInitializer.getDataSource().connection.use { conn ->
+                val sql = "SELECT * FROM \"$sanitized\" ORDER BY 1 DESC LIMIT ?"
+                val stmt = conn.prepareStatement(sql)
+                stmt.setInt(1, limit)
+                val rs = stmt.executeQuery()
+                val meta = rs.metaData
+                while (rs.next()) {
+                    val map = mutableMapOf<String, Any?>()
+                    for (i in 1..meta.columnCount) {
+                        map[meta.getColumnName(i)] = rs.getObject(i)
+                    }
+                    list.add(map)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return list
+    }
+
     fun getDriverStats(id: Int): DriverStats? {
         try {
             DatabaseInitializer.getDataSource().connection.use { conn ->

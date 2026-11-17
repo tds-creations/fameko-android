@@ -506,6 +506,12 @@ interface FamekoApiService {
     @GET("api/admin/financials")
     suspend fun getAdminFinancials(): Map<String, Any>
 
+    @GET("api/admin/db/tables")
+    suspend fun getAdminDbTables(): List<String>
+
+    @GET("api/admin/db/table/{name}")
+    suspend fun getAdminTableData(@Path("name") tableName: String): List<Map<String, Any?>>
+
     @GET("api/weather")
     suspend fun getCurrentWeather(
         @Query("lat") lat: Double,
