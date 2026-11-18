@@ -56,6 +56,10 @@ object AssetPrefetchManager {
                         .data(url)
                         .memoryCachePolicy(CachePolicy.ENABLED)
                         .diskCachePolicy(CachePolicy.ENABLED)
+                        .listener(
+                            onSuccess = { _, _ -> },
+                            onError = { _, _ -> }
+                        )
                         .build()
                     loader.enqueue(request)
                 } catch (_: Exception) {
