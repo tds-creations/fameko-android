@@ -1,6 +1,7 @@
 package com.example.famekodriver.core.data.repository
 
 import com.example.famekodriver.core.domain.model.*
+import com.example.famekodriver.core.utils.RouteInstructionParser
 import com.example.famekodriver.core.network.NetworkClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -751,12 +752,12 @@ class DriverRepository private constructor() {
 
     suspend fun calculateRoute(request: RouteRequest): Result<RouteResponse> = withContext(Dispatchers.IO) {
         Log.d("FamekoRepo", "Calculating route from (${request.start.lat}, ${request.start.lng}) to (${request.end.lat}, ${request.end.lng})")
-        // Priority 1: OSRM (OpenStreetMap based, often more accurate local road data)
+        // Priority 1: OSRM (OpenStreetMap based, accurate local road data with structured maneuver steps)
         try {
             val url = "https://router.project-osrm.org/route/v1/driving/" +
                     "${request.start.lng},${request.start.lat};" +
                     "${request.end.lng},${request.end.lat}" +
-                    "?overview=full&geometries=geojson"
+                    "?overview=full&geometries=geojson&steps=true"
             
             val osrmResponse = NetworkClient.osmService.getRoute(url)
             
@@ -770,10 +771,9 @@ class DriverRepository private constructor() {
                     } else point
                 }
                 
-                Log.d("FamekoRepo", "OSRM route found. Waypoints: ${coordinates.size}, Filtered: $filteredCount")
-                if (coordinates.isNotEmpty()) {
-                    Log.d("FamekoRepo", "First point: ${coordinates.first()}, Last point: ${coordinates.last()}")
-                }
+                val parsedInstructions = RouteInstructionParser.parseOsrmLegs(route.legs)
+
+                Log.d("FamekoRepo", "OSRM route found. Waypoints: ${coordinates.size}, Steps: ${parsedInstructions.size}")
 
                 val response = RouteResponse(
                     fromCache = false,
@@ -785,7 +785,8 @@ class DriverRepository private constructor() {
                     waypoints = coordinates.size,
                     computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                         timeZone = TimeZone.getTimeZone("UTC")
-                    }.format(Date())
+                    }.format(Date()),
+                    instructions = parsedInstructions
                 )
                 return@withContext Result.success(response)
             }
@@ -794,12 +795,14 @@ class DriverRepository private constructor() {
             Log.e("FamekoRepo", "OSM Routing failed, falling back to TomTom", e)
         }
 
-        // Priority 2: TomTom
+        // Priority 2: TomTom API
         try {
             val locations = "${request.start.lat},${request.start.lng}:${request.end.lat},${request.end.lng}"
             val tomTomResponse = NetworkClient.tomTomService.calculateRoute(
                 locations = locations,
-                apiKey = NetworkClient.TOMTOM_API_KEY
+                apiKey = NetworkClient.TOMTOM_API_KEY,
+                instructionsType = "text",
+                language = "en-GB"
             )
 
             if (!tomTomResponse.routes.isNullOrEmpty()) {
@@ -819,10 +822,9 @@ class DriverRepository private constructor() {
                         } ?: emptyList()
                     } ?: emptyList()
 
-                    Log.d("FamekoRepo", "TomTom route found. Waypoints: ${coordinates.size}, Filtered: $filteredCount")
-                    if (coordinates.isNotEmpty()) {
-                        Log.d("FamekoRepo", "First point: ${coordinates.first()}, Last point: ${coordinates.last()}")
-                    }
+                    val parsedInstructions = RouteInstructionParser.parseTomTomInstructions(route.guidance?.instructions)
+
+                    Log.d("FamekoRepo", "TomTom route found. Waypoints: ${coordinates.size}, Instructions: ${parsedInstructions.size}")
 
                     val response = RouteResponse(
                         fromCache = false,
@@ -834,7 +836,8 @@ class DriverRepository private constructor() {
                         waypoints = coordinates.size,
                         computedAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                             timeZone = TimeZone.getTimeZone("UTC")
-                        }.format(Date())
+                        }.format(Date()),
+                        instructions = parsedInstructions
                     )
                     return@withContext Result.success(response)
                 }
@@ -850,24 +853,25 @@ class DriverRepository private constructor() {
                 
                 // Handle Python backend nesting (primary field)
                 val primary = response.primary
-                if (primary != null && primary.coordinates.isNotEmpty()) {
-                    Log.d("FamekoRepo", "Internal route found (primary). Points: ${primary.coordinates.size}")
+                val coords = primary?.coordinates?.takeIf { it.size >= 2 } ?: response.routeCoords.takeIf { it.size >= 2 }
+                val distM = (primary?.distanceM?.toInt() ?: response.distanceM).takeIf { it > 0 } ?: 0
+                val eta = (primary?.durationMin ?: response.etaMin).takeIf { it > 0 } ?: 0.0
+
+                if (coords != null && coords.size >= 2) {
+                    Log.d("FamekoRepo", "Internal route validated. Points: ${coords.size}")
                     val flatResponse = response.copy(
-                        routeCoords = primary.coordinates,
-                        distanceM = primary.distanceM.toInt(),
-                        etaMin = primary.durationMin
+                        routeCoords = coords,
+                        distanceM = distM,
+                        etaMin = eta
                     )
                     Result.success(flatResponse)
-                } else if (response.routeCoords.isNotEmpty()) {
-                    Log.d("FamekoRepo", "Internal route found. Points: ${response.routeCoords.size}")
-                    Result.success(response)
                 } else {
-                    Result.failure(Exception("Internal routing returned empty coords"))
+                    Result.failure(Exception("Internal routing returned invalid or non-navigable route geometry"))
                 }
             } catch (e3: Exception) {
                 if (e3 is CancellationException) throw e3
                 Log.e("FamekoRepo", "All routing attempts failed", e3)
-                Result.failure(Exception("Routing failed completely"))
+                Result.failure(Exception("All routing providers failed. Unable to calculate route."))
             }
         }
     }

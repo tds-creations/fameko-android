@@ -55,13 +55,21 @@ data class OsrmLeg(
 )
 
 data class OsrmStep(
-    val maneuver: OsrmManeuver? = null,
-    val distance: Double? = null
+    val name: String? = null,
+    val ref: String? = null,
+    val distance: Double? = null, // meters
+    val duration: Double? = null, // seconds
+    val maneuver: OsrmManeuver? = null
 )
 
 data class OsrmManeuver(
+    val type: String? = null, // e.g. turn, depart, arrive, roundabout, rotary, fork, merge
+    val modifier: String? = null, // e.g. left, right, sharp left, slight right, straight, uturn
     val instruction: String? = null,
-    val location: List<Double>? = null // [lng, lat]
+    val location: List<Double>? = null, // [lng, lat]
+    @SerializedName("bearing_before") val bearingBefore: Double? = null,
+    @SerializedName("bearing_after") val bearingAfter: Double? = null,
+    val exit: Int? = null
 )
 
 data class OsrmGeometry(

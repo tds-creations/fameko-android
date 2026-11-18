@@ -50,10 +50,16 @@ data class TomTomGuidance(
 
 data class TomTomInstruction(
     val point: TomTomPosition?,
-    val instructionType: String?,
+    val instructionType: String?, // e.g. LOCATION_DEPARTURE, LOCATION_ARRIVAL, TURN_LEFT, TURN_RIGHT, BEAR_LEFT, BEAR_RIGHT, SHARP_LEFT, SHARP_RIGHT, STRAIGHT, MAKE_UTURN, ROUNDABOUT_CROSSING
     val message: String?,
+    val street: String? = null,
     val pointIndex: Int?,
-    val routeOffsetInMeters: Int?
+    val routeOffsetInMeters: Int?,
+    val travelTimeInSeconds: Int? = null,
+    val possibleNumber: String? = null,
+    val turnAngleInBounds: Int? = null,
+    val maneuver: String? = null,
+    val roadNumber: String? = null
 )
 
 data class TomTomSummary(

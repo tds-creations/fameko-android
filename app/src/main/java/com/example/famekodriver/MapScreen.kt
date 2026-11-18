@@ -612,6 +612,7 @@ fun MapScreen(
             if (viewModel.isFullscreenMap) {
                 DriverNavigationOverlay(
                     instruction = viewModel.currentInstruction,
+                    nextInstruction = viewModel.nextInstruction,
                     driverLatLng = viewModel.driverLatLng,
                     distanceKm = viewModel.distanceKm,
                     durationMin = viewModel.durationMin,
@@ -1267,6 +1268,7 @@ fun DeliveryControlSheet(
 @Composable
 fun DriverNavigationOverlay(
     instruction: RouteInstruction?,
+    nextInstruction: RouteInstruction? = null,
     driverLatLng: LatLng?,
     distanceKm: Double,
     durationMin: Double,
@@ -1279,59 +1281,85 @@ fun DriverNavigationOverlay(
                 .fillMaxWidth()
                 .padding(16.dp)
                 .statusBarsPadding(),
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF1A1C1E), // High contrast dark
-            shadowElevation = 12.dp
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFF0F172A),
+            shadowElevation = 14.dp
         ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val icon = when {
-                    instruction?.text?.contains("left", true) == true -> Icons.AutoMirrored.Filled.ArrowBack
-                    instruction?.text?.contains("right", true) == true -> Icons.AutoMirrored.Filled.ArrowForward
-                    else -> Icons.Default.Navigation
-                }
-                
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(Color.White.copy(alpha = 0.15f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(32.dp))
-                }
-                
-                Spacer(Modifier.width(20.dp))
-                
-                Column {
-                    Text(
-                        text = instruction?.text ?: "Follow the path",
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    val distanceToManeuver = if (instruction != null && driverLatLng != null) {
-                        val instrLat = instruction.point?.getOrNull(1) ?: 0.0
-                        val instrLng = instruction.point?.getOrNull(0) ?: 0.0
-                        val dist = LocationUtils.calculateDistance(
-                            driverLatLng.latitude,
-                            driverLatLng.longitude,
-                            instrLat,
-                            instrLng
-                        )
-                        if (dist > 1000) String.format(Locale.US, "%.1f km", dist / 1000.0)
-                        else "${dist.toInt()} m"
-                    } else "..."
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val mType = instruction?.maneuverType ?: ManeuverType.STRAIGHT
+                    val icon = when (mType) {
+                        ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT, ManeuverType.RAMP_LEFT, ManeuverType.KEEP_LEFT -> Icons.AutoMirrored.Filled.ArrowBack
+                        ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_RIGHT, ManeuverType.SHARP_RIGHT, ManeuverType.RAMP_RIGHT, ManeuverType.KEEP_RIGHT -> Icons.AutoMirrored.Filled.ArrowForward
+                        ManeuverType.UTURN -> Icons.AutoMirrored.Filled.Undo
+                        ManeuverType.ROUNDABOUT -> Icons.Default.Autorenew
+                        ManeuverType.ARRIVE -> Icons.Default.Place
+                        else -> Icons.Default.Navigation
+                    }
 
-                    Text(
-                        text = "Next turn in $distanceToManeuver",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 14.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .background(Color(0xFF1E293B), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icon, null, tint = Color(0xFF10B981), modifier = Modifier.size(28.dp))
+                    }
+
+                    Spacer(Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        val distanceToManeuver = if (instruction != null && driverLatLng != null) {
+                            val instrLat = instruction.point?.getOrNull(1) ?: 0.0
+                            val instrLng = instruction.point?.getOrNull(0) ?: 0.0
+                            val dist = LocationUtils.calculateDistance(
+                                driverLatLng.latitude,
+                                driverLatLng.longitude,
+                                instrLat,
+                                instrLng
+                            )
+                            if (dist > 1000) String.format(Locale.US, "In %.1f km", dist / 1000.0)
+                            else "In ${dist.toInt()} m"
+                        } else "Next turn"
+
+                        Text(
+                            text = distanceToManeuver,
+                            color = Color(0xFF10B981),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = instruction?.text ?: "Follow the path",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                val nextText = nextInstruction?.text
+                if (!nextText.isNullOrBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "THEN: ",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF94A3B8)
+                        )
+                        Text(
+                            text = nextText,
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -1342,7 +1370,7 @@ fun DriverNavigationOverlay(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(Color.White, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                .padding(24.dp)
+                .padding(20.dp)
                 .navigationBarsPadding()
         ) {
             Row(
@@ -1353,46 +1381,46 @@ fun DriverNavigationOverlay(
                 Column {
                     Text(
                         text = "${String.format(Locale.US, "%.1f", distanceKm)} km",
-                        fontSize = 28.sp,
+                        fontSize = 26.sp,
                         fontWeight = FontWeight.Black,
                         color = BoltDark
                     )
-                    Text("REMAINING", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("REMAINING", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     val arrivalTime = SimpleDateFormat("HH:mm", Locale.US).format(Date(System.currentTimeMillis() + (durationMin * 60000).toLong()))
                     Text(
                         text = arrivalTime,
-                        fontSize = 28.sp,
+                        fontSize = 26.sp,
                         fontWeight = FontWeight.Black,
                         color = FamekoPrimary
                     )
-                    Text("ARRIVAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("ARRIVAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${durationMin.toInt()} min",
-                        fontSize = 28.sp,
+                        fontSize = 26.sp,
                         fontWeight = FontWeight.Black,
                         color = BoltGreen
                     )
-                    Text("ESTIMATED", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("ESTIMATED", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = onExit,
-                modifier = Modifier.fillMaxWidth().height(60.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
             ) {
-                Icon(Icons.Default.Close, null)
-                Spacer(Modifier.width(12.dp))
-                Text("EXIT NAVIGATION", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("EXIT NAVIGATION", fontWeight = FontWeight.Black, fontSize = 15.sp)
             }
         }
     }

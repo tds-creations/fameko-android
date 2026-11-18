@@ -46,6 +46,8 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var navigationPath by mutableStateOf<List<LatLng>>(emptyList())
     var instructions by mutableStateOf<List<RouteInstruction>>(emptyList())
     var currentInstruction by mutableStateOf<RouteInstruction?>(null)
+    var nextInstruction by mutableStateOf<RouteInstruction?>(null)
+    var distanceToNextManeuverMeters by mutableDoubleStateOf(0.0)
     var distanceKm by mutableDoubleStateOf(0.0)
     var durationMin by mutableDoubleStateOf(0.0)
     var isFullscreenMap by mutableStateOf(false)
@@ -498,6 +500,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                         navigationPath = path
                         instructions = response.instructions
                         currentInstruction = instructions.firstOrNull()
+                        nextInstruction = instructions.getOrNull(1)
                         distanceKm = response.distanceM / 1000.0
                         durationMin = response.etaMin
                         lastRouteCalcLatLng = start
@@ -533,29 +536,43 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 lat, lng, 
                 navigationPath.map { it.latitude to it.longitude },
                 durationMin,
-                distanceKm
+                distanceKm,
+                currentInstruction = currentInstruction,
+                distToManeuverMeters = distanceToNextManeuverMeters,
+                instructionIndex = instructions.indexOf(currentInstruction)
             )
         }
     }
 
     private fun updateCurrentInstruction(currentLat: Double, currentLng: Double) {
-        if (instructions.isEmpty()) return
-        
-        val currentIndex = instructions.indexOf(currentInstruction)
-        if (currentIndex == -1) {
-            currentInstruction = instructions.first()
+        if (instructions.isEmpty()) {
+            currentInstruction = null
+            nextInstruction = null
+            distanceToNextManeuverMeters = 0.0
             return
         }
+        
+        var currentIndex = instructions.indexOf(currentInstruction)
+        if (currentIndex == -1) {
+            currentInstruction = instructions.first()
+            nextInstruction = instructions.getOrNull(1)
+            currentIndex = 0
+        }
 
-        currentInstruction?.point?.let { pt ->
-            if (pt.size >= 2) {
-                val instrLng = pt[0]
-                val instrLat = pt[1]
-                val dist = LocationUtils.calculateDistance(currentLat, currentLng, instrLat, instrLng)
-                if (dist < 35.0 && currentIndex < instructions.size - 1) {
-                    currentInstruction = instructions[currentIndex + 1]
-                }
+        val activeInstruction = currentInstruction ?: instructions.first()
+        val pt = activeInstruction.point
+        if (pt != null && pt.size >= 2) {
+            val instrLng = pt[0]
+            val instrLat = pt[1]
+            val dist = LocationUtils.calculateDistance(currentLat, currentLng, instrLat, instrLng)
+            distanceToNextManeuverMeters = dist
+
+            if (dist < 30.0 && currentIndex < instructions.size - 1) {
+                currentInstruction = instructions[currentIndex + 1]
+                nextInstruction = instructions.getOrNull(currentIndex + 2)
             }
+        } else {
+            distanceToNextManeuverMeters = 0.0
         }
     }
 

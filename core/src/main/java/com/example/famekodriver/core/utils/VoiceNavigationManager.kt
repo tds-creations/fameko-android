@@ -2,20 +2,37 @@ package com.example.famekodriver.core.utils
 
 import android.content.Context
 import android.location.Location
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import com.example.famekodriver.core.domain.model.RouteInstruction
 import java.util.*
 import kotlin.math.*
 
 class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
-    private var tts: TextToSpeech = TextToSpeech(context, this)
+    private val appContext: Context = context.applicationContext
+    private var tts: TextToSpeech = TextToSpeech(appContext, this)
     private var isInitialized = false
+    private var isEnabled = true
+
     private var lastEtaAnnouncementTime = 0L
     private val etaInterval = 120_000L // 2 minutes
 
-    private var nextTurnIndex = -1
-    private var lastAnnouncedTurnIndex = -1
-    private var isEnabled = true
+    private var lastInstructionIndex = -1
+    private var lastAnnouncedStage = 0 // 0 = none, 300 = 300m, 100 = 100m, 25 = now
+
+    private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+
+    private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        if (focusChange == AudioManager.AUDIOFOCUS_LOSS || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            tts.stop()
+        }
+    }
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
@@ -24,32 +41,118 @@ class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
                 Log.e("VoiceNav", "Language not supported")
             } else {
                 isInitialized = true
+                setupUtteranceListener()
             }
         } else {
             Log.e("VoiceNav", "TTS Initialization failed")
         }
     }
 
+    private fun setupUtteranceListener() {
+        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {}
+            override fun onDone(utteranceId: String?) {
+                abandonAudioFocus()
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                abandonAudioFocus()
+            }
+        })
+    }
+
     fun setEnabled(enabled: Boolean) {
         this.isEnabled = enabled
-        if (!enabled) tts.stop()
+        if (!enabled) {
+            tts.stop()
+            abandonAudioFocus()
+        }
+    }
+
+    fun resetAnnouncementState() {
+        lastInstructionIndex = -1
+        lastAnnouncedStage = 0
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+
+            val focusReq = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(attributes)
+                .setAcceptsDelayedFocusGain(false)
+                .setOnAudioFocusChangeListener(focusChangeListener)
+                .build()
+
+            audioFocusRequest = focusReq
+            return audioManager.requestAudioFocus(focusReq) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        } else {
+            @Suppress("DEPRECATION")
+            return audioManager.requestAudioFocus(
+                focusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+            ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(focusChangeListener)
+        }
     }
 
     fun speak(text: String) {
-        if (!isEnabled || !isInitialized) return
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+        if (!isEnabled || !isInitialized || text.isBlank()) return
+        requestAudioFocus()
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "NavUtterance_${System.currentTimeMillis()}")
     }
 
     fun announceTripStart(destination: String) {
+        resetAnnouncementState()
         speak("Starting navigation to $destination")
     }
 
     fun announceArrivedAtPickup() {
+        resetAnnouncementState()
         speak("You have arrived at the pickup location.")
     }
 
     fun announceArrival() {
+        resetAnnouncementState()
         speak("You have arrived at your destination.")
+    }
+
+    fun announceStructuredInstruction(instruction: RouteInstruction?, distToManeuverMeters: Double, index: Int) {
+        if (!isEnabled || !isInitialized || instruction == null) return
+
+        val text = instruction.text?.takeIf { it.isNotBlank() } ?: return
+
+        if (index != lastInstructionIndex) {
+            lastInstructionIndex = index
+            lastAnnouncedStage = 0
+        }
+
+        when {
+            distToManeuverMeters in 250.0..350.0 && lastAnnouncedStage < 300 -> {
+                speak("In 300 meters, $text")
+                lastAnnouncedStage = 300
+            }
+            distToManeuverMeters in 80.0..130.0 && lastAnnouncedStage < 100 -> {
+                speak("In 100 meters, $text")
+                lastAnnouncedStage = 100
+            }
+            distToManeuverMeters < 25.0 && lastAnnouncedStage < 25 -> {
+                speak(text)
+                lastAnnouncedStage = 25
+            }
+        }
     }
 
     fun updateProgress(
@@ -57,25 +160,32 @@ class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
         currentLng: Double,
         route: List<Pair<Double, Double>>,
         etaMin: Double,
-        distanceKm: Double
+        distanceKm: Double,
+        currentInstruction: RouteInstruction? = null,
+        distToManeuverMeters: Double = 0.0,
+        instructionIndex: Int = 0
     ) {
-        if (!isEnabled || !isInitialized || route.isEmpty()) return
+        if (!isEnabled || !isInitialized) return
 
         val now = System.currentTimeMillis()
 
-        // 1. Periodic ETA announcement
+        // Periodic ETA announcement
         if (now - lastEtaAnnouncementTime > etaInterval && distanceKm > 0.5) {
             val etaText = if (etaMin < 1.0) "less than a minute" else "${etaMin.toInt()} minutes"
-            speak("Remaining time to destination: $etaText. Distance: ${String.format("%.1f", distanceKm)} kilometers.")
+            speak("Remaining time to destination: $etaText. Distance: ${String.format(Locale.US, "%.1f", distanceKm)} kilometers.")
             lastEtaAnnouncementTime = now
         }
 
-        // 2. Turn Detection (Basic)
-        detectAndAnnounceTurn(currentLat, currentLng, route)
+        // Structured Instruction Voice Guidance
+        if (currentInstruction != null) {
+            announceStructuredInstruction(currentInstruction, distToManeuverMeters, instructionIndex)
+        } else if (route.isNotEmpty()) {
+            // Fallback bearing calculation
+            detectAndAnnounceTurn(currentLat, currentLng, route)
+        }
     }
 
     private fun detectAndAnnounceTurn(currentLat: Double, currentLng: Double, route: List<Pair<Double, Double>>) {
-        // Find the closest point on the route
         var minDistance = Double.MAX_VALUE
         var closestIndex = -1
 
@@ -89,8 +199,6 @@ class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
 
         if (closestIndex == -1) return
 
-        // Look ahead for a significant bearing change (> 30 degrees)
-        // This is a simplified turn detection logic
         var turnIdx = -1
         for (i in closestIndex until minStore(closestIndex + 20, route.size - 2)) {
             val b1 = calculateBearing(route[i], route[i + 1])
@@ -99,24 +207,25 @@ class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
             var diff = abs(b1 - b2)
             if (diff > 180) diff = 360 - diff
 
-            if (diff > 35.0) { // Found a turn
+            if (diff > 35.0) {
                 turnIdx = i + 1
                 break
             }
         }
 
-        if (turnIdx != -1 && turnIdx != lastAnnouncedTurnIndex) {
+        if (turnIdx != -1 && turnIdx != lastInstructionIndex) {
             val distToTurn = calculateDistance(currentLat, currentLng, route[turnIdx].first, route[turnIdx].second)
             
-            // Announce at 300m and 100m
-            if (distToTurn in 250.0..350.0) {
+            if (distToTurn in 250.0..350.0 && lastAnnouncedStage < 300) {
                 val direction = getTurnDirection(route[turnIdx-1], route[turnIdx], route[turnIdx+1])
                 speak("In 300 meters, $direction")
-                lastAnnouncedTurnIndex = turnIdx
-            } else if (distToTurn in 80.0..120.0) {
+                lastInstructionIndex = turnIdx
+                lastAnnouncedStage = 300
+            } else if (distToTurn in 80.0..120.0 && lastAnnouncedStage < 100) {
                 val direction = getTurnDirection(route[turnIdx-1], route[turnIdx], route[turnIdx+1])
                 speak("In 100 meters, $direction")
-                lastAnnouncedTurnIndex = turnIdx
+                lastInstructionIndex = turnIdx
+                lastAnnouncedStage = 100
             }
         }
     }
@@ -132,7 +241,7 @@ class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
     private fun calculateBearing(p1: Pair<Double, Double>, p2: Pair<Double, Double>): Float {
         val results = FloatArray(2)
         Location.distanceBetween(p1.first, p1.second, p2.first, p2.second, results)
-        return results[1] // Initial bearing
+        return results[1]
     }
 
     private fun getTurnDirection(p1: Pair<Double, Double>, p2: Pair<Double, Double>, p3: Pair<Double, Double>): String {
@@ -149,5 +258,6 @@ class VoiceNavigationManager(context: Context) : TextToSpeech.OnInitListener {
     fun shutdown() {
         tts.stop()
         tts.shutdown()
+        abandonAudioFocus()
     }
 }
