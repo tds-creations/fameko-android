@@ -102,9 +102,11 @@ class OrderRepository {
         }
     }
 
-    suspend fun getNearbyDrivers(lat: Double, lng: Double): Result<List<DriverLocation>> = withContext(Dispatchers.IO) {
+    suspend fun getNearbyDrivers(
+        lat: Double, lng: Double, radius: Double = 10.0, vehicleType: String? = null, serviceMode: String? = "RIDE_HAILING"
+    ): Result<List<DriverLocation>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.getNearbyDrivers(lat, lng)
+            val response = NetworkClient.famekoApi.getNearbyDrivers(lat, lng, radius, vehicleType, serviceMode)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)

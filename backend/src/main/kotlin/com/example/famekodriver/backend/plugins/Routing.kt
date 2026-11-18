@@ -1631,7 +1631,10 @@ fun Application.configureRouting() {
             get("/nearby") {
                 val lat = call.parameters["lat"]?.toDoubleOrNull() ?: 0.0
                 val lng = call.parameters["lng"]?.toDoubleOrNull() ?: 0.0
-                call.respond(DatabaseRepository.getNearbyDrivers(lat, lng, call.parameters["radius"]?.toDoubleOrNull() ?: 5.0))
+                val radius = call.parameters["radius"]?.toDoubleOrNull() ?: 10.0
+                val vehicleType = call.parameters["vehicleType"] ?: call.parameters["vehicle_type"]
+                val serviceMode = call.parameters["serviceMode"] ?: call.parameters["service_mode"] ?: "RIDE_HAILING"
+                call.respond(DatabaseRepository.getNearbyDrivers(lat, lng, radius, vehicleType, serviceMode))
             }
             post("/update-online-status") {
                 val p = call.receiveParameters()

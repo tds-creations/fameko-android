@@ -1285,14 +1285,67 @@ fun MainMapContent(
                                         locationComponent.renderMode = RenderMode.NORMAL
                                     }
                                     
-                                    // GPU Optimization: Symbol Layers for nearby drivers
-                                    style.addSource(org.maplibre.android.style.sources.GeoJsonSource("drivers-source"))
-                                    style.addLayer(org.maplibre.android.style.layers.SymbolLayer("drivers-layer", "drivers-source").withProperties(
-                                        org.maplibre.android.style.layers.PropertyFactory.iconImage(org.maplibre.android.style.expressions.Expression.get("icon-id")),
-                                        org.maplibre.android.style.layers.PropertyFactory.iconRotate(org.maplibre.android.style.expressions.Expression.get("bearing")),
-                                        org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
-                                        org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true)
-                                    ))
+                                    // GPU Optimization: Symbol Layers & Native Clustering for nearby drivers
+                                    val geoJsonSource = org.maplibre.android.style.sources.GeoJsonSource(
+                                        "drivers-source",
+                                        org.maplibre.geojson.FeatureCollection.fromFeatures(emptyList()),
+                                        org.maplibre.android.style.sources.GeoJsonOptions()
+                                            .withCluster(true)
+                                            .withClusterMaxZoom(14)
+                                            .withClusterRadius(45)
+                                    )
+                                    style.addSource(geoJsonSource)
+
+                                    val clusterLayer = org.maplibre.android.style.layers.CircleLayer("cluster-layer", "drivers-source").apply {
+                                        setFilter(org.maplibre.android.style.expressions.Expression.has("point_count"))
+                                        withProperties(
+                                            org.maplibre.android.style.layers.PropertyFactory.circleColor(
+                                                org.maplibre.android.style.expressions.Expression.color(0xFF0047AB.toInt())
+                                            ),
+                                            org.maplibre.android.style.layers.PropertyFactory.circleRadius(18f),
+                                            org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth(2f),
+                                            org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor(
+                                                org.maplibre.android.style.expressions.Expression.color(0xFFFFFFFF.toInt())
+                                            )
+                                        )
+                                    }
+                                    style.addLayer(clusterLayer)
+
+                                    val countTextLayer = org.maplibre.android.style.layers.SymbolLayer("cluster-count-layer", "drivers-source").apply {
+                                        setFilter(org.maplibre.android.style.expressions.Expression.has("point_count"))
+                                        withProperties(
+                                            org.maplibre.android.style.layers.PropertyFactory.textField(
+                                                org.maplibre.android.style.expressions.Expression.toString(
+                                                    org.maplibre.android.style.expressions.Expression.get("point_count")
+                                                )
+                                            ),
+                                            org.maplibre.android.style.layers.PropertyFactory.textSize(12f),
+                                            org.maplibre.android.style.layers.PropertyFactory.textColor(
+                                                org.maplibre.android.style.expressions.Expression.color(0xFFFFFFFF.toInt())
+                                            ),
+                                            org.maplibre.android.style.layers.PropertyFactory.textIgnorePlacement(true),
+                                            org.maplibre.android.style.layers.PropertyFactory.textAllowOverlap(true)
+                                        )
+                                    }
+                                    style.addLayer(countTextLayer)
+
+                                    val unclusteredSymbolLayer = org.maplibre.android.style.layers.SymbolLayer("drivers-layer", "drivers-source").apply {
+                                        setFilter(org.maplibre.android.style.expressions.Expression.not(org.maplibre.android.style.expressions.Expression.has("point_count")))
+                                        withProperties(
+                                            org.maplibre.android.style.layers.PropertyFactory.iconImage(
+                                                org.maplibre.android.style.expressions.Expression.coalesce(
+                                                    org.maplibre.android.style.expressions.Expression.get("icon-id"),
+                                                    org.maplibre.android.style.expressions.Expression.literal("icon-car")
+                                                )
+                                            ),
+                                            org.maplibre.android.style.layers.PropertyFactory.iconRotate(
+                                                org.maplibre.android.style.expressions.Expression.get("bearing")
+                                            ),
+                                            org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
+                                            org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true)
+                                        )
+                                    }
+                                    style.addLayer(unclusteredSymbolLayer)
                                 }
                                 map.addOnMapClickListener { focusManager.clearFocus(); false }
                             }

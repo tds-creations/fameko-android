@@ -721,21 +721,30 @@ object DatabaseRepository {
         return list
     }
 
-    fun getNearbyDrivers(lat: Double, lng: Double, radius: Double, vehicleType: String? = null): List<DriverLocation> {
+    fun getNearbyDrivers(
+        lat: Double, lng: Double, radius: Double, vehicleType: String? = null, serviceMode: String? = "RIDE_HAILING"
+    ): List<DriverLocation> {
         val redisIds = try {
             RedisManager.getNearbyDrivers(lat, lng, radius)
         } catch (e: Exception) {
-            println("Redis lookup failed: ${e.message}")
             emptyList<String>()
         }
 
         val list = mutableListOf<DriverLocation>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
+            val vType = vehicleType?.lowercase() ?: ""
+            val stMode = (serviceMode ?: "RIDE_HAILING").uppercase()
+
+            val serviceModeFilter = when {
+                stMode == "RIDE_HAILING" -> "AND (d.service_types ILIKE '%RIDE_HAILING%' OR d.service_types ILIKE '%BOTH%')"
+                stMode == "PACKAGE_DELIVERY" -> "AND (d.service_types ILIKE '%PACKAGE_DELIVERY%' OR d.service_types ILIKE '%BOTH%')"
+                else -> ""
+            }
+
             val vehicleFilter = if (vehicleType != null) {
-                val vType = vehicleType.lowercase()
                 when {
-                    vType.contains("economy") || vType.contains("ride") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%economy%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%' OR d.vehicle_type ILIKE '%okada%' OR d.vehicle_type ILIKE '%bike%' OR d.vehicle_type ILIKE '%motor%')"
-                    vType.contains("comfort") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%comfort%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%')"
+                    vType.contains("economy") || vType.contains("ride") || vType.contains("saloon") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%economy%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%')"
+                    vType.contains("comfort") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%comfort%' OR d.vehicle_type ILIKE '%saloon%')"
                     vType.contains("car") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%taxi%' OR d.vehicle_type ILIKE '%saloon%')"
                     vType.contains("okada") || vType.contains("bike") || vType.contains("motor") -> "AND (d.vehicle_type ILIKE '%okada%' OR d.vehicle_type ILIKE '%bike%' OR d.vehicle_type ILIKE '%motor%')"
                     vType.contains("pragya") -> "AND (d.vehicle_type ILIKE '%pragya%' OR d.vehicle_type ILIKE '%tricycle%')"
@@ -746,7 +755,6 @@ object DatabaseRepository {
                 }
             } else ""
 
-            // Combine H3 filter, Redis IDs, and spatial coordinates for maximum reach
             val h3Index = H3Helper.getIndex(lat, lng)
             val k = (radius / 1.1).toInt().coerceAtLeast(1).coerceAtMost(15)
             val neighbors = H3Helper.getNeighborsInRadius(h3Index, k)
@@ -765,8 +773,11 @@ object DatabaseRepository {
                     JOIN drivers d ON ds.driver_id = d.id
                     WHERE ds.is_online = true AND d.status = 'APPROVED'
                     AND ds.latitude IS NOT NULL AND ds.longitude IS NOT NULL
+                    AND (ds.updated_at IS NULL OR ds.updated_at >= NOW() - INTERVAL '10 MINUTES')
+                    AND d.id NOT IN (SELECT driver_id FROM deliveries WHERE status IN ('ASSIGNED', 'ARRIVED', 'IN_TRANSIT') AND driver_id IS NOT NULL)
                     $geoFilter
                     $vehicleFilter
+                    $serviceModeFilter
                     AND (6371 * acos(least(1.0, cos(radians(?)) * cos(radians(ds.latitude)) * cos(radians(ds.longitude) - radians(?)) + sin(radians(?)) * sin(radians(ds.latitude)))) ) <= ?
                     ORDER BY distance ASC, ds.completed_today ASC
                 """.trimIndent()
@@ -776,8 +787,11 @@ object DatabaseRepository {
                     FROM driver_stats ds
                     JOIN drivers d ON ds.driver_id = d.id
                     WHERE ds.is_online = true AND d.status = 'APPROVED'
+                    AND (ds.updated_at IS NULL OR ds.updated_at >= NOW() - INTERVAL '10 MINUTES')
+                    AND d.id NOT IN (SELECT driver_id FROM deliveries WHERE status IN ('ASSIGNED', 'ARRIVED', 'IN_TRANSIT') AND driver_id IS NOT NULL)
                     $geoFilter
                     $vehicleFilter
+                    $serviceModeFilter
                     ORDER BY ds.completed_today ASC, d.id DESC
                 """.trimIndent()
             }

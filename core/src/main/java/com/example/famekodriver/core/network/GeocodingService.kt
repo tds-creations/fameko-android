@@ -230,7 +230,9 @@ interface FamekoApiService {
     suspend fun getNearbyDrivers(
         @Query("lat") lat: Double,
         @Query("lng") lng: Double,
-        @Query("radius") radius: Double = 5.0
+        @Query("radius") radius: Double = 10.0,
+        @Query("vehicleType") vehicleType: String? = null,
+        @Query("serviceMode") serviceMode: String? = "RIDE_HAILING"
     ): List<DriverLocation>
 
     @FormUrlEncoded
