@@ -71,6 +71,7 @@ class DriverSignupActivity : ComponentActivity() {
         val selectedRegion = (formData["region"] ?: "").ifEmpty { "Greater Accra" }
         val selectedVehicleType = (formData["vehicle_type"] ?: "").ifEmpty { "Car" }
         val vehicleNum = (formData["vehicle_number"] ?: "").ifEmpty { "GT-" + (1000..9999).random() + "-24" }
+        val vehicleModel = (formData["vehicle_model"] ?: "").ifEmpty { "" }
         val emContact = formData["emergency_contact_1"] ?: ""
 
         Toast.makeText(this, "Submitting ${if (role == "OWNER") "Fleet Owner" else "Driver"} registration...", Toast.LENGTH_SHORT).show()
@@ -86,6 +87,7 @@ class DriverSignupActivity : ComponentActivity() {
                 vehicleType = if (role == "OWNER") "Fleet" else selectedVehicleType,
                 serviceType = "BOTH",
                 vehicleNumber = vehicleNum,
+                vehicleModel = vehicleModel,
                 emergencyContact1 = emContact,
                 emergencyContact2 = "",
                 userRole = role,

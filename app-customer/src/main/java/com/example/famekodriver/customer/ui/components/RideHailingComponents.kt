@@ -578,9 +578,11 @@ fun DriverInfoSheetContent(
             Column(modifier = Modifier.weight(1f)) {
                 Text(data.driverName ?: "Your Driver", style = MaterialTheme.typography.titleLarge, color = BoltDark)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("${data.driverRating ?: 4.9}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BoltDark)
+                    val ratingStr = String.format(java.util.Locale.US, "%.1f", data.driverRating ?: 4.9)
+                    Text(ratingStr, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BoltDark)
                     Text(" • ", color = Color.Gray)
-                    Text(data.driverVehicle ?: "Fameko Economy", fontSize = 14.sp, color = Color.Gray)
+                    val vehicleModelText = data.driverVehicleModel?.takeIf { it.isNotBlank() } ?: data.driverVehicle ?: "Fameko Economy"
+                    Text(vehicleModelText, fontSize = 14.sp, color = Color.Gray)
                 }
             }
             
@@ -615,7 +617,7 @@ fun DriverInfoSheetContent(
                 Spacer(Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = data.driverVehicleModel ?: "Vehicle Details",
+                        text = data.driverVehicleModel?.takeIf { it.isNotBlank() } ?: data.driverVehicle ?: "Vehicle Details",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         color = BoltDark

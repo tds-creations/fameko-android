@@ -267,8 +267,8 @@ fun DriverSignupScreen(
                         OutlinedTextField(
                             value = vehicleModelInput,
                             onValueChange = { vehicleModelInput = it },
-                            label = { Text("Vehicle Model (vehicle_model)") },
-                            placeholder = { Text("e.g. Toyota Vitz Silver") },
+                            label = { Text("Vehicle Make & Model (Required)") },
+                            placeholder = { Text("e.g. Toyota Corolla / Hyundai Elantra") },
                             leadingIcon = { Icon(Icons.Default.DirectionsCar, null, tint = Color.Gray, modifier = Modifier.size(18.dp)) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -293,8 +293,8 @@ fun DriverSignupScreen(
 
                         Button(
                             onClick = {
-                                if (fullName.isBlank() || phoneInput.isBlank() || emailInput.isBlank() || passwordInput.isBlank() || licenseNumber.isBlank()) {
-                                    Toast.makeText(context, "Please fill in all required driver details", Toast.LENGTH_SHORT).show()
+                                if (fullName.isBlank() || phoneInput.isBlank() || emailInput.isBlank() || passwordInput.isBlank() || licenseNumber.isBlank() || vehicleModelInput.isBlank() || vehicleNumberInput.isBlank()) {
+                                    Toast.makeText(context, "Please fill in all required driver and vehicle details including Vehicle Model", Toast.LENGTH_SHORT).show()
                                 } else {
                                     onSubmit(
                                         mapOf(

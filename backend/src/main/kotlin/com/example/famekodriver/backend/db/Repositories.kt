@@ -3353,7 +3353,7 @@ object DatabaseRepository {
                     driverName = rs.getString("full_name"),
                     driverPhone = rs.getString("phone"),
                     driverVehicle = rs.getString("vehicle_type"),
-                    driverVehicleModel = rs.getString("vehicle_model"),
+                    driverVehicleModel = rs.getString("vehicle_model")?.takeIf { it.isNotBlank() } ?: rs.getString("vehicle_type"),
                     driverVehicleNumber = rs.getString("vehicle_number"),
                     driverProfilePic = rs.getString("profile_picture"),
                     driverRating = rs.getDouble("rating"),
