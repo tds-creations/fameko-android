@@ -1678,24 +1678,28 @@ fun Application.configureRouting() {
                 val lng = call.parameters["lng"]?.toDoubleOrNull() ?: 0.0
                 val vehicleType = call.parameters["vehicle_type"] ?: "car"
                 val vehicleCategory = call.parameters["vehicle_category"]
+                val driverId = call.parameters["driver_id"]?.toIntOrNull() ?: call.parameters["driverId"]?.toIntOrNull()
                 
+                val driver = if (driverId != null) DatabaseRepository.getDriverDetails(driverId) else null
+                val driverServiceType = driver?.get("service_types") as? String ?: "BOTH"
+
                 // Tiered expansion search logic (Industry standard)
                 var radius = 3.0 // Start with 3km
-                var deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory)
+                var deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory, driverServiceType = driverServiceType)
                 
                 if (deliveries.isEmpty()) {
                     radius = 7.0 // Expand to 7km
-                    deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory)
+                    deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory, driverServiceType = driverServiceType)
                 }
                 
                 if (deliveries.isEmpty()) {
                     radius = 15.0 // Expand to 15km
-                    deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory)
+                    deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory, driverServiceType = driverServiceType)
                 }
 
                 if (deliveries.isEmpty()) {
                     radius = 50.0 // Max expansion to 50km for remote areas
-                    deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory)
+                    deliveries = DatabaseRepository.getAvailableDeliveriesByRadius(lat, lng, radius, vehicleType, vehicleCategory, driverServiceType = driverServiceType)
                 }
                 
                 call.respond(deliveries)

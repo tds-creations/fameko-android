@@ -825,18 +825,28 @@ object DatabaseRepository {
         return list
     }
 
-    fun getAvailableDeliveriesByRadius(lat: Double, lng: Double, radius: Double, vehicleType: String, vehicleCategory: String? = null): List<Delivery> {
+    fun getAvailableDeliveriesByRadius(
+        lat: Double, lng: Double, radius: Double, vehicleType: String, vehicleCategory: String? = null, driverServiceType: String? = "BOTH"
+    ): List<Delivery> {
         val list = mutableListOf<Delivery>()
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val vType = vehicleType.lowercase()
+            val stFilter = (driverServiceType ?: "BOTH").uppercase()
+
+            val serviceTypeClause = when {
+                stFilter == "RIDE_HAILING" -> "AND d.service_type NOT ILIKE '%PACKAGE%' AND d.service_type NOT ILIKE '%DELIVERY%'"
+                stFilter == "PACKAGE_DELIVERY" -> "AND (d.service_type ILIKE '%PACKAGE%' OR d.service_type ILIKE '%DELIVERY%')"
+                else -> ""
+            }
+
             val vehicleFilter = when {
-                vType.contains("car") || vType.contains("economy") || vType.contains("comfort") -> "AND (service_type ILIKE 'car' OR service_type ILIKE 'Economy' OR service_type ILIKE 'Comfort')"
-                vType.contains("okada") || vType.contains("bike") || vType.contains("motorcycle") || vType.contains("rider") || vType.contains("motorbike") || vType.contains("motor") -> "AND (service_type ILIKE 'okada' OR service_type ILIKE 'bike')"
-                vType.contains("pragya") -> "AND service_type ILIKE 'pragya'"
-                vType.contains("aboboyaa") -> "AND service_type ILIKE 'aboboyaa'"
-                vType.contains("truck") -> "AND service_type ILIKE 'truck'"
-                vType.contains("bicycle") -> "AND service_type ILIKE 'bicycle'"
-                else -> "AND (service_type ILIKE ? OR service_type ILIKE 'car')"
+                vType.contains("car") || vType.contains("economy") || vType.contains("comfort") -> "AND (d.service_type ILIKE 'car' OR d.service_type ILIKE 'Economy' OR d.service_type ILIKE 'Comfort' OR d.service_type ILIKE 'RIDE_HAILING' OR d.service_type ILIKE 'PACKAGE_DELIVERY')"
+                vType.contains("okada") || vType.contains("bike") || vType.contains("motorcycle") || vType.contains("rider") || vType.contains("motorbike") || vType.contains("motor") -> "AND (d.service_type ILIKE 'okada' OR d.service_type ILIKE 'bike' OR d.service_type ILIKE '%PACKAGE%')"
+                vType.contains("pragya") -> "AND d.service_type ILIKE 'pragya'"
+                vType.contains("aboboyaa") -> "AND d.service_type ILIKE 'aboboyaa'"
+                vType.contains("truck") -> "AND d.service_type ILIKE 'truck'"
+                vType.contains("bicycle") -> "AND d.service_type ILIKE 'bicycle'"
+                else -> "AND (d.service_type ILIKE ? OR d.service_type ILIKE 'car')"
             }
 
             val sql = """
@@ -848,6 +858,7 @@ object DatabaseRepository {
                 JOIN customers c ON o.customer_id = c.id
                 WHERE d.status = 'PENDING'
                 $vehicleFilter
+                $serviceTypeClause
                 AND (6371 * acos(cos(radians(?)) * cos(radians(d.pickup_lat)) * cos(radians(d.pickup_lng) - radians(?)) + sin(radians(?)) * sin(radians(d.pickup_lat)))) <= ?
                 ORDER BY distance ASC
             """.trimIndent()
@@ -867,7 +878,13 @@ object DatabaseRepository {
             while (rs.next()) {
                 val dist = rs.getDouble("distance")
                 val pickupEta = (dist / 25.0) * 60.0 + 1.0 
-                
+                val stRaw = (rs.getString("service_type") ?: "RIDE_HAILING").uppercase()
+                val parsedServiceType = when {
+                    stRaw.contains("PACKAGE") || stRaw.contains("EXPRESS") || stRaw.contains("DELIVERY") -> ServiceType.PACKAGE_DELIVERY
+                    stRaw.contains("RENTAL") -> ServiceType.RENTAL
+                    else -> ServiceType.RIDE_HAILING
+                }
+
                 list.add(Delivery(
                     id = rs.getString("id"),
                     orderId = rs.getInt("order_id"),
@@ -887,6 +904,7 @@ object DatabaseRepository {
                     customerPhone = rs.getString("customer_phone"),
                     customerProfilePic = rs.getString("customer_profile_pic"),
                     totalFare = rs.getDouble("total_fare"),
+                    serviceType = parsedServiceType,
                     recipientName = rs.getString("recipient_name"),
                     recipientPhone = rs.getString("recipient_phone"),
                     packageCategory = rs.getString("package_category"),
@@ -1600,6 +1618,13 @@ object DatabaseRepository {
             stmt.setInt(1, driverId)
             val rs = stmt.executeQuery()
             while (rs.next()) {
+                val stRaw = (rs.getString("service_type") ?: "RIDE_HAILING").uppercase()
+                val parsedServiceType = when {
+                    stRaw.contains("PACKAGE") || stRaw.contains("DELIVERY") -> ServiceType.PACKAGE_DELIVERY
+                    stRaw.contains("RENTAL") -> ServiceType.RENTAL
+                    else -> ServiceType.RIDE_HAILING
+                }
+
                 list.add(Delivery(
                     id = rs.getInt("id").toString(),
                     orderId = rs.getInt("order_id"),
@@ -1618,7 +1643,13 @@ object DatabaseRepository {
                     customerName = rs.getString("customer_name"),
                     customerPhone = rs.getString("customer_phone"),
                     customerProfilePic = rs.getString("customer_profile_pic"),
-                    totalFare = rs.getDouble("total_fare")
+                    totalFare = rs.getDouble("total_fare"),
+                    serviceType = parsedServiceType,
+                    packageCategory = try { rs.getString("package_category") } catch (_: Exception) { null },
+                    packageNotes = try { rs.getString("package_notes") } catch (_: Exception) { null },
+                    recipientName = try { rs.getString("recipient_name") } catch (_: Exception) { null },
+                    recipientPhone = try { rs.getString("recipient_phone") } catch (_: Exception) { null },
+                    isFragile = try { rs.getBoolean("is_fragile") } catch (_: Exception) { false }
                 ))
             }
         }
@@ -1640,6 +1671,13 @@ object DatabaseRepository {
             stmt.setInt(1, driverId)
             val rs = stmt.executeQuery()
             while (rs.next()) {
+                val stRaw = (rs.getString("service_type") ?: "RIDE_HAILING").uppercase()
+                val parsedServiceType = when {
+                    stRaw.contains("PACKAGE") || stRaw.contains("DELIVERY") -> ServiceType.PACKAGE_DELIVERY
+                    stRaw.contains("RENTAL") -> ServiceType.RENTAL
+                    else -> ServiceType.RIDE_HAILING
+                }
+
                 list.add(Delivery(
                     id = rs.getInt("id").toString(),
                     orderId = rs.getInt("order_id"),
@@ -1658,7 +1696,13 @@ object DatabaseRepository {
                     customerName = rs.getString("customer_name"),
                     customerPhone = rs.getString("customer_phone"),
                     customerProfilePic = rs.getString("customer_profile_pic"),
-                    totalFare = rs.getDouble("total_fare")
+                    totalFare = rs.getDouble("total_fare"),
+                    serviceType = parsedServiceType,
+                    packageCategory = try { rs.getString("package_category") } catch (_: Exception) { null },
+                    packageNotes = try { rs.getString("package_notes") } catch (_: Exception) { null },
+                    recipientName = try { rs.getString("recipient_name") } catch (_: Exception) { null },
+                    recipientPhone = try { rs.getString("recipient_phone") } catch (_: Exception) { null },
+                    isFragile = try { rs.getBoolean("is_fragile") } catch (_: Exception) { false }
                 ))
             }
         }

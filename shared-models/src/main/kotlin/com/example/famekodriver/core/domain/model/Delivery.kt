@@ -18,7 +18,7 @@ data class Delivery(
     val customerPhone: String? = null,
     val customerAddress: String? = null,
     val customerProfilePic: String? = null,
-    val serviceType: ServiceType = ServiceType.PACKAGE_DELIVERY,
+    val serviceType: ServiceType = ServiceType.RIDE_HAILING,
     val pickupEtaMin: Double? = null,
     val totalFare: Double? = null,
     val createdAt: String? = null,
@@ -59,7 +59,7 @@ data class Delivery(
     val currentContactRole: String
         get() {
             if (serviceType != ServiceType.PACKAGE_DELIVERY) {
-                return "PASSENGER"
+                return if (status == DeliveryStatus.ASSIGNED || status == DeliveryStatus.ARRIVED) "PASSENGER (PICKUP)" else "PASSENGER (DROP-OFF)"
             }
             val isPickupPhase = status == DeliveryStatus.ASSIGNED || status == DeliveryStatus.ARRIVED || status == DeliveryStatus.PENDING
             return if (isSending) {

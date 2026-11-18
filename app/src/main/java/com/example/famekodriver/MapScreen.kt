@@ -1198,7 +1198,7 @@ fun DeliveryControlSheet(
                 }
             }
 
-            if (delivery.serviceType == ServiceType.PACKAGE_DELIVERY || !delivery.packageCategory.isNullOrBlank()) {
+            if (delivery.serviceType == ServiceType.PACKAGE_DELIVERY) {
                 Surface(
                     color = Color(0xFFF1F5F9),
                     shape = RoundedCornerShape(10.dp),
@@ -1229,13 +1229,27 @@ fun DeliveryControlSheet(
                         }
                         if (!delivery.packageNotes.isNullOrBlank()) {
                             Text(
-                                text = "Note: ${delivery.packageNotes}",
+                                text = "Notes: ${delivery.packageNotes}",
                                 fontSize = 11.sp,
                                 color = Color.Gray,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                modifier = Modifier.padding(top = 2.dp)
                             )
                         }
+                    }
+                }
+            } else {
+                Surface(
+                    color = Color(0xFFEFF6FF),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🚘", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Passenger Ride Hailing Trip", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = FamekoPrimary)
                     }
                 }
             }
