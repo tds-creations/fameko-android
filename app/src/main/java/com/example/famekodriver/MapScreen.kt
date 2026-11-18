@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -443,11 +444,10 @@ fun MapScreen(
             }
         }
     }
-
     Scaffold(
         floatingActionButton = {
             Column(
-                modifier = Modifier.padding(bottom = 140.dp),
+                modifier = Modifier.padding(bottom = if (viewModel.activeRequest != null || viewModel.currentDelivery != null) 310.dp else 140.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.End
             ) {
@@ -547,74 +547,29 @@ fun MapScreen(
                 }
             )
 
-            // Top Bar Header Overlay
-            Row(
+            // Left Menu Floating FAB Button
+            Surface(
+                onClick = onNavigateToMenu,
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 6.dp,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .statusBarsPadding()
-                    .align(Alignment.TopCenter),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(start = 16.dp, top = 12.dp)
+                    .size(48.dp)
+                    .align(Alignment.TopStart)
             ) {
-                // Left Menu FAB Button
-                Surface(
-                    onClick = onNavigateToMenu,
-                    shape = CircleShape,
-                    color = Color.White,
-                    shadowElevation = 6.dp,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Menu, stringResource(R.string.menu), tint = Color(0xFF0F172A), modifier = Modifier.size(22.dp))
-                    }
-                }
-
-                // Right Category & Status Capsule
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color.White,
-                    shadowElevation = 6.dp,
-                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            val vLabel = (viewModel.vehicleCategory ?: "").ifEmpty { vehicleTypeFromSession.ifEmpty { "Saloon" } }
-                            val isOkadaV = vLabel.lowercase().let { it.contains("okada") || it.contains("bike") || it.contains("motor") || it.contains("delivery") }
-                            Icon(if (isOkadaV) Icons.Default.TwoWheeler else Icons.Default.DirectionsCar, null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
-                            Text(vLabel, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                        }
-
-                        Surface(
-                            color = if (viewModel.isOnline) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, if (viewModel.isOnline) Color(0xFF10B981) else Color(0xFFEF4444))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .background(if (viewModel.isOnline) Color(0xFF10B981) else Color(0xFFEF4444), CircleShape)
-                                )
-                                Text(
-                                    text = if (viewModel.isOnline) "Online" else "Offline",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = if (viewModel.isOnline) Color(0xFF059669) else Color(0xFFDC2626)
-                                )
-                            }
-                        }
-                    }
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Menu,
+                        contentDescription = stringResource(R.string.menu),
+                        tint = Color(0xFF0F172A),
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
+
+
 
             // Surge / High Demand Floating Banner
             viewModel.currentSurge?.let { surge ->
@@ -678,14 +633,21 @@ fun MapScreen(
                 )
             }
 
-            viewModel.activeRequest?.let { request ->
-                IncomingRequestSheet(
-                    request = request,
-                    timerProgress = viewModel.requestTimer / 30f,
-                    onAccept = { viewModel.acceptDelivery() },
-                    onCancel = { viewModel.rejectDelivery() },
-                    isAccepting = viewModel.isAccepting
-                )
+            AnimatedVisibility(
+                visible = viewModel.activeRequest != null,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                viewModel.activeRequest?.let { request ->
+                    IncomingRequestSheet(
+                        request = request,
+                        timerProgress = viewModel.requestTimer / 30f,
+                        onAccept = { viewModel.acceptDelivery() },
+                        onCancel = { viewModel.rejectDelivery() },
+                        isAccepting = viewModel.isAccepting
+                    )
+                }
             }
 
             if (viewModel.currentDelivery == null && viewModel.activeRequest == null) {
@@ -1437,298 +1399,511 @@ fun DriverNavigationOverlay(
 }
 
 @Composable
+fun TopMapStatusBar(
+    isOnline: Boolean,
+    city: String,
+    earningsToday: Double,
+    isSoundEnabled: Boolean,
+    onToggleSound: () -> Unit,
+    onNavigateToMenu: () -> Unit,
+    onNavigateToEarnings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .statusBarsPadding(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Left Pill: Online/Offline Status & City + Menu trigger
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF0F172A),
+            shadowElevation = 6.dp,
+            modifier = Modifier.clickable { onNavigateToMenu() }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(9.dp)
+                        .background(if (isOnline) Color(0xFF10B981) else Color(0xFFEF4444), CircleShape)
+                )
+                Text(
+                    text = "${if (isOnline) "ONLINE" else "OFFLINE"} • ${city.uppercase()}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Color.White
+                )
+            }
+        }
+
+        // Center Button: Sound Notification Control
+        Surface(
+            onClick = onToggleSound,
+            shape = CircleShape,
+            color = Color(0xFF0F172A),
+            shadowElevation = 6.dp,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (isSoundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                    contentDescription = "Sound Control",
+                    tint = if (isSoundEnabled) Color.White else Color(0xFF94A3B8),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // Right Pill: Today's Earnings
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF0F172A),
+            shadowElevation = 6.dp,
+            modifier = Modifier.clickable { onNavigateToEarnings() }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "TODAY",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = Color(0xFF94A3B8)
+                )
+                Text(
+                    text = "GH₵ ${String.format(Locale.US, "%.2f", earningsToday)}",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 13.sp,
+                    color = Color(0xFF10B981)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun IncomingRequestSheet(
     request: Delivery,
     timerProgress: Float,
     onAccept: () -> Unit,
     onCancel: () -> Unit,
-    isAccepting: Boolean
+    isAccepting: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val remainingSec = (timerProgress * 30).toInt().coerceIn(0, 30)
+    val isDelivery = request.serviceType == ServiceType.PACKAGE_DELIVERY
 
     Card(
-        modifier = Modifier
-            .padding(12.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 0.dp),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(16.dp),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            // Top Row: Fare, Surge & Circular Timer
+            // Drag Handle Indicator
+            Box(
+                modifier = Modifier
+                    .width(36.dp)
+                    .height(3.dp)
+                    .background(Color(0xFFCBD5E1), RoundedCornerShape(2.dp))
+                    .align(Alignment.CenterHorizontally)
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // SECTION 1: FARE AND COUNTDOWN
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Text(
                             text = "GH₵ ${String.format(Locale.getDefault(), "%.2f", request.estimatedEarnings)}",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Black,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF0F172A)
                         )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Surface(
                             color = Color(0xFFFEF3C7),
-                            shape = RoundedCornerShape(6.dp)
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                "⚡ 1.5x Surge",
+                                text = "⚡ 1.5x Surge",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFD97706),
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Surface(
                             color = Color(0xFFECFDF5),
                             shape = RoundedCornerShape(6.dp)
                         ) {
-                            Text(
-                                "Cash Payment",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF059669),
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Payments,
+                                    contentDescription = null,
+                                    tint = Color(0xFF059669),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "Cash Payment",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF059669)
+                                )
+                            }
                         }
+                        Text(
+                            text = if (isDelivery) "Package Delivery" else "Standard Ride",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF64748B)
+                        )
                     }
                 }
 
-                // Circular Timer Indicator
+                // Circular Countdown Indicator
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(46.dp)
                 ) {
                     CircularProgressIndicator(
                         progress = { timerProgress },
                         modifier = Modifier.fillMaxSize(),
                         color = Color(0xFFF97316),
                         trackColor = Color(0xFFF1F5F9),
-                        strokeWidth = 5.dp,
+                        strokeWidth = 3.5.dp
                     )
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "$remainingSec",
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Black,
                             color = Color(0xFF0F172A)
                         )
                         Text(
                             text = "SEC",
-                            fontSize = 8.sp,
+                            fontSize = 7.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Gray
+                            color = Color(0xFF64748B)
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
-            // Passenger / Rider Info Card
-            Surface(
+            // SECTION 2: PASSENGER / SENDER INFORMATION
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = Color(0xFFF8FAFC),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Avatar Box
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF0F172A)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Avatar Box
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0F172A)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val initials = request.customerName?.split(" ")?.let { if (it.size > 1) "${it[0].first()}${it[1].first()}" else it[0].take(2) } ?: "AO"
+                    if (isDelivery) {
+                        Icon(
+                            imageVector = Icons.Default.LocalShipping,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    } else {
+                        val initials = request.customerName?.split(" ")?.let {
+                            if (it.size > 1) "${it[0].first()}${it[1].first()}" else it[0].take(2)
+                        } ?: "JL"
                         Text(
                             text = initials.uppercase(),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                    }
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = request.customerName ?: "Ama Osei",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Color(0xFF0F172A)
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
-                            Text("4.9 (128 trips) • Standard", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-                        }
-                    }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "${String.format(Locale.US, "%.1f", request.distanceKm)} km",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = Color(0xFF0F172A)
-                        )
-                        Text(
-                            text = "~${(request.distanceKm * 2.5).toInt()} mins trip",
-                            fontSize = 11.sp,
-                            color = Color.Gray
+                            fontSize = 13.sp
                         )
                     }
                 }
+
+                Spacer(Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isDelivery) "${request.customerName ?: "Sender"} (Sender)" else (request.customerName ?: "Joseph Lamptey"),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color(0xFF0F172A),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(1.dp))
+                    if (isDelivery) {
+                        Text(
+                            text = "Recipient: ${request.recipientName?.takeIf { it.isNotBlank() } ?: "Standard Package"}",
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(12.dp))
+                            Text(
+                                text = "4.9",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFD97706)
+                            )
+                            Text(
+                                text = "• 128 trips",
+                                fontSize = 11.sp,
+                                color = Color(0xFF64748B),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${String.format(Locale.US, "%.1f", request.distanceKm)} km",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                    Text(
+                        text = "~${(request.distanceKm * 2.5).toInt().coerceAtLeast(1)} mins trip",
+                        fontSize = 10.sp,
+                        color = Color(0xFF64748B)
+                    )
+                }
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(8.dp))
 
-            // Route Timeline
+            // SECTION 3: PICKUP SPOT AND DESTINATION (VERTICAL ROUTE TIMELINE)
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFF8FAFC), RoundedCornerShape(16.dp))
-                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                // Pickup
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Pickup Spot Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .size(8.dp)
                             .background(Color(0xFF10B981), CircleShape)
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "PICKUP SPOT (${request.pickupEtaMin?.toInt() ?: 3} MINS)",
+                            text = "PICKUP SPOT (${request.pickupEtaMin?.toInt() ?: 2} MINS AWAY)",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF10B981)
+                            color = Color(0xFF10B981),
+                            letterSpacing = 0.5.sp
                         )
                         Text(
                             text = request.pickupLocation,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    Text(
+                        text = "450m",
+                        fontSize = 10.sp,
+                        color = Color(0xFF94A3B8)
+                    )
                 }
 
-                // Divider line
+                // Vertical Connector Line
                 Box(
                     modifier = Modifier
-                        .padding(start = 5.dp)
+                        .padding(start = 3.dp)
                         .width(2.dp)
-                        .height(16.dp)
-                        .background(Color(0xFFCBD5E1))
+                        .height(10.dp)
+                        .background(Color(0xFFE2E8F0))
                 )
 
-                // Dropoff
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Drop-off Destination Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
-                            .background(Color(0xFFF97316), CircleShape)
-                    ) {
-                        Box(modifier = Modifier.size(4.dp).background(Color.White, CircleShape).align(Alignment.Center))
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
+                            .size(8.dp)
+                            .background(Color(0xFFF97316), RoundedCornerShape(2.dp))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "DROP-OFF DESTINATION",
+                            text = if (isDelivery) "DELIVERY DESTINATION" else "DROP-OFF DESTINATION",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFF97316)
+                            color = Color(0xFFF97316),
+                            letterSpacing = 0.5.sp
                         )
                         Text(
                             text = request.dropOffLocation,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    val areaLabel = request.dropOffLocation.split(",").let {
+                        if (it.size > 1) it[it.size - 2].trim() else ""
+                    }
+                    if (areaLabel.isNotBlank()) {
+                        Text(
+                            text = areaLabel,
+                            fontSize = 10.sp,
+                            color = Color(0xFF94A3B8),
+                            maxLines = 1
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // Action Buttons
+            // SECTION 4: ACTION BUTTONS (DECLINE & ACCEPT)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // DECLINE BUTTON
                 OutlinedButton(
                     onClick = onCancel,
                     modifier = Modifier
-                        .weight(0.9f)
-                        .height(54.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF475569))
+                        .weight(1f)
+                        .height(46.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF334155)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
-                    Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Decline", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Default.Close, null, modifier = Modifier.size(15.dp), tint = Color(0xFF64748B))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Decline",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            maxLines = 1
+                        )
+                    }
                 }
 
+                // ACCEPT BUTTON
                 Button(
                     onClick = onAccept,
                     modifier = Modifier
-                        .weight(1.3f)
-                        .height(54.dp),
-                    shape = RoundedCornerShape(16.dp),
+                        .weight(1.8f)
+                        .height(46.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                     enabled = !isAccepting,
-                    elevation = ButtonDefaults.buttonElevation(4.dp)
+                    elevation = ButtonDefaults.buttonElevation(2.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
                     if (isAccepting) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Column(horizontalAlignment = Alignment.Start) {
-                                Text(
-                                    text = "ACCEPT RIDE",
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 13.sp,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "GH₵ ${String.format(Locale.getDefault(), "%.2f", request.estimatedEarnings)}",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
+                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = if (isDelivery) "ACCEPT DELIVERY" else "ACCEPT RIDE",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(12.dp)
+                                    .background(Color.White.copy(alpha = 0.4f))
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "GH₵ ${String.format(Locale.getDefault(), "%.2f", request.estimatedEarnings)}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
             }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Bottom subtle bar indicator
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(3.dp)
+                    .background(Color(0xFFE2E8F0), RoundedCornerShape(2.dp))
+                    .align(Alignment.CenterHorizontally)
+            )
         }
     }
 }

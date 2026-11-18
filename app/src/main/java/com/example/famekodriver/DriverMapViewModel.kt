@@ -229,6 +229,32 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun simulateTestIncomingRequest(isDelivery: Boolean = false) {
+        activeRequest = Delivery(
+            id = "test_req_001",
+            orderId = 101,
+            driverId = null,
+            pickupLocation = "2, Temple Street, Santa Maria, Sowutuom Rd",
+            dropOffLocation = "Trako Street, Nyamekye, Abeka, Accra",
+            pickupLat = 5.6037,
+            pickupLng = -0.1870,
+            dropOffLat = 5.6100,
+            dropOffLng = -0.1900,
+            status = DeliveryStatus.PENDING,
+            distanceKm = 2.5,
+            estimatedEarnings = 30.00,
+            customerId = 42,
+            customerName = "Joseph Lamptey",
+            customerPhone = "0240000000",
+            serviceType = if (isDelivery) ServiceType.PACKAGE_DELIVERY else ServiceType.RIDE_HAILING,
+            pickupEtaMin = 2.0,
+            totalFare = 30.00,
+            recipientName = "Kofi Mensah",
+            packageCategory = "Electronics"
+        )
+        startRequestTimer()
+    }
+
     fun checkAndGoOnline(status: String) {
         if (isOnline) {
             // Already online, go offline
