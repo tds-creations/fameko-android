@@ -17,18 +17,28 @@ class FamekoMessagingService : FirebaseMessagingService() {
         }
 
         val type = remoteMessage.data["type"] ?: ""
-        val title = remoteMessage.data["title"] ?: remoteMessage.notification?.title ?: "Fameko Driver"
+        val title = remoteMessage.data["title"] ?: remoteMessage.notification?.title ?: ""
         val body = remoteMessage.data["message"] ?: remoteMessage.notification?.body ?: ""
+        val orderId = (remoteMessage.data["orderId"] ?: remoteMessage.data["order_id"])?.toIntOrNull() ?: 0
+
+        if (type == "OFFER_INVALIDATED") {
+            if (orderId != 0) {
+                NotificationHelper.cancelNotification(applicationContext, orderId)
+            }
+            return
+        }
 
         val isNewOrder = type == "NEW_DELIVERY" || type == "NEW_ORDER" || title.contains("New", ignoreCase = true)
 
         if (title.isNotEmpty() || body.isNotEmpty()) {
             NotificationHelper.showNotification(
-                applicationContext,
-                title,
-                body,
-                intent,
-                isNewOrder = isNewOrder
+                context = applicationContext,
+                title = title,
+                message = body,
+                intent = intent,
+                isNewOrder = isNewOrder,
+                type = type,
+                notificationId = if (orderId != 0) orderId else 0
             )
         }
     }

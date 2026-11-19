@@ -9,6 +9,7 @@ sealed class FamekoEvent {
     data class CallRejected(val callId: String, val reason: String?) : FamekoEvent()
     data class CallEnded(val callId: String) : FamekoEvent()
     data class OrderCancelled(val orderId: Int) : FamekoEvent()
+    data class OfferInvalidated(val orderId: Int) : FamekoEvent()
     data class OrderAccepted(val orderId: Int) : FamekoEvent()
     data class OrderStatusUpdate(val orderId: Int, val fare: Double? = null) : FamekoEvent()
     data class DriverLocationUpdate(val driverId: String, val lat: Double, val lng: Double, val bearing: Float) : FamekoEvent()

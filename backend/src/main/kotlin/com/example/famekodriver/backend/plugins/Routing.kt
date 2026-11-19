@@ -1292,6 +1292,12 @@ fun Application.configureRouting() {
                                 }
 
                                 while (attempt <= maxAttempts) {
+                                    val currentStatus = DatabaseRepository.getOrderStatus(orderId)
+                                    if (currentStatus != "PENDING") {
+                                        println("DEBUG: Order $orderId is no longer PENDING (status=$currentStatus). Halting dispatch loop immediately.")
+                                        break
+                                    }
+
                                     println("DEBUG: Dispatch attempt $attempt for order $orderId (radius: ${currentRadius}km)")
                                     val nearby = DatabaseRepository.getNearbyDrivers(req.pickupLat, req.pickupLng, currentRadius, req.requestedVehicleType)
                                     val bestEta = nearby.firstOrNull()?.pickupEtaMin ?: 5.0
@@ -1313,7 +1319,8 @@ fun Application.configureRouting() {
                                         customerName = DatabaseRepository.getCustomerName(req.customerId.toInt()) ?: "Customer",
                                         customerPhone = DatabaseRepository.getCustomerPhone(req.customerId.toInt()) ?: "",
                                         customerProfilePic = DatabaseRepository.getCustomerProfilePic(req.customerId.toInt()),
-                                        totalFare = req.estimatedFare
+                                        totalFare = req.estimatedFare,
+                                        requestedVehicleType = req.requestedVehicleType
                                     )
 
                                     // Try to lock and offer to multiple drivers (top 5)
@@ -1391,7 +1398,8 @@ fun Application.configureRouting() {
                     println("DEBUG: Sending ORDER_CANCELLED notification exclusively to accepted DRIVER_$acceptedDriverId for Order $orderId")
                     sendToUser("DRIVER_$acceptedDriverId", "ORDER_CANCELLED", mapOf("orderId" to orderId))
                 } else {
-                    println("DEBUG: Order $orderId was cancelled before acceptance by any driver. No driver cancellation notification sent.")
+                    println("DEBUG: Order $orderId was cancelled before acceptance by any driver. Invalidating unaccepted offer sheets.")
+                    broadcastToDrivers("OFFER_INVALIDATED", mapOf("orderId" to orderId))
                 }
 
                 call.respond(mapOf("success" to true))

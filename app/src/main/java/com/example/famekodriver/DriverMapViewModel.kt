@@ -204,6 +204,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                     activeRequest = null
                     clearRouteAndNavigation()
                     timerJob?.cancel()
+                    com.example.famekodriver.core.utils.NotificationHelper.cancelNotification(getApplication(), event.orderId)
                     android.widget.Toast.makeText(
                         getApplication(),
                         "Order #${event.orderId} was cancelled by customer",
@@ -213,6 +214,14 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                     // Driver was viewing unaccepted request sheet when customer cancelled before acceptance
                     activeRequest = null
                     timerJob?.cancel()
+                    com.example.famekodriver.core.utils.NotificationHelper.cancelNotification(getApplication(), event.orderId)
+                }
+            }
+            is FamekoEvent.OfferInvalidated -> {
+                if (activeRequest?.orderId == event.orderId) {
+                    activeRequest = null
+                    timerJob?.cancel()
+                    com.example.famekodriver.core.utils.NotificationHelper.cancelNotification(getApplication(), event.orderId)
                 }
             }
             is FamekoEvent.OrderStatusUpdate -> {

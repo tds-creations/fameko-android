@@ -30,7 +30,8 @@ object NotificationHelper {
         message: String,
         intent: Intent? = null,
         isNewOrder: Boolean = false,
-        type: String = "GENERAL"
+        type: String = "GENERAL",
+        notificationId: Int = 0
     ) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
@@ -119,6 +120,17 @@ object NotificationHelper {
                 if (pendingIntent != null) setContentIntent(pendingIntent)
             }
 
-        notificationManager.notify(if (isNewOrder) 9999 else System.currentTimeMillis().toInt(), builder.build())
+        val targetId = if (notificationId != 0) notificationId else if (isNewOrder) 9999 else System.currentTimeMillis().toInt()
+        notificationManager.notify(targetId, builder.build())
+    }
+
+    fun cancelNotification(context: Context, notificationId: Int) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (notificationId != 0) {
+                notificationManager.cancel(notificationId)
+            }
+            notificationManager.cancel(9999)
+        } catch (_: Exception) {}
     }
 }

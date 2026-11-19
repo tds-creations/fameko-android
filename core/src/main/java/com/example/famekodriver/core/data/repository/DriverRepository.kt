@@ -137,6 +137,13 @@ class DriverRepository private constructor() {
                                 _events.tryEmit(FamekoEvent.OrderCancelled(orderId))
                             }
                         }
+                        "OFFER_INVALIDATED" -> {
+                            val data = gson.fromJson(wsMessage.payload, Map::class.java)
+                            val orderId = (data["orderId"] ?: data["order_id"])?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+                            if (orderId != 0) {
+                                _events.tryEmit(FamekoEvent.OfferInvalidated(orderId))
+                            }
+                        }
                         "ORDER_ACCEPTED" -> {
                             Log.d("FamekoWS", "Order Accepted raw payload: ${wsMessage.payload}")
                             val data = gson.fromJson(wsMessage.payload, Map::class.java)
