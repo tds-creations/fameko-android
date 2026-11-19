@@ -2042,12 +2042,30 @@ object DatabaseRepository {
     }
 
     fun registerCustomer(req: CustomerRegisterRequest): Int? {
+        val phone = normalizePhone(req.phone)
+        val email = req.email.trim().lowercase()
         DatabaseInitializer.getDataSource().connection.use { conn ->
+            if (phone.isNotBlank()) {
+                val pCheck = conn.prepareStatement("SELECT id FROM customers WHERE phone = ?")
+                pCheck.setString(1, phone)
+                val pRs = pCheck.executeQuery()
+                if (pRs.next()) {
+                    throw IllegalArgumentException("Phone number $phone is already registered. Please log in.")
+                }
+            }
+            if (email.isNotBlank()) {
+                val eCheck = conn.prepareStatement("SELECT id FROM customers WHERE email = ?")
+                eCheck.setString(1, email)
+                val eRs = eCheck.executeQuery()
+                if (eRs.next()) {
+                    throw IllegalArgumentException("Email address $email is already registered. Please log in.")
+                }
+            }
             val sql = "INSERT INTO customers (name, email, phone, default_address, password, region, profile_picture, firebase_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
             val stmt = conn.prepareStatement(sql)
             stmt.setString(1, req.name.trim())
-            stmt.setString(2, req.email.trim().lowercase())
-            stmt.setString(3, normalizePhone(req.phone))
+            stmt.setString(2, email)
+            stmt.setString(3, phone)
             stmt.setString(4, req.address.trim())
             val hashedPassword = if (req.password.trim() == "GOOGLE_AUTH") "GOOGLE_AUTH" else BCrypt.hashpw(req.password.trim(), BCrypt.gensalt())
             stmt.setString(5, hashedPassword)
@@ -2545,6 +2563,28 @@ object DatabaseRepository {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             conn.autoCommit = false
             try {
+                if (phone.isNotBlank()) {
+                    val pCheck = conn.prepareStatement("SELECT id FROM drivers WHERE phone = ? UNION SELECT id FROM fleet_owners WHERE phone = ?")
+                    pCheck.setString(1, phone)
+                    pCheck.setString(2, phone)
+                    val pRs = pCheck.executeQuery()
+                    if (pRs.next()) {
+                        conn.rollback()
+                        throw IllegalArgumentException("Phone number $phone is already registered. Please log in instead.")
+                    }
+                }
+
+                if (email.isNotBlank()) {
+                    val eCheck = conn.prepareStatement("SELECT id FROM drivers WHERE email = ? UNION SELECT id FROM fleet_owners WHERE email = ?")
+                    eCheck.setString(1, email)
+                    eCheck.setString(2, email)
+                    val eRs = eCheck.executeQuery()
+                    if (eRs.next()) {
+                        conn.rollback()
+                        throw IllegalArgumentException("Email address $email is already registered. Please log in instead.")
+                    }
+                }
+
                 var primaryId: Int? = null
                 var fleetOwnerId: Int? = null
 

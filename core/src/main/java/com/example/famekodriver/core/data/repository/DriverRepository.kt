@@ -553,7 +553,18 @@ class DriverRepository private constructor() {
             }
         } catch (e: Exception) {
             Log.e("FamekoRepo", "Driver API Registration failed", e)
-            Result.failure(Exception("Registration failed: ${e.localizedMessage}"))
+            if (e is retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                if (!errorBody.isNullOrBlank()) {
+                    try {
+                        val authError = gson.fromJson(errorBody, AuthResponse::class.java)
+                        if (!authError.message.isNullOrBlank()) {
+                            return@withContext Result.failure(Exception(authError.message))
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+            Result.failure(Exception(e.localizedMessage ?: "Registration failed"))
         }
     }
 

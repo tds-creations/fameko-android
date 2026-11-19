@@ -1167,12 +1167,12 @@ fun Application.configureRouting() {
                 }
             } catch (e: Throwable) {
                 println("Error registering user: ${e.message}")
-                e.printStackTrace()
                 val msg = when {
-                    e.message?.contains("duplicate key") == true && e.message?.contains("email") == true -> "Email address is already registered."
-                    e.message?.contains("duplicate key") == true && e.message?.contains("phone") == true -> "Phone number is already registered."
-                    e.message?.contains("duplicate key") == true && e.message?.contains("license") == true -> "License number is already registered."
-                    e.message?.contains("duplicate key") == true -> "Account with these details already exists."
+                    e is IllegalArgumentException -> e.message ?: "Account with these details already exists."
+                    e.message?.contains("phone", ignoreCase = true) == true -> "Phone number is already registered to an existing driver account."
+                    e.message?.contains("email", ignoreCase = true) == true -> "Email address is already registered."
+                    e.message?.contains("license", ignoreCase = true) == true -> "License number is already registered."
+                    e.message?.contains("duplicate key", ignoreCase = true) == true -> "An account with these details already exists."
                     else -> e.message ?: "Registration failed"
                 }
                 call.respond(HttpStatusCode.BadRequest, AuthResponse(false, msg, null, null))
