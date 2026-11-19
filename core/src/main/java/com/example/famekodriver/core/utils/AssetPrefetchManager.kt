@@ -40,7 +40,8 @@ object AssetPrefetchManager {
             ImageLinks.IC_OKADA,
             ImageLinks.IC_PRAGYA,
             ImageLinks.IC_ABOBOYAA,
-            ImageLinks.IC_CAR_SALOON
+            ImageLinks.IC_CAR_SALOON,
+            ImageLinks.IC_TRUCK
         )
 
         enqueueBackgroundPrefetch(context, criticalAssets)

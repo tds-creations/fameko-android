@@ -827,6 +827,7 @@ fun MainMapContent(
 
     var motorbikeBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var carBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var truckBitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(Unit) {
         val loader = context.imageLoader
         
@@ -840,6 +841,10 @@ fun MainMapContent(
         val carRequest = ImageRequest.Builder(context).data(ImageLinks.IC_CAR_SALOON).build()
         val carResult = (loader.execute(carRequest) as? SuccessResult)?.drawable?.toBitmap()
         if (carResult != null) carBitmap = carResult.scale(36, 36, false)
+
+        val truckRequest = ImageRequest.Builder(context).data(ImageLinks.IC_TRUCK).build()
+        val truckResult = (loader.execute(truckRequest) as? SuccessResult)?.drawable?.toBitmap()
+        if (truckResult != null) truckBitmap = truckResult.scale(38, 38, false)
     }
 
     LaunchedEffect(Unit) {
@@ -1044,7 +1049,7 @@ fun MainMapContent(
     }
 
     // Update markers and drivers using SymbolLayer (GPU Accelerated)
-    LaunchedEffect(mapLibreMap, viewModel.drivers, viewModel.orderStatusData, motorbikeBitmap, carBitmap) {
+    LaunchedEffect(mapLibreMap, viewModel.drivers, viewModel.orderStatusData, motorbikeBitmap, carBitmap, truckBitmap) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val currentStatus = viewModel.orderStatusData
         val rawDrivers = if (currentStatus?.status == "ASSIGNED" || currentStatus?.status == "IN_TRANSIT" || currentStatus?.status == "ARRIVED") {
@@ -1060,8 +1065,10 @@ fun MainMapContent(
             motorbikeBitmap?.let { style.addImage("icon-okada", it) }
             // Add/update Car icon
             carBitmap?.let { style.addImage("icon-car", it) }
+            // Add/update Cargo Truck icon
+            truckBitmap?.let { style.addImage("icon-truck", it) }
             // Fallback for older code referencing "driver-icon"
-            (carBitmap ?: motorbikeBitmap)?.let { style.addImage("driver-icon", it) }
+            (truckBitmap ?: carBitmap ?: motorbikeBitmap)?.let { style.addImage("driver-icon", it) }
 
             val source = style.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("drivers-source")
             if (source != null) {
@@ -1074,7 +1081,9 @@ fun MainMapContent(
                     
                     val vType = driver.vehicleType?.lowercase() ?: ""
                     val iconId = when {
-                        isPackageDelivery || vType.contains("okada") || vType.contains("bike") || vType.contains("motor") || vType.contains("delivery") || vType.contains("courier") -> "icon-okada"
+                        vType.contains("truck") || vType.contains("cargo") || vType.contains("hauling") -> "icon-truck"
+                        vType.contains("okada") || vType.contains("bike") || vType.contains("motor") || vType.contains("courier") -> "icon-okada"
+                        isPackageDelivery -> "icon-okada"
                         else -> "icon-car"
                     }
                     feature.addStringProperty("icon-id", iconId)

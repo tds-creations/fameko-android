@@ -10,7 +10,7 @@ object ImageLinks {
     const val IC_FAMEKO_DRIVER_LOGO = "https://i.postimg.cc/m2QSY1Lz/ic-fameko-driver-logo.jpg"
     const val IC_OKADA = "https://i.postimg.cc/02Z3rWKF/ic-okada.png"
     const val IC_PRAGYA = "https://i.postimg.cc/1znfB5S1/ic-praggia.jpg"
-    const val IC_TRUCK = "https://i.postimg.cc/cJgrh4WN/ic-truck.jpg"
+    const val IC_TRUCK = "https://i.postimg.cc/fT3v7m2r/Overhead-Golden-Cargo-Truck-Marker.png"
     const val DRIVER_SIGNUP_BG = "https://i.postimg.cc/dtpd96tY/driver-signup.png"
     const val DRIVER_SPLASH_SCREEN = "https://i.postimg.cc/wTbxXZ5Q/Fameko-Mobility-Hub-Poster.png"
     const val CUSTOMER_SPLASH_SCREEN = "https://i.postimg.cc/MKrZ7N00/Fameko-Transportation-App-Poster.png"
