@@ -478,6 +478,7 @@ object DatabaseInitializer {
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_fragile BOOLEAN DEFAULT FALSE;",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS package_notes TEXT;",
             "ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_sending BOOLEAN DEFAULT TRUE;",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS requested_vehicle_type TEXT DEFAULT 'Economy';",
             "ALTER TABLE saved_places ALTER COLUMN id TYPE TEXT USING id::text;",
             "ALTER TABLE saved_places ALTER COLUMN id DROP DEFAULT;",
             "ALTER TABLE driver_stats ADD COLUMN IF NOT EXISTS h3_index TEXT;",

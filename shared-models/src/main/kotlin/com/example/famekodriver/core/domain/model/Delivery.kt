@@ -28,7 +28,8 @@ data class Delivery(
     val recipientName: String? = null,
     val recipientPhone: String? = null,
     val packageNotes: String? = null,
-    val isSending: Boolean = true
+    val isSending: Boolean = true,
+    val requestedVehicleType: String? = null
 ) {
     val currentContactName: String
         get() {

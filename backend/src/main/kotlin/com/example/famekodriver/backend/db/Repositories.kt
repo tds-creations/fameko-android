@@ -743,9 +743,8 @@ object DatabaseRepository {
 
             val vehicleFilter = if (vehicleType != null) {
                 when {
-                    vType.contains("economy") || vType.contains("ride") || vType.contains("saloon") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%economy%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%')"
-                    vType.contains("comfort") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%comfort%' OR d.vehicle_type ILIKE '%saloon%')"
-                    vType.contains("car") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%taxi%' OR d.vehicle_type ILIKE '%saloon%')"
+                    vType.contains("comfort") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%comfort%' OR d.vehicle_type ILIKE '%saloon%') AND d.vehicle_category ILIKE '%comfort%'"
+                    vType.contains("economy") || vType.contains("ride") || vType.contains("saloon") || vType.contains("car") -> "AND (d.vehicle_type ILIKE '%car%' OR d.vehicle_type ILIKE '%economy%' OR d.vehicle_type ILIKE '%saloon%' OR d.vehicle_type ILIKE '%taxi%') AND (d.vehicle_category IS NULL OR d.vehicle_category ILIKE '%economy%' OR d.vehicle_category ILIKE '%comfort%')"
                     vType.contains("okada") || vType.contains("bike") || vType.contains("motor") -> "AND (d.vehicle_type ILIKE '%okada%' OR d.vehicle_type ILIKE '%bike%' OR d.vehicle_type ILIKE '%motor%')"
                     vType.contains("pragya") -> "AND (d.vehicle_type ILIKE '%pragya%' OR d.vehicle_type ILIKE '%tricycle%')"
                     vType.contains("aboboyaa") -> "AND d.vehicle_type ILIKE '%aboboyaa%'"
@@ -863,6 +862,10 @@ object DatabaseRepository {
                 else -> "AND (d.service_type ILIKE ? OR d.service_type ILIKE 'car')"
             }
 
+            val categoryClause = if (vehicleCategory != null && vehicleCategory.equals("Economy", ignoreCase = true)) {
+                "AND d.service_type NOT ILIKE '%comfort%' AND COALESCE(o.requested_vehicle_type, '') NOT ILIKE '%comfort%'"
+            } else ""
+
             val sql = """
                 SELECT d.*, c.id as customer_id, c.name as customer_name, c.phone as customer_phone, c.profile_picture as customer_profile_pic, o.total_amount as total_fare,
                 o.recipient_name, o.recipient_phone, o.package_category, o.package_weight_size, o.is_fragile, o.package_notes, COALESCE(o.is_sending, TRUE) as is_sending,
@@ -873,6 +876,7 @@ object DatabaseRepository {
                 WHERE d.status = 'PENDING'
                 $vehicleFilter
                 $serviceTypeClause
+                $categoryClause
                 AND (6371 * acos(cos(radians(?)) * cos(radians(d.pickup_lat)) * cos(radians(d.pickup_lng) - radians(?)) + sin(radians(?)) * sin(radians(d.pickup_lat)))) <= ?
                 ORDER BY distance ASC
             """.trimIndent()
@@ -1590,10 +1594,29 @@ object DatabaseRepository {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             conn.autoCommit = false
             try {
-                val rs = conn.prepareStatement("SELECT status, order_id FROM deliveries WHERE id = ? FOR UPDATE").apply { setInt(1, deliveryId) }.executeQuery()
+                val rsDriver = conn.prepareStatement("SELECT vehicle_category, vehicle_type, status FROM drivers WHERE id = ?").apply { setInt(1, driverId) }.executeQuery()
+                if (!rsDriver.next() || rsDriver.getString("status") != "APPROVED") {
+                    conn.rollback()
+                    return AuthResponse(false, "Driver is not active or approved", null, null)
+                }
+                val driverCat = rsDriver.getString("vehicle_category") ?: "Economy"
+
+                val rs = conn.prepareStatement("""
+                    SELECT d.status, d.order_id, d.service_type, COALESCE(o.requested_vehicle_type, d.service_type) as req_type 
+                    FROM deliveries d 
+                    JOIN orders o ON d.order_id = o.id 
+                    WHERE d.id = ? FOR UPDATE
+                """.trimIndent()).apply { setInt(1, deliveryId) }.executeQuery()
+
                 if (rs.next() && rs.getString("status") == "PENDING") {
                     val orderId = rs.getInt("order_id")
-                    
+                    val reqType = rs.getString("req_type") ?: rs.getString("service_type") ?: "Economy"
+
+                    if (reqType.contains("Comfort", ignoreCase = true) && !driverCat.contains("Comfort", ignoreCase = true)) {
+                        conn.rollback()
+                        return AuthResponse(false, "Economy drivers are not eligible to accept Comfort requests.", null, null)
+                    }
+
                     conn.prepareStatement("UPDATE deliveries SET driver_id = ?, status = 'ASSIGNED' WHERE id = ?").apply {
                         setInt(1, driverId)
                         setInt(2, deliveryId)

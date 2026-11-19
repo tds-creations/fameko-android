@@ -72,7 +72,8 @@ data class OrderStatusResponse(
     val pickupLat: Double? = null,
     val pickupLng: Double? = null,
     val dropOffLat: Double? = null,
-    val dropOffLng: Double? = null
+    val dropOffLng: Double? = null,
+    val requestedVehicleType: String? = null
 )
 
 data class RideEstimateResponse(
