@@ -1382,17 +1382,17 @@ fun Application.configureRouting() {
 
             post("/cancel/{orderId}") {
                 val orderId = call.parameters["orderId"]?.toIntOrNull() ?: return@post call.respond(HttpStatusCode.BadRequest)
-                val driverId = DatabaseRepository.getDriverIdForOrder(orderId)
+                val acceptedDriverId = DatabaseRepository.getDriverIdForOrder(orderId)
                 
                 DatabaseRepository.cancelOrder(orderId)
                 RedisManager.setChatRetention(orderId)
                 
-                if (driverId != null && driverId > 0) {
-                    println("DEBUG: Notifying DRIVER_$driverId that Order $orderId was cancelled")
-                    sendToUser("DRIVER_$driverId", "ORDER_CANCELLED", mapOf("orderId" to orderId))
+                if (acceptedDriverId != null && acceptedDriverId > 0) {
+                    println("DEBUG: Sending ORDER_CANCELLED notification exclusively to accepted DRIVER_$acceptedDriverId for Order $orderId")
+                    sendToUser("DRIVER_$acceptedDriverId", "ORDER_CANCELLED", mapOf("orderId" to orderId))
+                } else {
+                    println("DEBUG: Order $orderId was cancelled before acceptance by any driver. No driver cancellation notification sent.")
                 }
-
-                broadcastToDrivers("ORDER_CANCELLED", mapOf("orderId" to orderId))
 
                 call.respond(mapOf("success" to true))
             }

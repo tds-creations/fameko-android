@@ -241,9 +241,11 @@ suspend fun sendToUser(userId: String, type: String, payload: Any) {
         if (id != null && userType != "admin") {
             val token = DatabaseRepository.getUserFcmToken(id, userType)
             if (token != null) {
+                val orderIdVal = (payload as? Map<*, *>)?.get("orderId")?.toString() ?: ""
                 val title = when (type) {
                     "CALL_INCOMING" -> "Incoming Call"
                     "NEW_DELIVERY" -> "New Delivery Request"
+                    "ORDER_CANCELLED" -> "Order Cancelled"
                     "NEW_MESSAGE" -> {
                         val msg = payload as? Message
                         if (msg != null && msg.conversationId >= 1000000) "Support Message" else "New Message"
@@ -257,12 +259,13 @@ suspend fun sendToUser(userId: String, type: String, payload: Any) {
                         val pickup = (payload as? Delivery)?.pickupLocation ?: (payload as? Map<*, *>)?.get("pickupLocation")?.toString() ?: "Nearby"
                         "A new job is available at $pickup"
                     }
+                    "ORDER_CANCELLED" -> if (orderIdVal.isNotBlank()) "Order #$orderIdVal was cancelled by customer." else "Your accepted order was cancelled by customer."
                     "NEW_MESSAGE" -> (payload as? Message)?.body ?: "You have a new message"
                     "NOTIFICATION_RECEIVED" -> (payload as? Map<*, *>)?.get("message")?.toString() ?: "Tap to view"
                     else -> "You have a new update in the app"
                 }
                 
-                PushNotificationHelper.sendNotification(token, title, body, mapOf("type" to type))
+                PushNotificationHelper.sendNotification(token, title, body, mapOf("type" to type, "orderId" to orderIdVal))
             }
         }
     }

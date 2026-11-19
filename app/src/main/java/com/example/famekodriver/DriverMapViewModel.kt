@@ -198,13 +198,21 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 ongoingCall = null
             }
             is FamekoEvent.OrderCancelled -> {
-                val activeId = currentDelivery?.orderId ?: activeRequest?.orderId
-                if (activeId == null || activeId == event.orderId || event.orderId == 0) {
+                val acceptedDelivery = currentDelivery
+                if (acceptedDelivery != null && (acceptedDelivery.orderId == event.orderId || event.orderId == 0)) {
                     currentDelivery = null
                     activeRequest = null
                     clearRouteAndNavigation()
                     timerJob?.cancel()
-                    android.widget.Toast.makeText(getApplication(), "Order #${event.orderId} was cancelled by customer", android.widget.Toast.LENGTH_LONG).show()
+                    android.widget.Toast.makeText(
+                        getApplication(),
+                        "Order #${event.orderId} was cancelled by customer",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                } else if (activeRequest?.orderId == event.orderId) {
+                    // Driver was viewing unaccepted request sheet when customer cancelled before acceptance
+                    activeRequest = null
+                    timerJob?.cancel()
                 }
             }
             is FamekoEvent.OrderStatusUpdate -> {

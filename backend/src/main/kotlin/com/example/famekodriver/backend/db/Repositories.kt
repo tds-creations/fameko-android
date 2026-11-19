@@ -3460,7 +3460,8 @@ object DatabaseRepository {
     fun getDriverIdForOrder(orderId: Int): Int? {
         try {
             DatabaseInitializer.getDataSource().connection.use { conn ->
-                val rsDel = conn.prepareStatement("SELECT driver_id FROM deliveries WHERE order_id = ? AND driver_id IS NOT NULL AND driver_id > 0").apply { setInt(1, orderId) }.executeQuery()
+                val sql = "SELECT driver_id FROM deliveries WHERE order_id = ? AND driver_id IS NOT NULL AND driver_id > 0 AND status NOT IN ('PENDING', 'CANCELLED')"
+                val rsDel = conn.prepareStatement(sql).apply { setInt(1, orderId) }.executeQuery()
                 if (rsDel.next()) {
                     val dId = rsDel.getInt(1)
                     if (dId > 0) return dId
