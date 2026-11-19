@@ -140,17 +140,20 @@ fun MapScreen(
     LaunchedEffect(vehicleType) {
         val type = vehicleType
         val isOkada = type.contains("okada") || type.contains("motorcycle") || type.contains("rider") || type.contains("bike") || type.contains("motorbike") || type.contains("motor") || type.contains("delivery")
+        val isTruck = type.contains("truck") || type.contains("cargo") || type.contains("hauling")
+
+        val markerSize = if (isTruck) 56 else if (isOkada) 48 else 52
 
         val localDrawable = if (isOkada) ContextCompat.getDrawable(context, R.drawable.ic_okada) else null
         if (localDrawable != null) {
-            vehicleBitmap = localDrawable.toBitmap().scale(32, 32)
+            vehicleBitmap = localDrawable.toBitmap().scale(markerSize, markerSize)
         } else {
             val iconUrl = when {
+                isTruck -> ImageLinks.IC_TRUCK
                 isOkada -> ImageLinks.IC_OKADA
                 type.contains("pragya") -> ImageLinks.IC_PRAGYA
                 type.contains("bicycle") -> ImageLinks.IC_BICYCLE
                 type.contains("aboboyaa") -> ImageLinks.IC_ABOBOYAA
-                type.contains("truck") -> ImageLinks.IC_TRUCK
                 else -> ImageLinks.IC_CAR_SALOON
             }
 
@@ -162,7 +165,7 @@ fun MapScreen(
             try {
                 val result = (loader.execute(request) as? SuccessResult)?.drawable
                 if (result != null) {
-                    vehicleBitmap = result.toBitmap().scale(32, 32)
+                    vehicleBitmap = result.toBitmap().scale(markerSize, markerSize)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -836,15 +836,15 @@ fun MainMapContent(
             val motorRequest = ImageRequest.Builder(context).data(ImageLinks.IC_OKADA).build()
             (loader.execute(motorRequest) as? SuccessResult)?.drawable?.toBitmap()
         }
-        if (motorResult != null) motorbikeBitmap = motorResult.scale(32, 32, false)
+        if (motorResult != null) motorbikeBitmap = motorResult.scale(48, 48, false)
 
         val carRequest = ImageRequest.Builder(context).data(ImageLinks.IC_CAR_SALOON).build()
         val carResult = (loader.execute(carRequest) as? SuccessResult)?.drawable?.toBitmap()
-        if (carResult != null) carBitmap = carResult.scale(36, 36, false)
+        if (carResult != null) carBitmap = carResult.scale(52, 52, false)
 
         val truckRequest = ImageRequest.Builder(context).data(ImageLinks.IC_TRUCK).build()
         val truckResult = (loader.execute(truckRequest) as? SuccessResult)?.drawable?.toBitmap()
-        if (truckResult != null) truckBitmap = truckResult.scale(38, 38, false)
+        if (truckResult != null) truckBitmap = truckResult.scale(56, 56, false)
     }
 
     LaunchedEffect(Unit) {
