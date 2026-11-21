@@ -14,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -150,7 +152,10 @@ fun RatingDialog(
 
 
 @Composable
-fun RadarPulseAnimation() {
+fun RadarPulseAnimation(
+    modifier: Modifier = Modifier,
+    centerOffset: Offset? = null
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "radar")
     val radius by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -171,25 +176,22 @@ fun RadarPulseAnimation() {
         label = "alpha"
     )
     
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    val boxModifier = if (centerOffset != null) {
+        modifier.graphicsLayer {
+            translationX = centerOffset.x - (size.width / 2f)
+            translationY = centerOffset.y - (size.height / 2f)
+        }
+    } else {
+        modifier.fillMaxSize()
+    }
+
+    Box(modifier = boxModifier, contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.size(800.dp)) {
             drawCircle(
                 color = BoltGreen,
                 radius = radius.dp.toPx(),
                 alpha = alpha
             )
-        }
-        
-        // Inner core
-        Surface(
-            shape = CircleShape,
-            color = Color.White,
-            shadowElevation = 12.dp,
-            modifier = Modifier.size(24.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Surface(shape = CircleShape, color = BoltGreen, modifier = Modifier.size(16.dp)) {}
-            }
         }
     }
 }

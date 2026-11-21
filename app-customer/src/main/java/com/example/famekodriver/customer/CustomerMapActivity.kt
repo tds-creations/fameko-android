@@ -29,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -805,6 +806,7 @@ fun MainMapContent(
     }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
+    var radarScreenOffset by remember { mutableStateOf<Offset?>(null) }
 
     var hasLocationPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
@@ -854,10 +856,10 @@ fun MainMapContent(
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var hasCentredOnLocation by remember { mutableStateOf(false) }
 
-    LaunchedEffect(hasLocationPermission, isActive, mapLibreMap, viewModel.isFullscreenMap) {
+    LaunchedEffect(hasLocationPermission, isActive, mapLibreMap) {
         if (!isActive || mapLibreMap == null) return@LaunchedEffect
 
-        if (hasLocationPermission && viewModel.isFullscreenMap) {
+        if (hasLocationPermission) {
             val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).setMinUpdateIntervalMillis(500).build()
             val locationCallback = object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
@@ -865,47 +867,61 @@ fun MainMapContent(
                     if (location.latitude == 0.0 || location.longitude == 0.0) return
 
                     val lastPos = viewModel.currentLatLng
-                    val lastBearing = viewModel.currentLatLng?.let { 0.0 } ?: 0.0 // Placeholder if bearing not in VM
-
                     val distanceMoved = if (lastPos != null) LocationUtils.calculateDistance(location.latitude, location.longitude, lastPos.latitude, lastPos.longitude) else 10.0
                     
-                    viewModel.currentLatLng = LatLng(location.latitude, location.longitude)
-                    viewModel.updateNearbyDrivers(location.latitude, location.longitude)
-                    viewModel.checkOffRoute(location.latitude, location.longitude)
-                    
-                    if (viewModel.checkArrival(location.latitude, location.longitude)) voiceNavManager.announceArrival()
+                    val newLatLng = LatLng(location.latitude, location.longitude)
+                    viewModel.currentLatLng = newLatLng
 
-                    if (viewModel.polylinePoints.isNotEmpty()) {
-                        voiceNavManager.updateProgress(
-                            currentLat = location.latitude,
-                            currentLng = location.longitude,
-                            route = viewModel.polylinePoints.map { p -> p.latitude to p.longitude },
-                            etaMin = viewModel.durationMin,
-                            distanceKm = viewModel.distanceKm
-                        )
+                    val targetLat = viewModel.pickupLat ?: location.latitude
+                    val targetLng = viewModel.pickupLng ?: location.longitude
+                    viewModel.updateNearbyDrivers(targetLat, targetLng)
+                    viewModel.checkOffRoute(location.latitude, location.longitude)
+
+                    if (viewModel.pickupLat == null && viewModel.pickupLocation.isEmpty()) {
+                        viewModel.pickupLat = location.latitude
+                        viewModel.pickupLng = location.longitude
                     }
 
-                    mapLibreMap?.let { map ->
-                        // Optimization: Significant move check
-                        if (distanceMoved > 2.0 || lastPos == null) {
-                            val speedKmh = location.speed.toDouble() * 3.6
-                            val targetZoom = when {
-                                speedKmh > 80.0 -> 15.0
-                                speedKmh > 50.0 -> 16.0
-                                speedKmh > 20.0 -> 17.0
-                                else -> 18.0
-                            }
+                    if (!hasCentredOnLocation && mapLibreMap != null) {
+                        mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(newLatLng, 15.0))
+                        hasCentredOnLocation = true
+                        MapCacheManager.prefetchArea(context, newLatLng, "CurrentCity")
+                    }
+                    
+                    if (viewModel.isFullscreenMap) {
+                        if (viewModel.checkArrival(location.latitude, location.longitude)) voiceNavManager.announceArrival()
 
-                            val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
-                                .target(LatLng(location.latitude, location.longitude))
-                                .zoom(targetZoom)
-                                .bearing(location.bearing.toDouble()) 
-                                .tilt(50.0) 
-                                .build()
-                            
-                            @Suppress("DEPRECATION")
-                            map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
-                            map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                        if (viewModel.polylinePoints.isNotEmpty()) {
+                            voiceNavManager.updateProgress(
+                                currentLat = location.latitude,
+                                currentLng = location.longitude,
+                                route = viewModel.polylinePoints.map { p -> p.latitude to p.longitude },
+                                etaMin = viewModel.durationMin,
+                                distanceKm = viewModel.distanceKm
+                            )
+                        }
+
+                        mapLibreMap?.let { map ->
+                            if (distanceMoved > 2.0 || lastPos == null) {
+                                val speedKmh = location.speed.toDouble() * 3.6
+                                val targetZoom = when {
+                                    speedKmh > 80.0 -> 15.0
+                                    speedKmh > 50.0 -> 16.0
+                                    speedKmh > 20.0 -> 17.0
+                                    else -> 18.0
+                                }
+
+                                val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                                    .target(newLatLng)
+                                    .zoom(targetZoom)
+                                    .bearing(location.bearing.toDouble()) 
+                                    .tilt(50.0) 
+                                    .build()
+                                
+                                @Suppress("DEPRECATION")
+                                map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
+                                map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                            }
                         }
                     }
                 }
@@ -917,47 +933,6 @@ fun MainMapContent(
             } finally {
                 fusedLocationClient.removeLocationUpdates(locationCallback)
                 mapLibreMap?.setPadding(0, 0, 0, 0)
-            }
-        } else {
-            while (true) {
-                if (hasLocationPermission) {
-                    val targetLat = viewModel.pickupLat
-                    val targetLng = viewModel.pickupLng
-                    
-                    if (targetLat != null && targetLng != null) {
-                        viewModel.updateNearbyDrivers(targetLat, targetLng)
-                    } else {
-                        @SuppressLint("MissingPermission")
-                        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).addOnSuccessListener { location ->
-                            location?.let {
-                                if (it.latitude != 0.0 && it.longitude != 0.0) {
-                                    viewModel.currentLatLng = LatLng(it.latitude, it.longitude)
-                                    viewModel.updateNearbyDrivers(it.latitude, it.longitude)
-                                    
-                                    if (viewModel.pickupLat == null && viewModel.pickupLocation.isEmpty()) {
-                                        viewModel.pickupLat = it.latitude
-                                        viewModel.pickupLng = it.longitude
-                                        
-                                        if (viewModel.dropOffLat != null && viewModel.polylinePoints.isEmpty() && 
-                                            viewModel.currentScreen != CustomerScreen.RouteSelection && !viewModel.isSearchMode) {
-                                            viewModel.calculateRoute()
-                                        }
-                                    }
-
-                                    if (!hasCentredOnLocation && mapLibreMap != null) {
-                                        val center = LatLng(it.latitude, it.longitude)
-                                        mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(center, 15.0))
-                                        hasCentredOnLocation = true
-                                        
-                                        // Performance: Pre-fetch current city tiles
-                                        MapCacheManager.prefetchArea(context, center, "CurrentCity")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                delay(5.seconds)
             }
         }
     }
@@ -1114,6 +1089,73 @@ fun MainMapContent(
             val dropoffMarker = map.addMarker(org.maplibre.android.annotations.MarkerOptions().position(viewModel.polylinePoints.last()).icon(dropoffIcon).title("DROPOFF"))
             activeRouteMarkers.add(pickupMarker); activeRouteMarkers.add(dropoffMarker)
             try { val bounds = org.maplibre.android.geometry.LatLngBounds.Builder().include(viewModel.polylinePoints.first()).include(viewModel.polylinePoints.last()).build(); map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 150)) } catch (_: Exception) { map.animateCamera(CameraUpdateFactory.newLatLngZoom(viewModel.polylinePoints.first(), 14.0)) }
+        }
+    }
+
+    val validCustomerGps: LatLng? = remember(
+        viewModel.currentLatLng,
+        mapLibreMap,
+        mapLibreMap?.locationComponent?.lastKnownLocation
+    ) {
+        val mapLoc = try { mapLibreMap?.locationComponent?.lastKnownLocation } catch (_: Exception) { null }
+        if (mapLoc != null && mapLoc.latitude != 0.0 && mapLoc.longitude != 0.0 &&
+            mapLoc.latitude >= -90.0 && mapLoc.latitude <= 90.0 &&
+            mapLoc.longitude >= -180.0 && mapLoc.longitude <= 180.0
+        ) {
+            LatLng(mapLoc.latitude, mapLoc.longitude)
+        } else {
+            val current = viewModel.currentLatLng
+            if (current != null && current.latitude != 0.0 && current.longitude != 0.0 &&
+                current.latitude >= -90.0 && current.latitude <= 90.0 &&
+                current.longitude >= -180.0 && current.longitude <= 180.0
+            ) {
+                current
+            } else null
+        }
+    }
+
+    LaunchedEffect(validCustomerGps, mapLibreMap, currentSheetState) {
+        if (currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER) {
+            val map = mapLibreMap
+            val gps = validCustomerGps
+            if (map != null && gps != null) {
+                try {
+                    val pointF = map.projection.toScreenLocation(gps)
+                    radarScreenOffset = Offset(pointF.x, pointF.y)
+                } catch (_: Exception) {
+                    radarScreenOffset = null
+                }
+            } else {
+                radarScreenOffset = null
+            }
+        } else {
+            radarScreenOffset = null
+        }
+    }
+
+    DisposableEffect(mapLibreMap, currentSheetState, validCustomerGps) {
+        val map = mapLibreMap
+        val gps = validCustomerGps
+        if (map != null && gps != null && currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER) {
+            val updateOffset = {
+                try {
+                    val pointF = map.projection.toScreenLocation(gps)
+                    radarScreenOffset = Offset(pointF.x, pointF.y)
+                } catch (_: Exception) {
+                    radarScreenOffset = null
+                }
+            }
+            val cameraMoveListener = MapLibreMap.OnCameraMoveListener { updateOffset() }
+            val cameraIdleListener = MapLibreMap.OnCameraIdleListener { updateOffset() }
+            map.addOnCameraMoveListener(cameraMoveListener)
+            map.addOnCameraIdleListener(cameraIdleListener)
+            updateOffset()
+            onDispose {
+                map.removeOnCameraMoveListener(cameraMoveListener)
+                map.removeOnCameraIdleListener(cameraIdleListener)
+            }
+        } else {
+            onDispose { }
         }
     }
 
@@ -1475,7 +1517,7 @@ fun MainMapContent(
                     }
                 }
                 
-                if (currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER) { RadarPulseAnimation() }
+                if (currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER) { RadarPulseAnimation(centerOffset = radarScreenOffset) }
 
                 if (viewModel.showRatingDialog) { RatingDialog(driverName = viewModel.ratingDriverName ?: "Your Driver", driverProfilePic = viewModel.ratingDriverPic, onRate = { rating, comment -> viewModel.submitRating(rating, comment) }, onDismiss = { viewModel.showRatingDialog = false }) }
                 if (viewModel.showTripSummary) { TripSummaryDialog(fare = viewModel.finalFare, onRate = { viewModel.showTripSummary = false; viewModel.showRatingDialog = true }, onDismiss = { viewModel.showTripSummary = false }) }
