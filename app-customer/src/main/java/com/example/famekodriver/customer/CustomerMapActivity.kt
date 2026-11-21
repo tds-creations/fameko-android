@@ -1092,12 +1092,15 @@ fun MainMapContent(
         }
     }
 
-    val validCustomerGps: LatLng? = remember(
-        viewModel.currentLatLng,
-        mapLibreMap,
-        mapLibreMap?.locationComponent?.lastKnownLocation
-    ) {
-        val mapLoc = try { mapLibreMap?.locationComponent?.lastKnownLocation } catch (_: Exception) { null }
+    val validCustomerGps: LatLng? = remember(viewModel.currentLatLng, mapLibreMap) {
+        val mapLoc = try {
+            val comp = mapLibreMap?.locationComponent
+            if (comp != null && comp.isLocationComponentActivated && comp.isLocationComponentEnabled) {
+                comp.lastKnownLocation
+            } else null
+        } catch (_: Exception) {
+            null
+        }
         if (mapLoc != null && mapLoc.latitude != 0.0 && mapLoc.longitude != 0.0 &&
             mapLoc.latitude >= -90.0 && mapLoc.latitude <= 90.0 &&
             mapLoc.longitude >= -180.0 && mapLoc.longitude <= 180.0
