@@ -1242,6 +1242,7 @@ fun MainMapContent(
                                 },
                                 onScheduleClick = onScheduleClick,
                                 recentPlaces = viewModel.recentPlaces,
+                                dynamicDestinations = viewModel.dynamicDestinations,
                                 rideEstimates = viewModel.rideEstimates,
                                 onSearchClick = { viewModel.navigateTo(CustomerScreen.RouteSelection) },
                                 onSavedClick = { viewModel.navigateTo(CustomerScreen.SavedPlacesSpeedDial) },

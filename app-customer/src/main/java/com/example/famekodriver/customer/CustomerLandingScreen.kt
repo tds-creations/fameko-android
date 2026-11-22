@@ -27,12 +27,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.famekodriver.core.domain.model.LocationSuggestion
 import com.example.famekodriver.core.domain.model.RideEstimateResponse
 import com.example.famekodriver.core.domain.model.ServiceType
 import com.example.famekodriver.core.utils.ImageLinks
+import com.example.famekodriver.customer.CustomerMapViewModel
 import com.example.famekodriver.customer.ui.theme.BoltDark
 import com.example.famekodriver.customer.ui.theme.BoltLightGray
 import com.example.famekodriver.customer.ui.theme.FamekoBlue
@@ -46,6 +49,7 @@ fun CustomerLandingScreen(
     onServiceSelected: (ServiceType) -> Unit,
     onScheduleClick: () -> Unit = {},
     recentPlaces: List<LocationSuggestion> = emptyList(),
+    dynamicDestinations: List<CustomerMapViewModel.DynamicDestinationItem> = emptyList(),
     rideEstimates: List<RideEstimateResponse> = emptyList(),
     onSearchClick: () -> Unit = {},
     onSavedClick: () -> Unit = {},
@@ -134,47 +138,12 @@ fun CustomerLandingScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Popular Destination Quick Booking Card (Kotoka Airport)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSearchClick() },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-            elevation = CardDefaults.cardElevation(1.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFFECFDF5),
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF059669), modifier = Modifier.size(22.dp))
-                        }
-                    }
-
-                    Column {
-                        Text("Kotoka Int. Airport (ACC)", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
-                        Spacer(Modifier.height(2.dp))
-                        Text("Fast pickup • ~18 mins away • ✈️ Includes GH₵ 20 Toll", fontSize = 11.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Surface(
-                    color = Color(0xFFECFDF5),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("GH₵ 42", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                }
-            }
-        }
+        // Dynamic Destination Suggestions Carousel with live ETA & Fare
+        DynamicDestinationCarousel(
+            destinations = dynamicDestinations,
+            onSearchClick = onSearchClick,
+            onDestinationClick = onPlaceClick
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -664,6 +633,166 @@ fun SpecialOffersSection(
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DynamicDestinationCarousel(
+    destinations: List<CustomerMapViewModel.DynamicDestinationItem>,
+    onSearchClick: () -> Unit,
+    onDestinationClick: (LocationSuggestion) -> Unit
+) {
+    if (destinations.isEmpty()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSearchClick() },
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            elevation = CardDefaults.cardElevation(1.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFECFDF5),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF059669), modifier = Modifier.size(22.dp))
+                        }
+                    }
+
+                    Column {
+                        Text("Kotoka Int. Airport (ACC)", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
+                        Spacer(Modifier.height(2.dp))
+                        Text("Fast pickup • ~18 mins away • ✈️ Includes Toll", fontSize = 11.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Surface(
+                    color = Color(0xFFECFDF5),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("GH₵ 42", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                }
+            }
+        }
+    } else {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Suggested Destinations",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 13.sp,
+                    color = Color(0xFF0F172A)
+                )
+                Text(
+                    text = "Swipe for more →",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(horizontal = 2.dp)
+            ) {
+                items(destinations, key = { it.id }) { item ->
+                    Card(
+                        modifier = Modifier
+                            .width(285.dp)
+                            .clickable { onDestinationClick(item.location) },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        elevation = CardDefaults.cardElevation(1.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFECFDF5),
+                                    modifier = Modifier.size(42.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = when (item.iconType) {
+                                                "AIRPORT" -> Icons.Default.Flight
+                                                "MALL" -> Icons.Default.ShoppingBag
+                                                "HOSPITAL" -> Icons.Default.LocalHospital
+                                                "TRANSPORT" -> Icons.Default.DirectionsBus
+                                                "SAVED_HOME" -> Icons.Default.Home
+                                                "SAVED_WORK" -> Icons.Default.Work
+                                                else -> Icons.Default.LocationOn
+                                            },
+                                            contentDescription = null,
+                                            tint = Color(0xFF059669),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.title,
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF0F172A),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = item.subtitle,
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF059669),
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Surface(
+                                color = Color(0xFFECFDF5),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = if (item.estimatedFare != null) "GH₵ ${item.estimatedFare.toInt()}" else "Tap to view",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF059669),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                )
+                            }
                         }
                     }
                 }

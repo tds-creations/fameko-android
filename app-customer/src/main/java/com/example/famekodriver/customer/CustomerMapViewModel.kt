@@ -38,6 +38,19 @@ class CustomerMapViewModel(
         data class Error(val message: String) : SavedPlacesUiState()
     }
 
+    data class DynamicDestinationItem(
+        val id: String,
+        val title: String,
+        val location: LocationSuggestion,
+        val subtitle: String,
+        val iconType: String,
+        val etaMin: Int?,
+        val estimatedFare: Double?
+    )
+
+    var dynamicDestinations by mutableStateOf<List<DynamicDestinationItem>>(emptyList())
+        private set
+
     // --- Screen State ---
     private val _screenStack = mutableStateListOf<CustomerScreen>(CustomerScreen.Landing)
     val currentScreen: CustomerScreen get() = _screenStack.lastOrNull() ?: CustomerScreen.Landing
@@ -306,7 +319,10 @@ class CustomerMapViewModel(
                 isTermsAccepted = false
             }
 
-            orderRepository.getPricingConfig().onSuccess { pricingConfig = it }
+            orderRepository.getPricingConfig().onSuccess { 
+                pricingConfig = it 
+                refreshDynamicDestinations()
+            }
             orderRepository.getDiscountRate(customerId).onSuccess { discountRate = it }
             rentalRepository.getRentalRates().onSuccess { rentalRates = it }
 
@@ -327,9 +343,103 @@ class CustomerMapViewModel(
                         LocationSuggestion(displayName = dropOffLabel, latitude = lat, longitude = lon, type = "recent")
                     } else null
                 }.distinctBy { it.displayName }.take(5)
+                refreshDynamicDestinations()
             }
 
             checkActiveOrder()
+            refreshDynamicDestinations()
+        }
+    }
+
+    fun refreshDynamicDestinations() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val startLat = currentLatLng?.latitude ?: pickupLat ?: 5.6037
+            val startLng = currentLatLng?.longitude ?: pickupLng ?: -0.1870
+
+            val defaultAccraSpots = listOf(
+                LocationSuggestion("Kotoka Int. Airport (ACC), Accra", "5.6037", "-0.1870", "Kotoka Int. Airport (ACC)", "recent"),
+                LocationSuggestion("Accra Mall, Spintex Rd, Accra", "5.6225", "-0.1772", "Accra Mall", "recent"),
+                LocationSuggestion("Achimota Retail Centre, Accra", "5.6220", "-0.2240", "Achimota Retail Centre", "recent"),
+                LocationSuggestion("Korle Bu Teaching Hospital, Accra", "5.5380", "-0.2260", "Korle Bu Hospital", "recent"),
+                LocationSuggestion("Circle Kwame Nkrumah Interchange, Accra", "5.5580", "-0.2070", "Circle Interchange", "recent"),
+                LocationSuggestion("Lapaz Station, Accra", "5.6088", "-0.2325", "Lapaz Station", "recent"),
+                LocationSuggestion("Osu Oxford Street, Accra", "5.5560", "-0.1830", "Osu Oxford Street", "recent"),
+                LocationSuggestion("Kaneshie Market, Accra", "5.5601", "-0.2335", "Kaneshie Market", "recent"),
+                LocationSuggestion("Spintex Road, Accra", "5.6300", "-0.1300", "Spintex Road", "recent"),
+                LocationSuggestion("East Legon, Accra", "5.6358", "-0.1601", "East Legon", "recent")
+            )
+
+            val savedSuggestions = savedPlaces.value.mapNotNull { place ->
+                val lat = place.latitude ?: return@mapNotNull null
+                val lng = place.longitude ?: return@mapNotNull null
+                LocationSuggestion(
+                    displayName = place.address,
+                    latitude = lat.toString(),
+                    longitude = lng.toString(),
+                    name = place.label,
+                    type = "saved"
+                )
+            }
+
+            val allCandidates = (savedSuggestions + recentPlaces + defaultAccraSpots)
+                .distinctBy { it.displayName }
+
+            val config = pricingConfig
+            val baseFare = config?.baseFare ?: 7.5
+            val perKmRate = config?.perKmRate ?: 2.5
+            val perMinRate = config?.perMinuteRate ?: 0.5
+            val minFare = config?.minFare ?: 12.0
+            val peakMult = config?.peakMultiplier ?: 1.0
+
+            val items = allCandidates.mapNotNull { loc ->
+                val dLat = loc.latitude.toDoubleOrNull() ?: return@mapNotNull null
+                val dLng = loc.longitude.toDoubleOrNull() ?: return@mapNotNull null
+                if (dLat == 0.0 || dLng == 0.0) return@mapNotNull null
+
+                val distKm = LocationUtils.calculateDistance(startLat, startLng, dLat, dLng) / 1000.0
+                val eta = (distKm * 2.2).coerceAtLeast(3.0).toInt()
+                val rawFare = (baseFare + (distKm * perKmRate) + (eta * perMinRate)) * peakMult
+                val calculatedFare = rawFare.coerceAtLeast(minFare)
+
+                val title = loc.name ?: loc.displayName.split(",").firstOrNull() ?: loc.displayName
+                val isAirport = title.contains("Airport", true) || loc.displayName.contains("Airport", true)
+                val isMall = title.contains("Mall", true) || title.contains("Centre", true)
+                val isHospital = title.contains("Hospital", true) || title.contains("Clinic", true)
+                val isTransport = title.contains("Station", true) || title.contains("Interchange", true) || title.contains("Market", true)
+                val isSavedHome = loc.name?.equals("Home", true) == true
+                val isSavedWork = loc.name?.equals("Work", true) == true
+
+                val iconType = when {
+                    isAirport -> "AIRPORT"
+                    isMall -> "MALL"
+                    isHospital -> "HOSPITAL"
+                    isTransport -> "TRANSPORT"
+                    isSavedHome -> "SAVED_HOME"
+                    isSavedWork -> "SAVED_WORK"
+                    else -> "LOCATION"
+                }
+
+                val subtitle = when {
+                    isAirport -> "Fast pickup • ~$eta mins away • ✈️ Includes Toll"
+                    isSavedHome -> "Saved Home • ~$eta mins away"
+                    isSavedWork -> "Saved Work • ~$eta mins away"
+                    else -> "Fast pickup • ~$eta mins away"
+                }
+
+                DynamicDestinationItem(
+                    id = loc.displayName,
+                    title = title,
+                    location = loc,
+                    subtitle = subtitle,
+                    iconType = iconType,
+                    etaMin = eta,
+                    estimatedFare = calculatedFare
+                )
+            }.sortedBy { it.etaMin ?: 999 }.take(8)
+
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                dynamicDestinations = items
+            }
         }
     }
 
