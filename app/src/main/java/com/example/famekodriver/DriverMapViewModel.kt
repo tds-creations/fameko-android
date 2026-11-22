@@ -44,6 +44,14 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var ongoingCall by mutableStateOf<FamekoEvent.IncomingCall?>(null)
     var isAccepting by mutableStateOf(false)
     var navigationPath by mutableStateOf<List<LatLng>>(emptyList())
+    var originalNavigationPath by mutableStateOf<List<LatLng>>(emptyList())
+        private set
+    var remainingNavigationPath by mutableStateOf<List<LatLng>>(emptyList())
+        private set
+
+    private var currentRouteSegmentIndex = 0
+    private var originalRouteDistanceMeters = 0.0
+    private var originalRouteEtaMin = 0.0
     var instructions by mutableStateOf<List<RouteInstruction>>(emptyList())
     var currentInstruction by mutableStateOf<RouteInstruction?>(null)
     var nextInstruction by mutableStateOf<RouteInstruction?>(null)
@@ -351,9 +359,16 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun clearRouteAndNavigation() {
+        originalNavigationPath = emptyList()
+        remainingNavigationPath = emptyList()
         navigationPath = emptyList()
+        currentRouteSegmentIndex = 0
+        originalRouteDistanceMeters = 0.0
+        originalRouteEtaMin = 0.0
         instructions = emptyList()
         currentInstruction = null
+        nextInstruction = null
+        distanceToNextManeuverMeters = 0.0
         isFullscreenMap = false
         routeJob?.cancel()
     }
@@ -504,7 +519,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         // If we already calculated for this position (within 50m), don't spam
         lastRouteCalcLatLng?.let { last ->
             val dist = LocationUtils.calculateDistance(start.latitude, start.longitude, last.latitude, last.longitude)
-            if (dist < 50.0 && navigationPath.isNotEmpty()) return
+            if (dist < 50.0 && originalNavigationPath.isNotEmpty()) return
         }
 
         routeJob?.cancel()
@@ -513,8 +528,13 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 .onSuccess { response ->
                     val path = response.routeCoords.map { LatLng(it[1], it[0]) }
                     kotlinx.coroutines.withContext(Dispatchers.Main) {
-                        val isFirstCalc = navigationPath.isEmpty()
+                        val isFirstCalc = originalNavigationPath.isEmpty()
+                        originalNavigationPath = path
+                        remainingNavigationPath = path
                         navigationPath = path
+                        currentRouteSegmentIndex = 0
+                        originalRouteDistanceMeters = response.distanceM.toDouble()
+                        originalRouteEtaMin = response.etaMin.toDouble()
                         instructions = response.instructions
                         currentInstruction = instructions.firstOrNull()
                         nextInstruction = instructions.getOrNull(1)
@@ -538,26 +558,86 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         }
         
         val delivery = currentDelivery ?: activeRequest
-        if (delivery != null && navigationPath.isNotEmpty()) {
-            // Update remaining distance, ETA, and turn instructions dynamically along path
-            updateRemainingDistance(lat, lng)
-            updateCurrentInstruction(lat, lng)
+        val activePath = remainingNavigationPath.ifEmpty { originalNavigationPath.ifEmpty { navigationPath } }
+        if (delivery != null && activePath.isNotEmpty()) {
+            // Update remaining distance, ETA, turn instructions and trim polyline
+            updateRouteProgression(lat, lng)
 
-            // Off-route detection
+            // Off-route detection using original full route geometry
             checkOffRoute(lat, lng)
             
             // Arrival detection (Voice triggers inside checkArrival)
             checkArrival(lat, lng)
 
+            val progressPath = remainingNavigationPath.ifEmpty { activePath }
             voiceNavManager.updateProgress(
                 lat, lng, 
-                navigationPath.map { it.latitude to it.longitude },
+                progressPath.map { it.latitude to it.longitude },
                 durationMin,
                 distanceKm,
                 currentInstruction = currentInstruction,
                 distToManeuverMeters = distanceToNextManeuverMeters,
                 instructionIndex = instructions.indexOf(currentInstruction)
             )
+        }
+    }
+
+    private fun updateRouteProgression(currentLat: Double, currentLng: Double) {
+        val origPath = originalNavigationPath.ifEmpty { navigationPath }
+        if (origPath.size < 2) return
+
+        val searchEndIndex = minOf(currentRouteSegmentIndex + 5, origPath.size - 2)
+        var bestSegmentIdx = currentRouteSegmentIndex
+        var minDistance = Double.MAX_VALUE
+        var bestProjection: com.example.famekodriver.core.utils.ProjectionResult? = null
+
+        for (i in currentRouteSegmentIndex..searchEndIndex) {
+            val p1 = origPath[i]
+            val p2 = origPath[i + 1]
+            val proj = LocationUtils.projectPointOnSegment(
+                currentLat, currentLng,
+                p1.latitude, p1.longitude,
+                p2.latitude, p2.longitude
+            )
+            if (proj.distanceMeters < minDistance) {
+                minDistance = proj.distanceMeters
+                bestSegmentIdx = i
+                bestProjection = proj
+            }
+        }
+
+        if (minDistance <= 50.0 && bestProjection != null) {
+            if (bestSegmentIdx > currentRouteSegmentIndex || (bestSegmentIdx == currentRouteSegmentIndex && bestProjection.fraction > 0.05)) {
+                currentRouteSegmentIndex = bestSegmentIdx
+
+                val remaining = mutableListOf<LatLng>()
+                remaining.add(LatLng(bestProjection.projectedLat, bestProjection.projectedLng))
+                for (k in (bestSegmentIdx + 1) until origPath.size) {
+                    remaining.add(origPath[k])
+                }
+
+                remainingNavigationPath = remaining
+                navigationPath = remaining
+            }
+        }
+
+        updateCurrentInstruction(currentLat, currentLng)
+
+        val activeRemaining = remainingNavigationPath.ifEmpty { origPath }
+        var remDistMeters = 0.0
+        if (activeRemaining.size >= 2) {
+            for (i in 0 until activeRemaining.size - 1) {
+                val p1 = activeRemaining[i]
+                val p2 = activeRemaining[i + 1]
+                remDistMeters += LocationUtils.calculateDistance(p1.latitude, p1.longitude, p2.latitude, p2.longitude)
+            }
+        }
+
+        distanceKm = remDistMeters / 1000.0
+        durationMin = if (originalRouteDistanceMeters > 0.0 && originalRouteEtaMin > 0.0) {
+            maxOf(1.0, (remDistMeters / originalRouteDistanceMeters) * originalRouteEtaMin)
+        } else {
+            maxOf(1.0, (distanceKm / 30.0) * 60.0)
         }
     }
 
@@ -593,37 +673,17 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private fun updateRemainingDistance(currentLat: Double, currentLng: Double) {
-        if (navigationPath.size < 2) return
-        var closestIdx = 0
-        var minDist = Double.MAX_VALUE
-        for (i in navigationPath.indices) {
-            val dist = LocationUtils.calculateDistance(currentLat, currentLng, navigationPath[i].latitude, navigationPath[i].longitude)
-            if (dist < minDist) {
-                minDist = dist
-                closestIdx = i
-            }
-        }
-        var remDistMeters = LocationUtils.calculateDistance(currentLat, currentLng, navigationPath[closestIdx].latitude, navigationPath[closestIdx].longitude)
-        for (i in closestIdx until navigationPath.size - 1) {
-            val p1 = navigationPath[i]
-            val p2 = navigationPath[i + 1]
-            remDistMeters += LocationUtils.calculateDistance(p1.latitude, p1.longitude, p2.latitude, p2.longitude)
-        }
-        distanceKm = remDistMeters / 1000.0
-        durationMin = maxOf(1.0, (distanceKm / 30.0) * 60.0)
-    }
-
     /**
      * Checks if the user is off-route and triggers recalculation if needed.
      */
     fun checkOffRoute(currentLat: Double, currentLng: Double) {
-        if (navigationPath.size < 2 || routeJob?.isActive == true) return
+        val origPath = originalNavigationPath.ifEmpty { navigationPath }
+        if (origPath.size < 2 || routeJob?.isActive == true) return
         
         var minDistance = Double.MAX_VALUE
-        for (i in 0 until navigationPath.size - 1) {
-            val p1 = navigationPath[i]
-            val p2 = navigationPath[i + 1]
+        for (i in 0 until origPath.size - 1) {
+            val p1 = origPath[i]
+            val p2 = origPath[i + 1]
             val dist = LocationUtils.distanceToSegment(
                 currentLat, currentLng,
                 p1.latitude, p1.longitude,

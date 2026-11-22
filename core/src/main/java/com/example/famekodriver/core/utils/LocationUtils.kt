@@ -51,4 +51,30 @@ object LocationUtils {
             }
         }
     }
+
+    /**
+     * Projects a point P onto segment AB and returns projected LatLng, distance in meters, and segment fraction t.
+     */
+    fun projectPointOnSegment(pLat: Double, pLng: Double, aLat: Double, aLng: Double, bLat: Double, bLng: Double): ProjectionResult {
+        val dLat = bLat - aLat
+        val dLng = bLng - aLng
+        
+        if (dLat == 0.0 && dLng == 0.0) {
+            val dist = calculateDistance(pLat, pLng, aLat, aLng)
+            return ProjectionResult(aLat, aLng, dist, 0.0)
+        }
+        
+        val t = (((pLat - aLat) * dLat + (pLng - aLng) * dLng) / (dLat * dLat + dLng * dLng)).coerceIn(0.0, 1.0)
+        val cLat = aLat + t * dLat
+        val cLng = aLng + t * dLng
+        val dist = calculateDistance(pLat, pLng, cLat, cLng)
+        return ProjectionResult(cLat, cLng, dist, t)
+    }
 }
+
+data class ProjectionResult(
+    val projectedLat: Double,
+    val projectedLng: Double,
+    val distanceMeters: Double,
+    val fraction: Double
+)

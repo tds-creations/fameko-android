@@ -405,9 +405,9 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(mapLibreMap, viewModel.navigationPath, viewModel.currentDelivery?.status, viewModel.activeRequest, pickupIcon, destinationIcon) {
+    LaunchedEffect(mapLibreMap, viewModel.remainingNavigationPath, viewModel.navigationPath, viewModel.currentDelivery?.status, viewModel.activeRequest, pickupIcon, destinationIcon) {
         val map = mapLibreMap ?: return@LaunchedEffect
-        val path = viewModel.navigationPath
+        val path = viewModel.remainingNavigationPath.ifEmpty { viewModel.navigationPath }
         
         @Suppress("DEPRECATION")
         activePolylineRef.value?.let { map.removePolyline(it) }
