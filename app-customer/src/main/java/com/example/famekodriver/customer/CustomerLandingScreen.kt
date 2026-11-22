@@ -1,9 +1,9 @@
 package com.example.famekodriver.customer
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +14,15 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -138,8 +147,8 @@ fun CustomerLandingScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Dynamic Destination Suggestions Carousel with live ETA & Fare
-        DynamicDestinationCarousel(
+        // Single Auto-Rotating Dynamic Destination Indicator
+        AutoRotatingDestinationCard(
             destinations = dynamicDestinations,
             onSearchClick = onSearchClick,
             onDestinationClick = onPlaceClick
@@ -642,158 +651,125 @@ fun SpecialOffersSection(
 }
 
 @Composable
-fun DynamicDestinationCarousel(
+fun AutoRotatingDestinationCard(
     destinations: List<CustomerMapViewModel.DynamicDestinationItem>,
     onSearchClick: () -> Unit,
     onDestinationClick: (LocationSuggestion) -> Unit
 ) {
-    if (destinations.isEmpty()) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSearchClick() },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-            elevation = CardDefaults.cardElevation(1.dp)
-        ) {
+    var currentIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(destinations) {
+        if (destinations.isNotEmpty()) {
+            while (true) {
+                delay(6.seconds)
+                currentIndex = (currentIndex + 1) % destinations.size
+            }
+        }
+    }
+
+    val currentItem = destinations.getOrNull(if (destinations.isNotEmpty()) currentIndex % destinations.size else 0)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                if (currentItem != null) {
+                    onDestinationClick(currentItem.location)
+                } else {
+                    onSearchClick()
+                }
+            },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        elevation = CardDefaults.cardElevation(1.dp)
+    ) {
+        AnimatedContent(
+            targetState = currentItem,
+            transitionSpec = {
+                (slideInVertically { height -> height / 2 } + fadeIn()) togetherWith
+                        (slideOutVertically { height -> -height / 2 } + fadeOut())
+            },
+            label = "autoRotateDestination"
+        ) { item ->
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
                     Surface(
                         shape = CircleShape,
                         color = Color(0xFFECFDF5),
                         modifier = Modifier.size(44.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF059669), modifier = Modifier.size(22.dp))
+                            Icon(
+                                imageVector = when (item?.iconType) {
+                                    "AIRPORT" -> Icons.Default.Flight
+                                    "MALL" -> Icons.Default.ShoppingBag
+                                    "HOSPITAL" -> Icons.Default.LocalHospital
+                                    "TRANSPORT" -> Icons.Default.DirectionsBus
+                                    "SAVED_HOME" -> Icons.Default.Home
+                                    "SAVED_WORK" -> Icons.Default.Work
+                                    else -> Icons.Default.LocationOn
+                                },
+                                contentDescription = null,
+                                tint = Color(0xFF059669),
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                     }
 
-                    Column {
-                        Text("Kotoka Int. Airport (ACC)", fontWeight = FontWeight.Black, fontSize = 15.sp, color = Color(0xFF0F172A))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item?.title ?: "Kotoka Int. Airport (ACC)",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 15.sp,
+                            color = Color(0xFF0F172A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Spacer(Modifier.height(2.dp))
-                        Text("Fast pickup • ~18 mins away • ✈️ Includes Toll", fontSize = 11.sp, color = Color(0xFF059669), fontWeight = FontWeight.Bold)
+                        Text(
+                            text = item?.subtitle ?: "Fast pickup • ~18 mins away • ✈️ Includes Toll",
+                            fontSize = 11.sp,
+                            color = Color(0xFF059669),
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
+
+                Spacer(Modifier.width(8.dp))
 
                 Surface(
                     color = Color(0xFFECFDF5),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("GH₵ 42", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                }
-            }
-        }
-    } else {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Suggested Destinations",
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 13.sp,
-                    color = Color(0xFF0F172A)
-                )
-                Text(
-                    text = "Swipe for more →",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.Gray
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 2.dp)
-            ) {
-                items(destinations, key = { it.id }) { item ->
-                    Card(
-                        modifier = Modifier
-                            .width(285.dp)
-                            .clickable { onDestinationClick(item.location) },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                        elevation = CardDefaults.cardElevation(1.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = Color(0xFFECFDF5),
-                                    modifier = Modifier.size(42.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = when (item.iconType) {
-                                                "AIRPORT" -> Icons.Default.Flight
-                                                "MALL" -> Icons.Default.ShoppingBag
-                                                "HOSPITAL" -> Icons.Default.LocalHospital
-                                                "TRANSPORT" -> Icons.Default.DirectionsBus
-                                                "SAVED_HOME" -> Icons.Default.Home
-                                                "SAVED_WORK" -> Icons.Default.Work
-                                                else -> Icons.Default.LocationOn
-                                            },
-                                            contentDescription = null,
-                                            tint = Color(0xFF059669),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = item.title,
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 14.sp,
-                                        color = Color(0xFF0F172A),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(Modifier.height(2.dp))
-                                    Text(
-                                        text = item.subtitle,
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF059669),
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-
-                            Spacer(Modifier.width(8.dp))
-
-                            Surface(
-                                color = Color(0xFFECFDF5),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = if (item.estimatedFare != null) "GH₵ ${item.estimatedFare.toInt()}" else "Tap to view",
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF059669),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(Color(0xFF059669), CircleShape)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (item?.estimatedFare != null) "GH₵ ${item.estimatedFare.toInt()}" else "GH₵ 42",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            color = Color(0xFF059669)
+                        )
                     }
                 }
             }
