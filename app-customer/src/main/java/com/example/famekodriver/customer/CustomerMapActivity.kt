@@ -394,8 +394,8 @@ fun CustomerMapScreen() {
                             .fillMaxWidth()
                             .background(FamekoBlue)
                             .navigationBarsPadding()
-                            .padding(horizontal = 36.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // 1. Explore (Home)
@@ -1227,7 +1227,7 @@ fun MainMapContent(
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             sheetDragHandle = { Box(Modifier.padding(vertical = 12.dp).width(40.dp).height(4.dp).background(Color.LightGray.copy(alpha = 0.5f), CircleShape)) },
             sheetContent = {
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp).imePadding().pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).imePadding().pointerInput(Unit) { detectTapGestures(onTap = { focusManager.clearFocus() }) }
                 ) {
                     when (currentSheetState) {
                         CustomerSheetState.LANDING -> {
