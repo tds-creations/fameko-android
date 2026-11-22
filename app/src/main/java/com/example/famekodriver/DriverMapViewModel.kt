@@ -11,6 +11,7 @@ import com.example.famekodriver.core.data.SessionManager
 import com.example.famekodriver.core.data.repository.DriverRepository
 import com.example.famekodriver.core.domain.model.*
 import com.example.famekodriver.core.utils.LocationUtils
+import com.example.famekodriver.core.utils.MapCacheManager
 import com.example.famekodriver.core.utils.VoiceNavigationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -60,7 +61,12 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var durationMin by mutableDoubleStateOf(0.0)
     var isFullscreenMap by mutableStateOf(false)
     var driverLatLng by mutableStateOf<LatLng?>(null)
+    var rawDriverLatLng by mutableStateOf<LatLng?>(null)
+    var visualDriverLatLng by mutableStateOf<LatLng?>(null)
+    var visualDriverBearing by mutableFloatStateOf(0f)
     var driverBearing by mutableStateOf(0f)
+    var isOfflineMode by mutableStateOf(false)
+    private var latestProjectionResult: com.example.famekodriver.core.utils.ProjectionResult? = null
     var heatmapPoints by mutableStateOf<List<HeatmapPoint>>(emptyList())
     var currentSurge by mutableStateOf<SurgeInfo?>(null)
     var requestTimer by mutableIntStateOf(30)
@@ -515,7 +521,7 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
         repository.sendAudioData(data)
     }
 
-    fun calculateRoute(start: LatLng, end: LatLng) {
+    fun calculateRoute(start: LatLng, end: LatLng, context: Context? = null) {
         // If we already calculated for this position (within 50m), don't spam
         lastRouteCalcLatLng?.let { last ->
             val dist = LocationUtils.calculateDistance(start.latitude, start.longitude, last.latitude, last.longitude)
@@ -534,27 +540,49 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                         navigationPath = path
                         currentRouteSegmentIndex = 0
                         originalRouteDistanceMeters = response.distanceM.toDouble()
-                        originalRouteEtaMin = response.etaMin.toDouble()
+                        originalRouteEtaMin = response.etaMin
                         instructions = response.instructions
                         currentInstruction = instructions.firstOrNull()
                         nextInstruction = instructions.getOrNull(1)
                         distanceKm = response.distanceM / 1000.0
                         durationMin = response.etaMin
                         lastRouteCalcLatLng = start
+                        isOfflineMode = false
                         
                         if (isFirstCalc) {
                             val destName = if (currentDelivery?.status == DeliveryStatus.ASSIGNED) "pickup" else "destination"
                             voiceNavManager.announceTripStart(destName)
                         }
+
+                        // Phase 1: Save route to Room DB
+                        context?.let { ctx -> saveCurrentRouteToRoom(ctx) }
+                        // Phase 2: Route corridor tile prefetching
+                        context?.let { ctx -> MapCacheManager.prefetchRouteCorridor(ctx, path, "Order_${currentDelivery?.id ?: 0}") }
+                    }
+                }
+                .onFailure {
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        isOfflineMode = true
                     }
                 }
         }
     }
 
-    fun updateDriverLocation(lat: Double, lng: Double, bearing: Float) {
-        driverLatLng = LatLng(lat, lng)
+    fun updateDriverLocation(lat: Double, lng: Double, bearing: Float, context: Context? = null) {
+        // Phase 3: Separate Raw vs Visual Location
+        rawDriverLatLng = LatLng(lat, lng)
+
+        // Low-pass EMA filter for visual smoothing
+        val prevVisual = visualDriverLatLng
+        val alpha = 0.35
+        val smoothedLat = if (prevVisual != null) prevVisual.latitude + alpha * (lat - prevVisual.latitude) else lat
+        val smoothedLng = if (prevVisual != null) prevVisual.longitude + alpha * (lng - prevVisual.longitude) else lng
+
+        // Low-pass bearing filter
         if (bearing != 0f) {
-            driverBearing = bearing
+            val diff = (bearing - visualDriverBearing + 540) % 360 - 180
+            visualDriverBearing = (visualDriverBearing + 0.35f * diff + 360) % 360
+            driverBearing = visualDriverBearing
         }
         
         val delivery = currentDelivery ?: activeRequest
@@ -563,10 +591,21 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
             // Update remaining distance, ETA, turn instructions and trim polyline
             updateRouteProgression(lat, lng)
 
-            // Off-route detection using original full route geometry
-            checkOffRoute(lat, lng)
+            // Visual road snapping if close to route segment (<= 30m)
+            val proj = latestProjectionResult
+            if (proj != null && proj.distanceMeters <= 30.0) {
+                visualDriverLatLng = LatLng(proj.projectedLat, proj.projectedLng)
+            } else {
+                visualDriverLatLng = LatLng(smoothedLat, smoothedLng)
+            }
+            driverLatLng = visualDriverLatLng ?: rawDriverLatLng
+
+            // Off-route detection using original full route geometry (only if online)
+            if (!isOfflineMode) {
+                checkOffRoute(lat, lng)
+            }
             
-            // Arrival detection (Voice triggers inside checkArrival)
+            // Arrival detection (Voice triggers inside checkArrival - uses raw coordinates)
             checkArrival(lat, lng)
 
             val progressPath = remainingNavigationPath.ifEmpty { activePath }
@@ -579,6 +618,14 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 distToManeuverMeters = distanceToNextManeuverMeters,
                 instructionIndex = instructions.indexOf(currentInstruction)
             )
+
+            // Periodically save navigation progress to Room
+            if (currentRouteSegmentIndex % 3 == 0 && context != null) {
+                saveCurrentRouteToRoom(context)
+            }
+        } else {
+            visualDriverLatLng = LatLng(smoothedLat, smoothedLng)
+            driverLatLng = visualDriverLatLng ?: rawDriverLatLng
         }
     }
 
@@ -605,6 +652,8 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
                 bestProjection = proj
             }
         }
+
+        latestProjectionResult = bestProjection
 
         if (minDistance <= 50.0 && bestProjection != null) {
             if (bestSegmentIdx > currentRouteSegmentIndex || (bestSegmentIdx == currentRouteSegmentIndex && bestProjection.fraction > 0.05)) {
@@ -638,6 +687,65 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
             maxOf(1.0, (remDistMeters / originalRouteDistanceMeters) * originalRouteEtaMin)
         } else {
             maxOf(1.0, (distanceKm / 30.0) * 60.0)
+        }
+    }
+
+    // Phase 1 Room Persistence
+    fun saveCurrentRouteToRoom(context: Context) {
+        val delivery = currentDelivery ?: return
+        val orig = originalNavigationPath
+        if (orig.size < 2) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val gson = com.google.gson.Gson()
+            val entity = com.example.famekodriver.core.data.local.entity.NavigationRouteEntity(
+                orderId = delivery.id.toIntOrNull() ?: delivery.id.hashCode(),
+                status = delivery.status.name,
+                pickupLat = delivery.pickupLat ?: 0.0,
+                pickupLng = delivery.pickupLng ?: 0.0,
+                dropOffLat = delivery.dropOffLat ?: 0.0,
+                dropOffLng = delivery.dropOffLng ?: 0.0,
+                originalPathJson = gson.toJson(orig.map { listOf(it.longitude, it.latitude) }),
+                instructionsJson = gson.toJson(instructions),
+                currentSegmentIndex = currentRouteSegmentIndex,
+                remainingDistanceKm = distanceKm,
+                remainingDurationMin = durationMin
+            )
+            repository.saveNavigationRoute(context, entity)
+        }
+    }
+
+    fun restoreRouteFromRoom(context: Context, orderId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val entity = repository.getNavigationRoute(context, orderId) ?: return@launch
+            val gson = com.google.gson.Gson()
+            try {
+                val rawCoords: List<List<Double>> = gson.fromJson(entity.originalPathJson, object : com.google.gson.reflect.TypeToken<List<List<Double>>>() {}.type)
+                val path = rawCoords.map { LatLng(it[1], it[0]) }
+                val parsedInstructions: List<RouteInstruction> = gson.fromJson(entity.instructionsJson, object : com.google.gson.reflect.TypeToken<List<RouteInstruction>>() {}.type)
+                
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    if (path.size >= 2) {
+                        originalNavigationPath = path
+                        currentRouteSegmentIndex = entity.currentSegmentIndex.coerceIn(0, (path.size - 2).coerceAtLeast(0))
+                        remainingNavigationPath = path.subList(currentRouteSegmentIndex, path.size)
+                        navigationPath = remainingNavigationPath
+                        instructions = parsedInstructions
+                        currentInstruction = instructions.getOrNull(entity.currentSegmentIndex)
+                        nextInstruction = instructions.getOrNull(entity.currentSegmentIndex + 1)
+                        distanceKm = entity.remainingDistanceKm
+                        durationMin = entity.remainingDurationMin
+                        Log.d("RouteRestore", "Restored Room route for order $orderId successfully.")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("RouteRestore", "Failed to parse cached Room route", e)
+            }
+        }
+    }
+
+    fun deleteRouteFromRoom(context: Context, orderId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteNavigationRoute(context, orderId)
         }
     }
 

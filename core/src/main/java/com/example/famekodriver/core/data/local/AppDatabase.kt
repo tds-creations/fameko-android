@@ -4,15 +4,18 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.famekodriver.core.data.local.dao.NavigationRouteDao
 import com.example.famekodriver.core.data.local.dao.SavedPlaceDao
 import com.example.famekodriver.core.data.local.dao.SyncQueueDao
+import com.example.famekodriver.core.data.local.entity.NavigationRouteEntity
 import com.example.famekodriver.core.data.local.entity.SavedPlaceEntity
 import com.example.famekodriver.core.data.local.entity.SyncOperationEntity
 
-@Database(entities = [SavedPlaceEntity::class, SyncOperationEntity::class], version = 1, exportSchema = false)
+@Database(entities = [SavedPlaceEntity::class, SyncOperationEntity::class, NavigationRouteEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun savedPlaceDao(): SavedPlaceDao
     abstract fun syncQueueDao(): SyncQueueDao
+    abstract fun navigationRouteDao(): NavigationRouteDao
 
     companion object {
         @Volatile
@@ -24,7 +27,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fameko_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .build()
                 INSTANCE = instance
                 instance
             }

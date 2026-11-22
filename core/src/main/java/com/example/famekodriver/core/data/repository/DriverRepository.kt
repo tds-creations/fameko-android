@@ -768,6 +768,31 @@ class DriverRepository private constructor() {
         }
     }
 
+    suspend fun saveNavigationRoute(context: android.content.Context, route: com.example.famekodriver.core.data.local.entity.NavigationRouteEntity) = withContext(Dispatchers.IO) {
+        try {
+            com.example.famekodriver.core.data.local.AppDatabase.getDatabase(context).navigationRouteDao().saveRoute(route)
+        } catch (e: Exception) {
+            Log.e("DriverRepo", "Failed to save navigation route to Room", e)
+        }
+    }
+
+    suspend fun getNavigationRoute(context: android.content.Context, orderId: Int): com.example.famekodriver.core.data.local.entity.NavigationRouteEntity? = withContext(Dispatchers.IO) {
+        try {
+            com.example.famekodriver.core.data.local.AppDatabase.getDatabase(context).navigationRouteDao().getRouteForOrder(orderId)
+        } catch (e: Exception) {
+            Log.e("DriverRepo", "Failed to get navigation route from Room", e)
+            null
+        }
+    }
+
+    suspend fun deleteNavigationRoute(context: android.content.Context, orderId: Int) = withContext(Dispatchers.IO) {
+        try {
+            com.example.famekodriver.core.data.local.AppDatabase.getDatabase(context).navigationRouteDao().deleteRouteForOrder(orderId)
+        } catch (e: Exception) {
+            Log.e("DriverRepo", "Failed to delete navigation route from Room", e)
+        }
+    }
+
     suspend fun calculateRoute(request: RouteRequest): Result<RouteResponse> = withContext(Dispatchers.IO) {
         Log.d("FamekoRepo", "Calculating route from (${request.start.lat}, ${request.start.lng}) to (${request.end.lat}, ${request.end.lng})")
         // Priority 1: OSRM (OpenStreetMap based, accurate local road data with structured maneuver steps)
