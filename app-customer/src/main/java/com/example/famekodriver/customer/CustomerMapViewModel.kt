@@ -659,11 +659,21 @@ class CustomerMapViewModel(
                 pickupLocation = address
                 pickupLat = lat
                 pickupLng = lng
+
+                if (dropOffLat == null && dropOffLocation.isEmpty()) {
+                    openMapPicker(MapPickerTarget.DROPOFF)
+                    return
+                }
             }
             MapPickerTarget.DROPOFF -> {
                 dropOffLocation = address
                 dropOffLat = lat
                 dropOffLng = lng
+
+                if (pickupLat == null && pickupLocation.isEmpty()) {
+                    openMapPicker(MapPickerTarget.PICKUP)
+                    return
+                }
             }
             MapPickerTarget.STOP -> {
                 if (focusedStopIndex >= 0 && focusedStopIndex < stops.size) {

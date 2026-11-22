@@ -279,11 +279,6 @@ fun MapPickerOverlay(
     onBack: () -> Unit
 ) {
     val target = viewModel.mapPickerTarget
-    val titleText = when (target) {
-        com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.PICKUP -> "Pick Pickup Location"
-        com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.DROPOFF -> "Pick Destination"
-        com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.STOP -> "Pick Stop Location"
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Fixed Center Pin with spring bounce animation
@@ -292,12 +287,13 @@ fun MapPickerOverlay(
             targetMode = target
         )
 
-        // Top Navigation Bar
+        // Compact Top Controls (Back Button & Search Button)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             FloatingActionButton(
@@ -308,43 +304,30 @@ fun MapPickerOverlay(
                 modifier = Modifier.size(44.dp),
                 elevation = FloatingActionButtonDefaults.elevation(6.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    modifier = Modifier.size(20.dp)
+                )
             }
 
-            Spacer(Modifier.width(12.dp))
-
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = Color.White,
-                shadowElevation = 6.dp,
-                modifier = Modifier.weight(1f).height(44.dp)
+            FloatingActionButton(
+                onClick = { viewModel.navigateTo(com.example.famekodriver.customer.CustomerScreen.RouteSelection) },
+                containerColor = Color.White,
+                contentColor = Color(0xFF0F172A),
+                shape = CircleShape,
+                modifier = Modifier.size(44.dp),
+                elevation = FloatingActionButtonDefaults.elevation(6.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(
-                                if (target == com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.PICKUP) BoltGreen else BoltOrange,
-                                CircleShape
-                            )
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = titleText,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 14.sp,
-                        color = Color(0xFF0F172A),
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search Address",
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
-        // Floating Action Buttons (Recenter / Current Location)
+        // Floating Recenter Control
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -358,11 +341,15 @@ fun MapPickerOverlay(
                 modifier = Modifier.size(48.dp),
                 elevation = FloatingActionButtonDefaults.elevation(6.dp)
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "My Location", modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "My Location",
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
-        // Bottom Confirmation Sheet
+        // Single Unified Bottom Confirmation Sheet
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -391,16 +378,16 @@ fun MapPickerOverlay(
                 Text(
                     text = when (target) {
                         com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.PICKUP -> "CONFIRM PICKUP LOCATION"
-                        com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.DROPOFF -> "CONFIRM DESTINATION"
+                        com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.DROPOFF -> "CONFIRM DROP-OFF LOCATION"
                         com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.STOP -> "CONFIRM STOP LOCATION"
                     },
                     fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = FamekoBlue,
+                    color = if (target == com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.PICKUP) BoltGreen else BoltOrange,
                     letterSpacing = 1.sp
                 )
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
 
                 val address = viewModel.mapPickerAddress
                 val displayTitle = if (address.contains(",")) address.split(",").first() else address.ifBlank { "Setting location..." }
@@ -414,14 +401,14 @@ fun MapPickerOverlay(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
                         tint = if (target == com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.PICKUP) BoltGreen else BoltOrange,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = displayTitle,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp,
                             color = BoltDark,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -436,29 +423,46 @@ fun MapPickerOverlay(
                             )
                         }
                     }
+
+                    // Search/Edit Location Affordance inside bottom sheet
+                    IconButton(
+                        onClick = { viewModel.navigateTo(com.example.famekodriver.customer.CustomerScreen.RouteSelection) },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search Address",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 if (viewModel.isReverseGeocodingMapPicker) {
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().height(3.dp),
-                        color = FamekoBlue,
-                        trackColor = FamekoBlue.copy(alpha = 0.15f)
+                        color = BoltGreen,
+                        trackColor = BoltGreen.copy(alpha = 0.15f)
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(18.dp))
 
                 Button(
                     onClick = { viewModel.confirmMapPickerLocation() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
+                    colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        text = "Confirm Location",
+                        text = when (target) {
+                            com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.PICKUP -> "Confirm Pickup"
+                            com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.DROPOFF -> "Confirm Destination"
+                            com.example.famekodriver.customer.CustomerMapViewModel.MapPickerTarget.STOP -> "Confirm Stop"
+                        },
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 16.sp,
                         color = Color.White
