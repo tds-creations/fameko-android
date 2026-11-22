@@ -144,6 +144,21 @@ class CustomerMapViewModel(
     var isFullscreenMap by mutableStateOf(false)
     var customerProfile by mutableStateOf<Map<String, Any>?>(null)
 
+    // --- Map Location Picker State ---
+    enum class MapPickerTarget {
+        PICKUP,
+        DROPOFF,
+        STOP
+    }
+
+    var isMapPickerActive by mutableStateOf(false)
+    var mapPickerTarget by mutableStateOf(MapPickerTarget.PICKUP)
+    var mapPickerAddress by mutableStateOf("")
+    var mapPickerLat by mutableStateOf<Double?>(null)
+    var mapPickerLng by mutableStateOf<Double?>(null)
+    var isReverseGeocodingMapPicker by mutableStateOf(false)
+    private var mapPickerReverseGeocodeJob: Job? = null
+
     // --- Package Delivery State ---
     var isSendingPackage by mutableStateOf(true)
     var packageStage by mutableIntStateOf(1)
@@ -567,6 +582,109 @@ class CustomerMapViewModel(
                     refreshActiveRental()
                 }
             }
+        }
+    }
+
+    fun openMapPicker(target: MapPickerTarget = MapPickerTarget.PICKUP) {
+        mapPickerTarget = target
+        val initialLat = when (target) {
+            MapPickerTarget.PICKUP -> pickupLat ?: currentLatLng?.latitude
+            MapPickerTarget.DROPOFF -> dropOffLat ?: currentLatLng?.latitude
+            MapPickerTarget.STOP -> stopPoints[focusedStopIndex]?.latitude ?: currentLatLng?.latitude
+        }
+        val initialLng = when (target) {
+            MapPickerTarget.PICKUP -> pickupLng ?: currentLatLng?.longitude
+            MapPickerTarget.DROPOFF -> dropOffLng ?: currentLatLng?.longitude
+            MapPickerTarget.STOP -> stopPoints[focusedStopIndex]?.longitude ?: currentLatLng?.longitude
+        }
+
+        mapPickerLat = initialLat
+        mapPickerLng = initialLng
+        isMapPickerActive = true
+        isSearchMode = false
+        navigateTo(CustomerScreen.MainMap)
+
+        initialLat?.let { lat ->
+            initialLng?.let { lng ->
+                onMapPickerCameraMoved(lat, lng)
+            }
+        }
+    }
+
+    fun closeMapPicker() {
+        isMapPickerActive = false
+        if (pickupLat == null || dropOffLat == null) {
+            navigateTo(CustomerScreen.RouteSelection)
+        } else {
+            navigateTo(CustomerScreen.MainMap)
+        }
+    }
+
+    fun onMapPickerCameraMoved(lat: Double, lng: Double) {
+        mapPickerLat = lat
+        mapPickerLng = lng
+        isReverseGeocodingMapPicker = true
+        mapPickerReverseGeocodeJob?.cancel()
+        mapPickerReverseGeocodeJob = viewModelScope.launch {
+            delay(350)
+            repository.reverseGeocode(lat, lng)
+                .onSuccess { suggestion ->
+                    val resolved = suggestion.displayName.ifBlank {
+                        suggestion.name ?: "Selected location – %.4f, %.4f".format(Locale.US, lat, lng)
+                    }
+                    mapPickerAddress = resolved
+                    isReverseGeocodingMapPicker = false
+                }
+                .onFailure {
+                    mapPickerAddress = "Selected location – %.4f, %.4f".format(Locale.US, lat, lng)
+                    isReverseGeocodingMapPicker = false
+                }
+        }
+    }
+
+    fun confirmMapPickerLocation() {
+        val lat = mapPickerLat ?: return
+        val lng = mapPickerLng ?: return
+        val address = mapPickerAddress.ifBlank {
+            "Selected location – %.4f, %.4f".format(Locale.US, lat, lng)
+        }
+
+        when (mapPickerTarget) {
+            MapPickerTarget.PICKUP -> {
+                if (activeServiceMode == ServiceType.RENTAL) {
+                    rentalPickupLocation = address
+                    rentalPickupLat = lat
+                    rentalPickupLng = lng
+                }
+                pickupLocation = address
+                pickupLat = lat
+                pickupLng = lng
+            }
+            MapPickerTarget.DROPOFF -> {
+                dropOffLocation = address
+                dropOffLat = lat
+                dropOffLng = lng
+            }
+            MapPickerTarget.STOP -> {
+                if (focusedStopIndex >= 0 && focusedStopIndex < stops.size) {
+                    val newStops = stops.toMutableList()
+                    newStops[focusedStopIndex] = address
+                    stops = newStops
+                    stopPoints = stopPoints.toMutableMap().apply {
+                        put(focusedStopIndex, LatLng(lat, lng))
+                    }
+                }
+            }
+        }
+
+        isMapPickerActive = false
+        isSearchMode = false
+
+        if (pickupLat != null && dropOffLat != null) {
+            calculateRoute()
+            navigateTo(CustomerScreen.MainMap)
+        } else {
+            navigateTo(CustomerScreen.RouteSelection)
         }
     }
 

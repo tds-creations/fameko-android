@@ -453,7 +453,10 @@ fun RouteSelectionScreen(
 
                         if (isPickupFocused) {
                             Surface(
-                                modifier = Modifier.clickable { onMapClick() },
+                                modifier = Modifier.clickable { 
+                                    viewModel.openMapPicker(CustomerMapViewModel.MapPickerTarget.PICKUP)
+                                    onMapClick()
+                                },
                                 color = FamekoBlue,
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -567,7 +570,10 @@ fun RouteSelectionScreen(
                         
                         if (isDropOffFocused) {
                             Surface(
-                                modifier = Modifier.clickable { onMapClick() },
+                                modifier = Modifier.clickable { 
+                                    viewModel.openMapPicker(CustomerMapViewModel.MapPickerTarget.DROPOFF)
+                                    onMapClick()
+                                },
                                 color = FamekoBlue,
                                 shape = RoundedCornerShape(12.dp)
                             ) {

@@ -1162,12 +1162,52 @@ fun MainMapContent(
         }
     }
 
+    var isMapPickerCameraMoving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel.isMapPickerActive) {
+        if (viewModel.isMapPickerActive) {
+            val map = mapLibreMap ?: return@LaunchedEffect
+            val targetLat = viewModel.mapPickerLat ?: validCustomerGps?.latitude
+            val targetLng = viewModel.mapPickerLng ?: validCustomerGps?.longitude
+            if (targetLat != null && targetLng != null && targetLat != 0.0 && targetLng != 0.0) {
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(targetLat, targetLng), 16.0), 800)
+                viewModel.onMapPickerCameraMoved(targetLat, targetLng)
+            }
+        }
+    }
+
+    DisposableEffect(mapLibreMap, viewModel.isMapPickerActive) {
+        val map = mapLibreMap
+        if (map != null && viewModel.isMapPickerActive) {
+            val startListener = MapLibreMap.OnCameraMoveStartedListener { isMapPickerCameraMoving = true }
+            val moveListener = MapLibreMap.OnCameraMoveListener { isMapPickerCameraMoving = true }
+            val idleListener = MapLibreMap.OnCameraIdleListener {
+                isMapPickerCameraMoving = false
+                val target = map.cameraPosition?.target
+                if (target != null) {
+                    viewModel.onMapPickerCameraMoved(target.latitude, target.longitude)
+                }
+            }
+            map.addOnCameraMoveStartedListener(startListener)
+            map.addOnCameraMoveListener(moveListener)
+            map.addOnCameraIdleListener(idleListener)
+            onDispose {
+                map.removeOnCameraMoveStartedListener(startListener)
+                map.removeOnCameraMoveListener(moveListener)
+                map.removeOnCameraIdleListener(idleListener)
+            }
+        } else {
+            onDispose { }
+        }
+    }
+
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
     BottomSheetScaffold(
         scaffoldState = sheetScaffoldState,
-            sheetPeekHeight = if (viewModel.isFullscreenMap) { if (viewModel.activeRental != null) 110.dp else 0.dp }
+            sheetPeekHeight = if (viewModel.isMapPickerActive) 0.dp
+                             else if (viewModel.isFullscreenMap) { if (viewModel.activeRental != null) 110.dp else 0.dp }
                              else if (!isBaseMapScreen) 0.dp
                              else if (currentSheetState == CustomerSheetState.LANDING) (screenHeight * 0.75f).coerceAtLeast(520.dp)
                              else if (currentSheetState == CustomerSheetState.IDLE || 
@@ -1482,7 +1522,7 @@ fun MainMapContent(
                     }
                 }
 
-                if (!viewModel.isFullscreenMap && (currentSheetState == CustomerSheetState.IDLE || currentSheetState == CustomerSheetState.LANDING || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS)) {
+                if (!viewModel.isFullscreenMap && !viewModel.isMapPickerActive && (currentSheetState == CustomerSheetState.IDLE || currentSheetState == CustomerSheetState.LANDING || currentSheetState == CustomerSheetState.SELECTING_SERVICE || currentSheetState == CustomerSheetState.PICKING_ADDRESS)) {
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
@@ -1520,6 +1560,23 @@ fun MainMapContent(
                     }
                 }
                 
+                if (viewModel.isMapPickerActive) {
+                    com.example.famekodriver.customer.ui.components.MapPickerOverlay(
+                        viewModel = viewModel,
+                        isCameraMoving = isMapPickerCameraMoving,
+                        onRecenter = {
+                            val gps = validCustomerGps
+                            if (gps != null && mapLibreMap != null) {
+                                mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(gps, 16.0), 800)
+                                viewModel.onMapPickerCameraMoved(gps.latitude, gps.longitude)
+                            }
+                        },
+                        onBack = {
+                            viewModel.closeMapPicker()
+                        }
+                    )
+                }
+
                 if (currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER) { RadarPulseAnimation(centerOffset = radarScreenOffset) }
 
                 if (viewModel.showRatingDialog) { RatingDialog(driverName = viewModel.ratingDriverName ?: "Your Driver", driverProfilePic = viewModel.ratingDriverPic, onRate = { rating, comment -> viewModel.submitRating(rating, comment) }, onDismiss = { viewModel.showRatingDialog = false }) }
