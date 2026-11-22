@@ -331,7 +331,7 @@ fun MapPickerOverlay(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 220.dp)
+                .padding(end = 16.dp, bottom = 170.dp)
         ) {
             FloatingActionButton(
                 onClick = onRecenter,
@@ -349,7 +349,7 @@ fun MapPickerOverlay(
             }
         }
 
-        // Single Unified Bottom Confirmation Sheet
+        // Single Unified Bottom Confirmation Sheet (Content-Driven, Minimum Bottom Padding)
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -361,8 +361,7 @@ fun MapPickerOverlay(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .navigationBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp)
             ) {
                 // Drag handle indicator
                 Box(
@@ -373,7 +372,7 @@ fun MapPickerOverlay(
                         .background(Color.LightGray.copy(alpha = 0.6f), CircleShape)
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
 
                 Text(
                     text = when (target) {
@@ -387,7 +386,7 @@ fun MapPickerOverlay(
                     letterSpacing = 1.sp
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 val address = viewModel.mapPickerAddress
                 val displayTitle = if (address.contains(",")) address.split(",").first() else address.ifBlank { "Setting location..." }
@@ -408,7 +407,7 @@ fun MapPickerOverlay(
                         Text(
                             text = displayTitle,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             color = BoltDark,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -416,7 +415,7 @@ fun MapPickerOverlay(
                         if (displaySubtitle.isNotEmpty()) {
                             Text(
                                 text = displaySubtitle,
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 color = Color.Gray,
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -427,7 +426,7 @@ fun MapPickerOverlay(
                     // Search/Edit Location Affordance inside bottom sheet
                     IconButton(
                         onClick = { viewModel.navigateTo(com.example.famekodriver.customer.CustomerScreen.RouteSelection) },
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -439,7 +438,7 @@ fun MapPickerOverlay(
                 }
 
                 if (viewModel.isReverseGeocodingMapPicker) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth().height(3.dp),
                         color = BoltGreen,
@@ -447,15 +446,15 @@ fun MapPickerOverlay(
                     )
                 }
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Button(
                     onClick = { viewModel.confirmMapPickerLocation() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BoltGreen),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Text(
                         text = when (target) {
