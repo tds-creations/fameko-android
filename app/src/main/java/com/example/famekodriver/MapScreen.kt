@@ -1394,54 +1394,57 @@ fun DeliveryControlSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Bottom Action Bar: Overflow (3 dots), Navigate (Dark Navy), Complete / Arrived (Blue)
+            // Bottom Action Bar: Cancel (X), Navigate (Dark Navy), Complete / Arrived (Blue)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Overflow / Options Button
+                // Cancel Trip Button (X icon)
                 Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color(0xFFF1F5F9),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFFFEF2F2),
+                    border = BorderStroke(1.dp, Color(0xFFFCA5A5).copy(alpha = 0.5f)),
                     modifier = Modifier
-                        .size(width = 52.dp, height = 52.dp)
+                        .size(48.dp)
                         .clickable { onCancel() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Options",
-                            tint = Color(0xFF0F172A),
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel Trip",
+                            tint = Color(0xFFEF4444),
                             modifier = Modifier.size(22.dp)
                         )
                     }
                 }
 
-                // Navigate Button (Dark Navy with Green Arrow Icon)
+                // Navigate Button (Dark Navy)
                 Button(
                     onClick = onNavigateClick,
                     modifier = Modifier
                         .weight(1f)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(18.dp),
+                        .height(48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A))
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.NearMe,
                             contentDescription = "Navigate",
                             tint = Color(0xFF10B981),
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "Navigate",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = Color.White
+                            fontSize = 13.sp,
+                            color = Color.White,
+                            maxLines = 1
                         )
                     }
                 }
@@ -1453,30 +1456,32 @@ fun DeliveryControlSheet(
                         else onStatusUpdate(DeliveryStatus.DELIVERED)
                     },
                     modifier = Modifier
-                        .weight(1.3f)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(18.dp),
+                        .weight(1.1f)
+                        .height(48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isPickup) Color(0xFF10B981) else Color(0xFF2563EB)
                     ),
-                    elevation = ButtonDefaults.buttonElevation(4.dp)
+                    elevation = ButtonDefaults.buttonElevation(2.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Text(
                             text = if (isPickup) "ARRIVED" else "COMPLETE",
                             fontWeight = FontWeight.Black,
-                            fontSize = 15.sp,
+                            fontSize = 13.sp,
                             color = Color.White,
-                            letterSpacing = 0.5.sp
+                            maxLines = 1,
+                            letterSpacing = 0.3.sp
                         )
                     }
                 }
