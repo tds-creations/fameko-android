@@ -405,29 +405,36 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(mapLibreMap, viewModel.remainingNavigationPath, viewModel.navigationPath, viewModel.currentDelivery?.status, viewModel.activeRequest, pickupIcon, destinationIcon) {
+    LaunchedEffect(mapLibreMap, viewModel.remainingNavigationPath, viewModel.currentDelivery?.status, viewModel.activeRequest, pickupIcon, destinationIcon) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val path = viewModel.remainingNavigationPath.ifEmpty { viewModel.navigationPath }
         
+        map.getStyle { style ->
+            val source = style.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("route-source")
+            if (source != null) {
+                if (path.isNotEmpty()) {
+                    val feature = org.maplibre.geojson.Feature.fromGeometry(
+                        org.maplibre.geojson.LineString.fromLngLats(
+                            path.map { org.maplibre.geojson.Point.fromLngLat(it.longitude, it.latitude) }
+                        )
+                    )
+                    source.setGeoJson(org.maplibre.geojson.FeatureCollection.fromFeature(feature))
+                } else {
+                    source.setGeoJson(org.maplibre.geojson.FeatureCollection.fromFeatures(emptyList()))
+                }
+            }
+        }
+
         @Suppress("DEPRECATION")
-        activePolylineRef.value?.let { map.removePolyline(it) }
-        activePolylineRef.value = null
         activeRouteMarkers.forEach { map.removeMarker(it) }
         activeRouteMarkers.clear()
 
         if (path.isNotEmpty()) {
             @Suppress("DEPRECATION")
-            val polyline = map.addPolyline(PolylineOptions()
-                .addAll(path)
-                .color("#004E89".toColorInt())
-                .width(6f)
-            )
-            activePolylineRef.value = polyline
-            
-            @Suppress("DEPRECATION")
             val currentStatus = viewModel.currentDelivery?.status ?: viewModel.activeRequest?.status
             val isPickup = currentStatus == DeliveryStatus.ASSIGNED || currentStatus == DeliveryStatus.PENDING || currentStatus == DeliveryStatus.ARRIVED
             
+            @Suppress("DEPRECATION")
             val destMarker = map.addMarker(MarkerOptions()
                 .position(path.last())
                 .icon(if (isPickup) pickupIcon else destinationIcon)
@@ -528,16 +535,33 @@ fun MapScreen(
                         getMapAsync { map ->
                             mapLibreMap = map
                             map.setStyle(styleUrl) { style ->
-                                // Initialize Data Source and Layers for GPU-accelerated rendering
-                                style.addSource(org.maplibre.android.style.sources.GeoJsonSource("driver-source"))
-                                val layer = org.maplibre.android.style.layers.SymbolLayer("driver-layer", "driver-source")
-                                layer.withProperties(
-                                    org.maplibre.android.style.layers.PropertyFactory.iconImage("driver-icon"),
-                                    org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
-                                    org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true),
-                                    org.maplibre.android.style.layers.PropertyFactory.iconRotate(org.maplibre.android.style.expressions.Expression.get("bearing"))
-                                )
-                                style.addLayer(layer)
+                                // Initialize Route Line Source and Layer (GPU-Accelerated, Zero-Flicker)
+                                if (style.getSource("route-source") == null) {
+                                    val routeSource = org.maplibre.android.style.sources.GeoJsonSource("route-source")
+                                    style.addSource(routeSource)
+                                    val routeLayer = org.maplibre.android.style.layers.LineLayer("route-layer", "route-source").apply {
+                                        withProperties(
+                                            org.maplibre.android.style.layers.PropertyFactory.lineColor(android.graphics.Color.parseColor("#004E89")),
+                                            org.maplibre.android.style.layers.PropertyFactory.lineWidth(6f),
+                                            org.maplibre.android.style.layers.PropertyFactory.lineCap(org.maplibre.android.style.layers.Property.LINE_CAP_ROUND),
+                                            org.maplibre.android.style.layers.PropertyFactory.lineJoin(org.maplibre.android.style.layers.Property.LINE_JOIN_ROUND)
+                                        )
+                                    }
+                                    style.addLayer(routeLayer)
+                                }
+
+                                // Initialize Driver Marker Data Source and Layer
+                                if (style.getSource("driver-source") == null) {
+                                    style.addSource(org.maplibre.android.style.sources.GeoJsonSource("driver-source"))
+                                    val layer = org.maplibre.android.style.layers.SymbolLayer("driver-layer", "driver-source")
+                                    layer.withProperties(
+                                        org.maplibre.android.style.layers.PropertyFactory.iconImage("driver-icon"),
+                                        org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
+                                        org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true),
+                                        org.maplibre.android.style.layers.PropertyFactory.iconRotate(org.maplibre.android.style.expressions.Expression.get("bearing"))
+                                    )
+                                    style.addLayer(layer)
+                                }
                             }
                             map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(5.6037, -0.1870), 12.0))
                         }
