@@ -121,6 +121,7 @@ fun MapScreen(
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var isCameraAnimating by remember { mutableStateOf(false) }
+    var pendingCameraPosition by remember { mutableStateOf<org.maplibre.android.camera.CameraPosition?>(null) }
     var isPaddingApplied by remember { mutableStateOf(false) }
     var showLocationDisclosure by remember { mutableStateOf(!hasLocationPermission) }
 
@@ -215,7 +216,7 @@ fun MapScreen(
 
                     viewModel.updateDriverLocation(location.latitude, location.longitude, effectiveBearing, context)
 
-                    // Live Camera Following Controller (Single-Flight Animation)
+                    // Live Camera Following Controller (Latest-Target-Wins Animation)
                     mapLibreMap?.let { map ->
                         if (viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.FOLLOWING) {
                             if (!isPaddingApplied) {
@@ -226,26 +227,47 @@ fun MapScreen(
 
                             val targetPos = viewModel.visualDriverLatLng ?: viewModel.rawDriverLatLng ?: LatLng(location.latitude, location.longitude)
                             val targetBearing = viewModel.visualDriverBearing.toDouble()
-                            val speedKmh = location.speed.toDouble() * 3.6
+                            val speedKmh = maxOf(0.0, location.speed.toDouble() * 3.6)
                             val targetZoom = (18.0 - (speedKmh / 100.0)).coerceIn(15.0, 18.0)
 
-                            if (!isCameraAnimating) {
-                                val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
-                                    .target(targetPos)
-                                    .zoom(targetZoom)
-                                    .bearing(targetBearing)
-                                    .tilt(45.0)
-                                    .build()
+                            val nextCamPos = org.maplibre.android.camera.CameraPosition.Builder()
+                                .target(targetPos)
+                                .zoom(targetZoom)
+                                .bearing(targetBearing)
+                                .tilt(45.0)
+                                .build()
+
+                            pendingCameraPosition = nextCamPos
+
+                            fun animateNextCameraPosition() {
+                                val targetToAnimate = pendingCameraPosition ?: return
+                                pendingCameraPosition = null
+                                if (viewModel.navCameraMode != DriverMapViewModel.NavigationCameraMode.FOLLOWING) return
 
                                 isCameraAnimating = true
                                 map.animateCamera(
-                                    CameraUpdateFactory.newCameraPosition(cameraPosition),
-                                    380,
+                                    CameraUpdateFactory.newCameraPosition(targetToAnimate),
+                                    350,
                                     object : MapLibreMap.CancelableCallback {
-                                        override fun onFinish() { isCameraAnimating = false }
-                                        override fun onCancel() { isCameraAnimating = false }
+                                        override fun onFinish() {
+                                            isCameraAnimating = false
+                                            if (viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.FOLLOWING && pendingCameraPosition != null) {
+                                                animateNextCameraPosition()
+                                            }
+                                        }
+
+                                        override fun onCancel() {
+                                            isCameraAnimating = false
+                                            if (viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.FOLLOWING && pendingCameraPosition != null) {
+                                                animateNextCameraPosition()
+                                            }
+                                        }
                                     }
                                 )
+                            }
+
+                            if (!isCameraAnimating) {
+                                animateNextCameraPosition()
                             }
                         }
                     }
