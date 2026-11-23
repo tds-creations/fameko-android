@@ -274,17 +274,21 @@ fun ServiceSelectionSheet(
             Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
                 onClick = onConfirm,
-                modifier = Modifier.weight(1f).height(64.dp),
-                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier.weight(1f).height(56.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue),
                 enabled = !isPlacing && filteredEstimates.isNotEmpty()
             ) {
@@ -295,25 +299,14 @@ fun ServiceSelectionSheet(
                 }
             }
 
-            Box {
-                FloatingActionButton(
-                    onClick = onScheduleClick,
-                    containerColor = FamekoBlue,
-                    contentColor = Color.White,
-                    shape = CircleShape,
-                    modifier = Modifier.size(64.dp)
-                ) {
-                    Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(28.dp))
-                }
-                
-                // Tooltip mock
-                Surface(
-                    color = Color.Black,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.align(Alignment.TopCenter).offset(y = (-45).dp)
-                ) {
-                    Text("Schedule a ride", color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                }
+            FloatingActionButton(
+                onClick = onScheduleClick,
+                containerColor = FamekoBlue,
+                contentColor = Color.White,
+                shape = CircleShape,
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(24.dp))
             }
         }
     }

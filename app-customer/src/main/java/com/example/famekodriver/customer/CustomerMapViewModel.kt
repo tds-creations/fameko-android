@@ -617,14 +617,11 @@ class CustomerMapViewModel(
         pollingJob?.cancel()
         currentOrderId = null
         sessionManager.clearActiveOrderId()
-        // We no longer clear polylinePoints or estimatedFare here. 
-        // This allows the UI to transition back to the "Selection" state 
-        // (showing the pricing card) instead of getting stuck in an infinite 
-        // loading spinner in the "Picking Address" state.
         orderStatusData = null
         scheduledRideTime = null
         isTimedOut = false
         isOrderPlacing = false
+        isSearchMode = false
         
         val status = orderStatusData?.status
         if (status == "CANCELLED" || status == "DELIVERED") {
@@ -1319,11 +1316,13 @@ class CustomerMapViewModel(
 
     fun cancelOrder(reason: String? = null) {
         viewModelScope.launch {
-            currentOrderId?.let { orderRepository.cancelOrder(it, reason) }
+            val orderIdToCancel = currentOrderId
+            if (orderIdToCancel != null) {
+                orderRepository.cancelOrder(orderIdToCancel, reason)
+            }
             clearActiveOrder()
-            // After manual cancellation, return to the landing screen and clear the search
-            resetSearch()
-            navigateTo(CustomerScreen.Landing)
+            isSearchMode = false
+            navigateTo(CustomerScreen.MainMap)
         }
     }
 
