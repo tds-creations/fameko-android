@@ -65,6 +65,7 @@ fun AccountDetailScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .statusBarsPadding()
                         .padding(top = 0.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

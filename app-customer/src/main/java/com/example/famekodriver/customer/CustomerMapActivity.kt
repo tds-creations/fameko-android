@@ -122,7 +122,7 @@ sealed class CustomerScreen {
     object Landing : CustomerScreen()
     object MainMap : CustomerScreen()
     object Account : CustomerScreen()
-    data class Chat(val orderId: Int, val driverName: String) : CustomerScreen()
+    data class Chat(val orderId: Int, val driverName: String, val orderStatus: com.example.famekodriver.core.domain.model.OrderStatusResponse? = null) : CustomerScreen()
     object Trips : CustomerScreen()
     object RideHistory : CustomerScreen()
     object Rentals : CustomerScreen()
@@ -445,13 +445,13 @@ fun CustomerMapScreen() {
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize()) {
             // Map layer (Always present to avoid recreation and state loss)
             MainMapContent(
                 viewModel = mapViewModel,
                 mapView = mapView,
                 isActive = true, // Always track location for seamless transitions
-                onNavigateToChat = { orderId, name -> mapViewModel.navigateTo(CustomerScreen.Chat(orderId, name)) },
+                onNavigateToChat = { orderId, name -> mapViewModel.navigateTo(CustomerScreen.Chat(orderId, name, mapViewModel.orderStatusData)) },
                 onScheduleClick = { showDatePicker = true }
             )
 
@@ -460,7 +460,7 @@ fun CustomerMapScreen() {
                     // Handled by BottomSheet in MainMapContent
                 }
                 CustomerScreen.Account -> {
-                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8FAFC))) {
+                    Box(modifier = Modifier.fillMaxSize().padding(padding).background(Color(0xFFF8FAFC))) {
                         CustomerAccountScreen(
                             sessionManager = sessionManager,
                             onNavigate = { mapViewModel.navigateTo(it) },
@@ -478,6 +478,7 @@ fun CustomerMapScreen() {
                     CustomerChatScreen(
                         orderId = screen.orderId,
                         driverName = screen.driverName,
+                        orderStatus = screen.orderStatus,
                         onBack = { mapViewModel.navigateTo(CustomerScreen.MainMap) }
                     )
                 }
@@ -1003,7 +1004,7 @@ fun MainMapContent(
                     locationComponent.activateLocationComponent(LocationComponentActivationOptions.builder(context, style).build())
                 }
                 locationComponent.isLocationComponentEnabled = true
-                if (viewModel.isFullscreenMap) { locationComponent.cameraMode = CameraMode.NONE; locationComponent.renderMode = RenderMode.GPS } 
+                if (viewModel.isFullscreenMap) { locationComponent.cameraMode = CameraMode.NONE; locationComponent.renderMode = RenderMode.GPS }
                 else { locationComponent.cameraMode = CameraMode.NONE; locationComponent.renderMode = RenderMode.NORMAL }
             }
         } else {
@@ -1204,23 +1205,26 @@ fun MainMapContent(
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
+    val showBottomBar = (viewModel.currentScreen == CustomerScreen.Landing || viewModel.currentScreen == CustomerScreen.MainMap || viewModel.currentScreen == CustomerScreen.Account)
+            && viewModel.polylinePoints.isEmpty() && (viewModel.currentOrderId == null || viewModel.orderStatusData == null)
+
     BottomSheetScaffold(
         scaffoldState = sheetScaffoldState,
             sheetPeekHeight = if (viewModel.isMapPickerActive) 0.dp
                              else if (viewModel.isFullscreenMap) { if (viewModel.activeRental != null) 110.dp else 0.dp }
                              else if (!isBaseMapScreen) 0.dp
-                             else if (currentSheetState == CustomerSheetState.LANDING) (screenHeight * 0.75f).coerceAtLeast(520.dp)
+                             else if (currentSheetState == CustomerSheetState.LANDING) (screenHeight * 0.75f).coerceAtLeast(540.dp)
                              else if (currentSheetState == CustomerSheetState.IDLE || 
-                                     (currentSheetState == CustomerSheetState.PICKING_ADDRESS && (viewModel.pickupLat == null || viewModel.dropOffLat == null))) 120.dp
+                                     (currentSheetState == CustomerSheetState.PICKING_ADDRESS && (viewModel.pickupLat == null || viewModel.dropOffLat == null))) (if (showBottomBar) 230.dp else 120.dp)
                              else if (currentSheetState == CustomerSheetState.SELECTING_SERVICE || 
                                      currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER || 
                                      currentSheetState == CustomerSheetState.ON_TRIP || 
                                      currentSheetState == CustomerSheetState.RIDE_SCHEDULED || 
                                      currentSheetState == CustomerSheetState.TIMED_OUT ||
                                      viewModel.currentOrderId != null || 
-                                     viewModel.activeRental != null) 110.dp
+                                     viewModel.activeRental != null) (if (showBottomBar) 190.dp else 110.dp)
                              else if (currentSheetState == CustomerSheetState.PICKING_ADDRESS && 
-                                     viewModel.pickupLat != null && viewModel.dropOffLat != null) 110.dp
+                                     viewModel.pickupLat != null && viewModel.dropOffLat != null) (if (showBottomBar) 190.dp else 110.dp)
                              else 0.dp,
             sheetContainerColor = Color.White,
             sheetShadowElevation = 32.dp,
@@ -1457,7 +1461,7 @@ fun MainMapContent(
                 val hasActiveOrder = viewModel.currentOrderId != null && viewModel.orderStatusData != null && !isTerminalStatus
 
                 if (!hasActiveOrder && !viewModel.isFullscreenMap) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(top = 0.dp, start = 16.dp, end = 16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, start = 16.dp, end = 16.dp)) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1527,7 +1531,7 @@ fun MainMapContent(
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(bottom = 160.dp, end = 16.dp),
+                            .padding(bottom = if (showBottomBar) 250.dp else 140.dp, end = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FloatingActionButton(

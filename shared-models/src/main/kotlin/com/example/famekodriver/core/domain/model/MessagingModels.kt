@@ -16,5 +16,6 @@ data class Message(
     val senderId: Int,
     val body: String,
     val createdAt: String,
-    val read: Boolean
+    val read: Boolean,
+    val status: String = "SENT"
 )

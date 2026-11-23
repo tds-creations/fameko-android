@@ -376,6 +376,7 @@ fun RouteSelectionScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

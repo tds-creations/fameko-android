@@ -36,7 +36,7 @@ sealed class Screen {
     data class EditRentalVehicle(val vehicle: Map<String, Any>) : Screen()
     object VehicleRegistration : Screen()
     object Payment : Screen()
-    data class Chat(val conversationId: Int, val customerName: String) : Screen()
+    data class Chat(val conversationId: Int, val customerName: String, val delivery: com.example.famekodriver.core.domain.model.Delivery? = null) : Screen()
     object SupportChat : Screen()
     object TermsAndConditions : Screen()
     object PrivacyPolicy : Screen()
@@ -145,8 +145,8 @@ class MainActivity : ComponentActivity() {
                                 val intent = Intent(this@MainActivity, DriverProfileActivity::class.java)
                                 startActivity(intent)
                             },
-                            onNavigateToChat = { convId, name ->
-                                currentScreen = Screen.Chat(convId, name)
+                            onNavigateToChat = { convId, name, delivery ->
+                                currentScreen = Screen.Chat(convId, name, delivery)
                             },
                             onNavigateToEarnings = {
                                 currentScreen = Screen.Earnings
@@ -267,6 +267,7 @@ class MainActivity : ComponentActivity() {
                     ChatScreen(
                         conversationId = screen.conversationId,
                         customerName = screen.customerName,
+                        delivery = screen.delivery,
                         onBack = { currentScreen = if (userRole == "OWNER") Screen.FleetManagement else Screen.DriverMap }
                     )
                 }

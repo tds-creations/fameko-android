@@ -71,7 +71,7 @@ fun CustomerLandingScreen(
             .fillMaxWidth()
             .background(Color.White)
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp)
     ) {
         activeRental?.let { rental ->
             Card(

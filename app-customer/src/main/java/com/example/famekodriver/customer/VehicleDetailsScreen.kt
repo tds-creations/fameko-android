@@ -86,7 +86,7 @@ fun VehicleDetailsScreen(
                     }
                     IconButton(
                         onClick = onBack,
-                        modifier = Modifier.padding(16.dp).align(Alignment.TopStart).background(Color.White, CircleShape)
+                        modifier = Modifier.statusBarsPadding().padding(16.dp).align(Alignment.TopStart).background(Color.White, CircleShape)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }

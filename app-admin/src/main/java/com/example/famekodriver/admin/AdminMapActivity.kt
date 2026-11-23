@@ -12,11 +12,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -73,6 +75,7 @@ sealed class AdminScreen(val route: String, val icon: androidx.compose.ui.graphi
     object Rentals : AdminScreen("rentals", Icons.Default.CarRental, "Fleet")
     object DriverDetails : AdminScreen("driver_details", Icons.Default.Person, "Driver Details")
     object Financials : AdminScreen("financials", Icons.Default.PieChart, "Financials")
+    data class SupportChat(val driverId: Int, val driverName: String, val driverPhone: String = "", val orderId: Int = 0) : AdminScreen("support_chat", Icons.AutoMirrored.Filled.Chat, "Chat")
 }
 
 class AdminMapActivity : ComponentActivity() {
@@ -172,6 +175,9 @@ fun AdminMainContent() {
                         } else {
                             Toast.makeText(context, "Location unavailable", Toast.LENGTH_SHORT).show()
                         }
+                    },
+                    onChat = { dId, name, phone ->
+                        currentScreen = AdminScreen.SupportChat(dId, name, phone)
                     }
                 )
                 AdminScreen.Customers -> AdminCustomersScreen(viewModel = adminViewModel)
@@ -179,9 +185,22 @@ fun AdminMainContent() {
                 AdminScreen.DriverDetails -> AdminDriverDetailsScreen(
                     driverId = selectedDriverId ?: 0,
                     viewModel = adminViewModel,
+                    onNavigateToChat = { dId, name, phone ->
+                        currentScreen = AdminScreen.SupportChat(dId, name, phone)
+                    },
                     onBack = { currentScreen = AdminScreen.Approvals }
                 )
                 AdminScreen.Financials -> AdminFinancialsScreen(viewModel = adminViewModel)
+                is AdminScreen.SupportChat -> {
+                    val chat = currentScreen as AdminScreen.SupportChat
+                    AdminSupportChatScreen(
+                        driverId = chat.driverId,
+                        driverName = chat.driverName,
+                        driverPhone = chat.driverPhone,
+                        orderId = chat.orderId,
+                        onBack = { currentScreen = AdminScreen.Dashboard }
+                    )
+                }
             }
         }
     }
@@ -741,7 +760,8 @@ fun PaymentApprovalsTab(viewModel: AdminViewModel) {
 @Composable
 fun AdminSOSScreen(
     viewModel: AdminViewModel = viewModel(),
-    onLocate: (String, Double, Double) -> Unit = { _, _, _ -> }
+    onLocate: (String, Double, Double) -> Unit = { _, _, _ -> },
+    onChat: (Int, String, String) -> Unit = { _, _, _ -> }
 ) {
     var alerts by remember { mutableStateOf<List<SOSAlert>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -871,6 +891,24 @@ fun AdminSOSScreen(
                                         Spacer(Modifier.width(8.dp))
                                         Text("Resolve")
                                     }
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        val dId = alert.driverId.toIntOrNull() ?: 0
+                                        onChat(dId, alert.driverName, alert.driverPhone)
+                                    },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(Color.White, CircleShape)
+                                        .border(1.dp, Color.Red.copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Chat,
+                                        contentDescription = "Chat",
+                                        tint = Color.Red,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
                             }
                         }
@@ -1452,7 +1490,12 @@ fun AdminRentalsScreen(viewModel: AdminViewModel = viewModel()) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminDriverDetailsScreen(driverId: Int, viewModel: AdminViewModel = viewModel(), onBack: () -> Unit) {
+fun AdminDriverDetailsScreen(
+    driverId: Int,
+    viewModel: AdminViewModel = viewModel(),
+    onNavigateToChat: (Int, String, String) -> Unit = { _, _, _ -> },
+    onBack: () -> Unit
+) {
     var driver by remember { mutableStateOf<Map<String, Any>?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -1494,6 +1537,23 @@ fun AdminDriverDetailsScreen(driverId: Int, viewModel: AdminViewModel = viewMode
                             Spacer(Modifier.height(16.dp))
                             Text(d["full_name"] as? String ?: "Unknown", fontWeight = FontWeight.Black, fontSize = 20.sp)
                             Text(d["email"] as? String ?: "", color = Color.Gray)
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Button(
+                                onClick = {
+                                    val name = d["full_name"] as? String ?: "Driver"
+                                    val phone = d["phone"] as? String ?: ""
+                                    onNavigateToChat(driverId, name, phone)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = FamekoPrimary),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Open Live Support Chat", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                     

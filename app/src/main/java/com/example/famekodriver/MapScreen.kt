@@ -83,7 +83,7 @@ fun MapScreen(
     vehicleTypeFromSession: String = "",
     onNavigateToMenu: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onNavigateToChat: (Int, String) -> Unit,
+    onNavigateToChat: (Int, String, Delivery?) -> Unit,
     onNavigateToEarnings: () -> Unit = {},
     viewModel: DriverMapViewModel = viewModel()
 ) {
@@ -815,7 +815,7 @@ fun MapScreen(
                     distanceKm = viewModel.distanceKm,
                     isFullscreenMap = viewModel.isFullscreenMap,
                     onCall = { viewModel.initiateCall(context) },
-                    onChat = { onNavigateToChat(delivery.orderId, delivery.customerName ?: "Customer") },
+                    onChat = { onNavigateToChat(delivery.orderId, delivery.customerName ?: "Customer", delivery) },
                     onStatusUpdate = { viewModel.updateDeliveryStatus(it) },
                     onCancel = { viewModel.cancelActiveTrip() },
                     onArrived = { viewModel.updateDeliveryStatus(DeliveryStatus.ARRIVED) },

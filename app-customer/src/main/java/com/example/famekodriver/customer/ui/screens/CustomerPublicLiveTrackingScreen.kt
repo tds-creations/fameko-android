@@ -82,7 +82,9 @@ fun CustomerPublicLiveTrackingScreen(
     ) {
         // --- 1. Top Bar ---
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {

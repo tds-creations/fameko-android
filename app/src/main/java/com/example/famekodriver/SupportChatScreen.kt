@@ -205,8 +205,43 @@ fun SupportChatScreen(
                             }
                         }
 
-                        DriverMessageBubble(msg, isMe = isMe, time = timeStr)
+                        SupportMessageBubble(msg, isMe = isMe, time = timeStr)
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SupportMessageBubble(message: Message, isMe: Boolean, time: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
+    ) {
+        Surface(
+            color = if (isMe) FamekoSecondary else BoltLightGray,
+            contentColor = if (isMe) Color.White else BoltDark,
+            shape = RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = 18.dp,
+                bottomStart = if (isMe) 18.dp else 4.dp,
+                bottomEnd = if (isMe) 4.dp else 18.dp
+            )
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                Text(
+                    text = message.body,
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp
+                )
+                if (time.isNotEmpty()) {
+                    Text(
+                        text = time,
+                        fontSize = 10.sp,
+                        modifier = Modifier.align(Alignment.End),
+                        color = if (isMe) Color.White.copy(alpha = 0.7f) else Color.Gray
+                    )
                 }
             }
         }

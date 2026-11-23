@@ -130,6 +130,18 @@ class DriverRepository private constructor() {
                             val message = gson.fromJson(wsMessage.payload, Message::class.java)
                             _events.tryEmit(FamekoEvent.NewMessage(message))
                         }
+                        "TYPING" -> {
+                            try {
+                                val data = gson.fromJson(wsMessage.payload, Map::class.java)
+                                val convId = (data["conversationId"] ?: data["conversation_id"])?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+                                val isTyping = data["isTyping"] as? Boolean ?: true
+                                if (convId != 0) {
+                                    _events.tryEmit(FamekoEvent.UserTyping(convId, isTyping))
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
                         "ORDER_CANCELLED" -> {
                             val data = gson.fromJson(wsMessage.payload, Map::class.java)
                             val orderId = (data["orderId"] ?: data["order_id"])?.toString()?.toDoubleOrNull()?.toInt() ?: 0
@@ -292,6 +304,15 @@ class DriverRepository private constructor() {
     fun sendLocationUpdateWs(lat: Double, lng: Double, bearing: Float) {
         val payload = mapOf("lat" to lat, "lng" to lng, "bearing" to bearing)
         webSocket?.send(gson.toJson(WebSocketMessage("LOCATION_UPDATE", gson.toJson(payload))))
+    }
+
+    fun sendTypingEvent(conversationId: Int, isTyping: Boolean) {
+        try {
+            val payload = mapOf("conversationId" to conversationId, "isTyping" to isTyping)
+            webSocket?.send(gson.toJson(WebSocketMessage("TYPING", gson.toJson(payload))))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun stopWebSocket() {
