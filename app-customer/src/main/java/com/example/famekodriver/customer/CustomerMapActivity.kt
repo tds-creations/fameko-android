@@ -1216,7 +1216,7 @@ fun MainMapContent(
                              else if (currentSheetState == CustomerSheetState.LANDING) (screenHeight * 0.75f).coerceAtLeast(540.dp)
                              else if (currentSheetState == CustomerSheetState.IDLE || 
                                      (currentSheetState == CustomerSheetState.PICKING_ADDRESS && (viewModel.pickupLat == null || viewModel.dropOffLat == null))) (if (showBottomBar) 230.dp else 120.dp)
-                             else if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) (screenHeight * 0.65f).coerceAtLeast(460.dp)
+                             else if (currentSheetState == CustomerSheetState.SELECTING_SERVICE) (if (showBottomBar) 260.dp else 220.dp)
                              else if (currentSheetState == CustomerSheetState.SEARCHING_FOR_DRIVER || 
                                      currentSheetState == CustomerSheetState.ON_TRIP || 
                                      currentSheetState == CustomerSheetState.RIDE_SCHEDULED || 
