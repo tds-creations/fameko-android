@@ -59,6 +59,13 @@ class DriverMapViewModel(application: Application) : AndroidViewModel(applicatio
     var distanceToNextManeuverMeters by mutableDoubleStateOf(0.0)
     var distanceKm by mutableDoubleStateOf(0.0)
     var durationMin by mutableDoubleStateOf(0.0)
+    enum class NavigationCameraMode {
+        FOLLOWING,
+        SUSPENDED,
+        OVERVIEW
+    }
+
+    var navCameraMode by mutableStateOf(NavigationCameraMode.FOLLOWING)
     var isFullscreenMap by mutableStateOf(false)
     var driverLatLng by mutableStateOf<LatLng?>(null)
     var rawDriverLatLng by mutableStateOf<LatLng?>(null)

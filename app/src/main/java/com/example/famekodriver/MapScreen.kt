@@ -120,6 +120,8 @@ fun MapScreen(
     ) { hasAudioPermission = it }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
+    var isCameraAnimating by remember { mutableStateOf(false) }
+    var isPaddingApplied by remember { mutableStateOf(false) }
     var showLocationDisclosure by remember { mutableStateOf(!hasLocationPermission) }
 
     if (showLocationDisclosure) {
@@ -196,51 +198,56 @@ fun MapScreen(
                     val location = result.lastLocation ?: return
                     if (location.latitude == 0.0 || location.longitude == 0.0) return
 
-                    // Live Camera Following (Navigation Mode)
+                    // Update driver location (raw + visual smoothing + road snapping)
+                    val lastPos = viewModel.driverLatLng
+                    val lastBearing = viewModel.driverBearing
+                    val distanceMoved = if (lastPos != null) LocationUtils.calculateDistance(location.latitude, location.longitude, lastPos.latitude, lastPos.longitude) else 10.0
+                    val effectiveBearing = when {
+                        location.hasBearing() && location.speed > 0.5 -> location.bearing
+                        lastPos != null && distanceMoved > 1.0 -> {
+                            val results = FloatArray(2)
+                            android.location.Location.distanceBetween(lastPos.latitude, lastPos.longitude, location.latitude, location.longitude, results)
+                            val calc = results[1]
+                            if (calc != 0f) calc else lastBearing
+                        }
+                        else -> lastBearing
+                    }
+
+                    viewModel.updateDriverLocation(location.latitude, location.longitude, effectiveBearing, context)
+
+                    // Live Camera Following Controller (Single-Flight Animation)
                     mapLibreMap?.let { map ->
-                        val lastPos = viewModel.driverLatLng
-                        val lastBearing = viewModel.driverBearing
-                        
-                        val distanceMoved = if (lastPos != null) LocationUtils.calculateDistance(location.latitude, location.longitude, lastPos.latitude, lastPos.longitude) else 10.0
-                        
-                        val effectiveBearing = when {
-                            location.hasBearing() && location.speed > 0.5 -> location.bearing
-                            lastPos != null && distanceMoved > 1.0 -> {
-                                val results = FloatArray(2)
-                                android.location.Location.distanceBetween(lastPos.latitude, lastPos.longitude, location.latitude, location.longitude, results)
-                                val calc = results[1]
-                                if (calc != 0f) calc else lastBearing
+                        if (viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.FOLLOWING) {
+                            if (!isPaddingApplied) {
+                                @Suppress("DEPRECATION")
+                                map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.30).toInt())
+                                isPaddingApplied = true
                             }
-                            else -> lastBearing
-                        }
 
-                        val bearingDiff = abs(effectiveBearing - lastBearing)
-
-                        // Optimization: Only animate camera if movement is significant (> 2 meters or > 5 degrees)
-                        if (distanceMoved > 2.0 || bearingDiff > 5.0 || lastPos == null) {
-                            // Adaptive Zoom based on speed (m/s to km/h)
+                            val targetPos = viewModel.visualDriverLatLng ?: viewModel.rawDriverLatLng ?: LatLng(location.latitude, location.longitude)
+                            val targetBearing = viewModel.visualDriverBearing.toDouble()
                             val speedKmh = location.speed.toDouble() * 3.6
-                            val targetZoom = when {
-                                speedKmh > 80.0 -> 15.0
-                                speedKmh > 50.0 -> 16.0
-                                speedKmh > 20.0 -> 17.0
-                                else -> 18.0
-                            }
+                            val targetZoom = (18.0 - (speedKmh / 100.0)).coerceIn(15.0, 18.0)
 
-                            val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
-                                .target(LatLng(location.latitude, location.longitude))
-                                .zoom(targetZoom)
-                                .bearing(effectiveBearing.toDouble()) // Align map with movement
-                                .tilt(50.0) // 3D perspective for road view
-                                .build()
-                            
-                            // Apply padding to keep vehicle in lower third
-                            @Suppress("DEPRECATION")
-                            map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.3).toInt())
-                            
-                            map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1000)
+                            if (!isCameraAnimating) {
+                                val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                                    .target(targetPos)
+                                    .zoom(targetZoom)
+                                    .bearing(targetBearing)
+                                    .tilt(45.0)
+                                    .build()
+
+                                isCameraAnimating = true
+                                map.animateCamera(
+                                    CameraUpdateFactory.newCameraPosition(cameraPosition),
+                                    380,
+                                    object : MapLibreMap.CancelableCallback {
+                                        override fun onFinish() { isCameraAnimating = false }
+                                        override fun onCancel() { isCameraAnimating = false }
+                                    }
+                                )
+                            }
                         }
-                        viewModel.updateDriverLocation(location.latitude, location.longitude, effectiveBearing)
                     }
                 }
             }
@@ -283,6 +290,27 @@ fun MapScreen(
             } finally {
                 fusedLocationClient.removeLocationUpdates(locationCallback)
             }
+        }
+    }
+
+    DisposableEffect(mapLibreMap, viewModel.isFullscreenMap) {
+        val map = mapLibreMap
+        if (map != null && viewModel.isFullscreenMap) {
+            val moveStartedListener = MapLibreMap.OnCameraMoveStartedListener { reason ->
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE &&
+                    viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.FOLLOWING) {
+                    viewModel.navCameraMode = DriverMapViewModel.NavigationCameraMode.SUSPENDED
+                    isPaddingApplied = false
+                    @Suppress("DEPRECATION")
+                    map.setPadding(0, 0, 0, 0)
+                }
+            }
+            map.addOnCameraMoveStartedListener(moveStartedListener)
+            onDispose {
+                map.removeOnCameraMoveStartedListener(moveStartedListener)
+            }
+        } else {
+            onDispose { }
         }
     }
 
@@ -669,8 +697,67 @@ fun MapScreen(
                     driverLatLng = viewModel.driverLatLng,
                     distanceKm = viewModel.distanceKm,
                     durationMin = viewModel.durationMin,
+                    onOverviewClick = {
+                        val map = mapLibreMap ?: return@DriverNavigationOverlay
+                        if (viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.OVERVIEW) {
+                            viewModel.navCameraMode = DriverMapViewModel.NavigationCameraMode.FOLLOWING
+                            isPaddingApplied = false
+                        } else {
+                            viewModel.navCameraMode = DriverMapViewModel.NavigationCameraMode.OVERVIEW
+                            isPaddingApplied = false
+                            @Suppress("DEPRECATION")
+                            map.setPadding(0, 0, 0, 0)
+                            val path = viewModel.remainingNavigationPath.ifEmpty { viewModel.navigationPath }
+                            if (path.isNotEmpty()) {
+                                try {
+                                    val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
+                                        .include(viewModel.driverLatLng ?: path.first())
+                                        .include(path.last())
+                                        .build()
+                                    map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 150))
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    },
                     onExit = { viewModel.isFullscreenMap = false }
                 )
+            }
+
+            if (viewModel.isFullscreenMap && viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.SUSPENDED) {
+                FloatingActionButton(
+                    onClick = {
+                        val map = mapLibreMap ?: return@FloatingActionButton
+                        viewModel.navCameraMode = DriverMapViewModel.NavigationCameraMode.FOLLOWING
+                        isPaddingApplied = false
+                        @Suppress("DEPRECATION")
+                        map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.30).toInt())
+                        val targetPos = viewModel.visualDriverLatLng ?: viewModel.driverLatLng
+                        if (targetPos != null) {
+                            val cameraPosition = org.maplibre.android.camera.CameraPosition.Builder()
+                                .target(targetPos)
+                                .zoom(17.0)
+                                .bearing(viewModel.visualDriverBearing.toDouble())
+                                .tilt(45.0)
+                                .build()
+                            map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 600)
+                        }
+                    },
+                    containerColor = Color(0xFF0F172A),
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .padding(bottom = 210.dp, end = 16.dp)
+                        .align(Alignment.BottomEnd)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Default.MyLocation, contentDescription = "Recenter", tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                        Text("Recenter", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = Color.White)
+                    }
+                }
             }
 
             // Bottom Sheets
@@ -1497,6 +1584,7 @@ fun DriverNavigationOverlay(
     driverLatLng: LatLng?,
     distanceKm: Double,
     durationMin: Double,
+    onOverviewClick: () -> Unit = {},
     onExit: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1637,15 +1725,31 @@ fun DriverNavigationOverlay(
 
             Spacer(Modifier.height(16.dp))
 
-            Button(
-                onClick = onExit,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(10.dp))
-                Text("EXIT NAVIGATION", fontWeight = FontWeight.Black, fontSize = 15.sp)
+                OutlinedButton(
+                    onClick = onOverviewClick,
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.5.dp, Color(0xFF0F172A))
+                ) {
+                    Icon(Icons.Default.Map, null, tint = Color(0xFF0F172A), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("OVERVIEW", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                }
+
+                Button(
+                    onClick = onExit,
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("EXIT NAV", fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Color.White)
+                }
             }
         }
     }
