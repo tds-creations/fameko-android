@@ -315,6 +315,30 @@ fun MapScreen(
         }
     }
 
+    // Deterministic Initial Camera Positioning (Prevents default city center / sea misalignment)
+    LaunchedEffect(mapLibreMap, viewModel.isFullscreenMap, viewModel.driverLatLng != null) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        val driverPos = viewModel.visualDriverLatLng ?: viewModel.driverLatLng ?: return@LaunchedEffect
+        if (driverPos.latitude == 0.0 || driverPos.longitude == 0.0) return@LaunchedEffect
+
+        if (viewModel.isFullscreenMap && viewModel.navCameraMode == DriverMapViewModel.NavigationCameraMode.FOLLOWING) {
+            if (!isPaddingApplied) {
+                @Suppress("DEPRECATION")
+                map.setPadding(0, 0, 0, (context.resources.displayMetrics.heightPixels * 0.30).toInt())
+                isPaddingApplied = true
+            }
+
+            val targetCamPos = org.maplibre.android.camera.CameraPosition.Builder()
+                .target(driverPos)
+                .zoom(17.0)
+                .bearing(viewModel.visualDriverBearing.toDouble())
+                .tilt(45.0)
+                .build()
+
+            map.moveCamera(CameraUpdateFactory.newCameraPosition(targetCamPos))
+        }
+    }
+
     DisposableEffect(mapLibreMap, viewModel.isFullscreenMap) {
         val map = mapLibreMap
         if (map != null && viewModel.isFullscreenMap) {
@@ -613,7 +637,8 @@ fun MapScreen(
                                     style.addLayer(layer)
                                 }
                             }
-                            map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(5.6037, -0.1870), 12.0))
+                            val initialTarget = viewModel.visualDriverLatLng ?: viewModel.driverLatLng ?: LatLng(5.6037, -0.1870)
+                            map.moveCamera(CameraUpdateFactory.newLatLngZoom(initialTarget, 15.0))
                         }
                     }
                 },
