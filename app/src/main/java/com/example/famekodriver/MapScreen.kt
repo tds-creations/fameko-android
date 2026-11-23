@@ -677,6 +677,8 @@ fun MapScreen(
             viewModel.currentDelivery?.let { delivery ->
                 DeliveryControlSheet(
                     delivery = delivery,
+                    durationMin = viewModel.durationMin,
+                    distanceKm = viewModel.distanceKm,
                     isFullscreenMap = viewModel.isFullscreenMap,
                     onCall = { viewModel.initiateCall(context) },
                     onChat = { onNavigateToChat(delivery.orderId, delivery.customerName ?: "Customer") },
@@ -1088,6 +1090,8 @@ fun NavigationHUD(delivery: Delivery) {
 @Composable
 fun DeliveryControlSheet(
     delivery: Delivery,
+    durationMin: Double = 0.0,
+    distanceKm: Double = 0.0,
     isFullscreenMap: Boolean,
     onCall: () -> Unit,
     onChat: () -> Unit,
@@ -1100,113 +1104,249 @@ fun DeliveryControlSheet(
 
     Card(
         modifier = Modifier
-            .padding(12.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(8.dp),
-        border = BorderStroke(1.dp, BoltLightGray.copy(alpha = 0.5f))
+        elevation = CardDefaults.cardElevation(10.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Header: Profile, Name, Communication (Compact)
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Top Row: Profile Avatar + Rating Badge, Customer Info, Contact Action Icons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = BoltLightGray,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    if (!delivery.customerProfilePic.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = delivery.customerProfilePic,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                    } else {
-                        Icon(Icons.Default.Person, null, modifier = Modifier.padding(10.dp), tint = Color.Gray)
-                    }
-                }
-                
-                Spacer(Modifier.width(10.dp))
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    val statusText = when (delivery.status) {
-                        DeliveryStatus.ASSIGNED -> delivery.currentContactRole
-                        DeliveryStatus.IN_TRANSIT -> delivery.currentContactRole
-                        else -> delivery.status.name
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Surface(
-                            color = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen.copy(alpha = 0.15f) else FamekoLightBlue,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = statusText,
-                                fontWeight = FontWeight.Bold,
-                                color = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary,
-                                fontSize = 9.sp,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                // Customer Avatar & Rating Badge Overlay
+                Box {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFEBF2FA),
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        if (!delivery.customerProfilePic.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = delivery.customerProfilePic,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
                             )
+                        } else {
+                            val initials = delivery.currentContactName
+                                .split(" ")
+                                .mapNotNull { it.firstOrNull()?.toString() }
+                                .take(2)
+                                .joinToString("")
+                                .ifEmpty { "JL" }
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = initials,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 18.sp,
+                                    color = Color(0xFF0F172A)
+                                )
+                            }
                         }
                     }
+
+                    // Gold Rating Badge
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFFFB800),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 4.dp, y = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text("★", fontSize = 9.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                            Text("4.9", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.width(14.dp))
+
+                // Customer Name & Trip Status Pill
+                Column(modifier = Modifier.weight(1f)) {
+                    val isPickup = delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.PENDING
+                    val statusPillText = when (delivery.status) {
+                        DeliveryStatus.ASSIGNED -> "PICKUP"
+                        DeliveryStatus.ARRIVED -> "ARRIVED"
+                        DeliveryStatus.IN_TRANSIT -> "DROP-OFF"
+                        else -> delivery.status.name
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFFEBF3FF),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = statusPillText,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF2563EB),
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                        Text(
+                            text = "• Cash Trip",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Gray
+                        )
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
                     Text(
                         text = delivery.currentContactName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = BoltDark,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 19.sp,
+                        color = Color(0xFF0F172A),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    IconButton(
-                        onClick = onCall,
-                        modifier = Modifier.size(36.dp).background(FamekoLightBlue, CircleShape)
+
+                // Contact Actions: Call & Chat Icons
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFFEBF2FA),
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clickable { onCall() }
                     ) {
-                        Icon(Icons.Default.Call, null, tint = FamekoPrimary, modifier = Modifier.size(16.dp))
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Call,
+                                contentDescription = "Call",
+                                tint = Color(0xFF0F172A),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
-                    IconButton(
-                        onClick = onChat,
-                        modifier = Modifier.size(36.dp).background(FamekoLightBlue, CircleShape)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Chat, null, tint = FamekoPrimary, modifier = Modifier.size(16.dp))
+
+                    Box {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFEBF2FA),
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clickable { onChat() }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                                    contentDescription = "Chat",
+                                    tint = Color(0xFF2563EB),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        // Unread notification dot indicator
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(Color(0xFF2563EB), CircleShape)
+                                .border(1.5.dp, Color.White, CircleShape)
+                                .align(Alignment.TopEnd)
+                                .offset(x = (-2).dp, y = 2.dp)
+                        )
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Compact Route Details
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Embedded Location Card Box (Destination / Pickup + ETA Pill)
+            val isPickup = delivery.status == DeliveryStatus.ASSIGNED || delivery.status == DeliveryStatus.PENDING
+            val fullLocationStr = if (isPickup) delivery.pickupLocation else delivery.dropOffLocation
+            val locationTitle = if (fullLocationStr.contains(",")) fullLocationStr.split(",").first() else fullLocationStr
+            val locationSubtitle = if (fullLocationStr.contains(",")) fullLocationStr.substringAfter(",").trim() else "Accra, Ghana"
+
             Surface(
-                color = BoltLightGray.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(10.dp),
+                color = Color(0xFFF8FAFC),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val icon = if (delivery.status == DeliveryStatus.ASSIGNED) Icons.Default.MyLocation else Icons.Default.Navigation
-                    val tint = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else BoltOrange
-                    
-                    Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isPickup) Color(0xFFECFDF5) else Color(0xFFFFEBEB),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = if (isPickup) Color(0xFF059669) else Color(0xFFDC2626),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = if (isPickup) "PICKUP LOCATION" else "DESTINATION",
+                                fontSize = 11.sp,
+                                color = Color(0xFF64748B),
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+
+                        // Green ETA & Distance Pill
+                        val formattedDuration = if (durationMin > 0) "${durationMin.toInt()} min" else "4 min"
+                        val formattedDistance = if (distanceKm > 0) "${String.format(Locale.US, "%.1f", distanceKm)} km" else "1.2 km"
+
+                        Surface(
+                            color = Color(0xFFECFDF5),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                        ) {
+                            Text(
+                                text = "$formattedDuration • $formattedDistance",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp,
+                                color = Color(0xFF059669),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = locationTitle,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 17.sp,
+                        color = Color(0xFF0F172A),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (locationSubtitle.isNotEmpty()) {
                         Text(
-                            text = if (delivery.status == DeliveryStatus.ASSIGNED) "PICKUP" else "DESTINATION",
-                            fontSize = 9.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = if (delivery.status == DeliveryStatus.ASSIGNED) delivery.pickupLocation else delivery.dropOffLocation,
+                            text = locationSubtitle,
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = BoltDark,
+                            color = Color.Gray,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1214,104 +1354,131 @@ fun DeliveryControlSheet(
                 }
             }
 
-            if (delivery.serviceType == ServiceType.PACKAGE_DELIVERY) {
-                Surface(
-                    color = Color(0xFFF1F5F9),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "📦 ${delivery.packageCategory ?: "Package Delivery"}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BoltDark
-                            )
-                            if (delivery.isFragile) {
-                                Surface(color = Color(0xFFFEF2F2), shape = RoundedCornerShape(4.dp)) {
-                                    Text(
-                                        "⚠️ Fragile",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFEF4444),
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                    )
-                                }
-                            }
-                        }
-                        if (!delivery.packageNotes.isNullOrBlank()) {
-                            Text(
-                                text = "Notes: ${delivery.packageNotes}",
-                                fontSize = 11.sp,
-                                color = Color.Gray,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-                }
-            } else {
-                Surface(
-                    color = Color(0xFFEFF6FF),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("🚘", fontSize = 14.sp)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Passenger Ride Hailing Trip", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = FamekoPrimary)
-                    }
-                }
-            }
-            
             Spacer(modifier = Modifier.height(12.dp))
-            
-            // Slimmer Action Bar: Cancel, Navigate, Complete (height 44.dp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onCancel,
-                    modifier = Modifier.weight(0.7f).height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
-                ) {
-                    Text("CANCEL", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
 
-                Button(
-                    onClick = onNavigateClick,
-                    modifier = Modifier.weight(0.9f).height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BoltDark)
-                ) {
-                    Icon(Icons.Default.Navigation, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("NAVIGATE", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
-                
-                Button(
-                    onClick = {
-                        if (delivery.status == DeliveryStatus.ASSIGNED) onArrived()
-                        else onStatusUpdate(DeliveryStatus.DELIVERED)
-                    },
-                    modifier = Modifier.weight(1.2f).height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (delivery.status == DeliveryStatus.ASSIGNED) BoltGreen else FamekoPrimary
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(2.dp)
+            // Trip Type & Est. Fare Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = if (delivery.status == DeliveryStatus.ASSIGNED) "ARRIVED" else "COMPLETE",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        text = if (delivery.serviceType == ServiceType.PACKAGE_DELIVERY) "📦" else "🚘",
+                        fontSize = 16.sp
                     )
+                    Text(
+                        text = if (delivery.serviceType == ServiceType.PACKAGE_DELIVERY) "Package Delivery" else "Ride Hailing Trip",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF475569)
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Est. Fare: ", fontSize = 13.sp, color = Color.Gray)
+                    val fareVal = delivery.totalFare ?: delivery.estimatedEarnings
+                    Text(
+                        text = "GH₵ ${String.format(Locale.US, "%.2f", fareVal)}",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 17.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bottom Action Bar: Overflow (3 dots), Navigate (Dark Navy), Complete / Arrived (Blue)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Overflow / Options Button
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color(0xFFF1F5F9),
+                    modifier = Modifier
+                        .size(width = 52.dp, height = 52.dp)
+                        .clickable { onCancel() }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                // Navigate Button (Dark Navy with Green Arrow Icon)
+                Button(
+                    onClick = onNavigateClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A))
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NearMe,
+                            contentDescription = "Navigate",
+                            tint = Color(0xFF10B981),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Navigate",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                // Primary Action Button (ARRIVED / COMPLETE)
+                Button(
+                    onClick = {
+                        if (isPickup) onArrived()
+                        else onStatusUpdate(DeliveryStatus.DELIVERED)
+                    },
+                    modifier = Modifier
+                        .weight(1.3f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isPickup) Color(0xFF10B981) else Color(0xFF2563EB)
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = if (isPickup) "ARRIVED" else "COMPLETE",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 15.sp,
+                            color = Color.White,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
         }
