@@ -145,6 +145,24 @@ class CustomerMapViewModel(
     var scheduledRideTime by mutableStateOf<String?>(null)
         private set
 
+    val isDemandPricingActive: Boolean
+        get() {
+            val estimates = rideEstimates
+            val config = pricingConfig
+            val peakMult = config?.peakMultiplier ?: 1.0
+            
+            if (estimates.isEmpty() || peakMult <= 1.0) {
+                return false
+            }
+
+            val selected = estimates.find { it.serviceId.equals(selectedVehicleType, ignoreCase = true) }
+                ?: estimates.firstOrNull()
+
+            return selected?.let { 
+                it.isDemandSurgeApplied && it.fare > (it.baseFareWithoutSurge + 0.01)
+            } ?: false
+        }
+
     // --- Order & Call State ---
     var currentOrderId by mutableStateOf<Int?>(sessionManager.getActiveOrderId().let { if (it > 0) it else null })
     var orderStatusData by mutableStateOf<OrderStatusResponse?>(null)

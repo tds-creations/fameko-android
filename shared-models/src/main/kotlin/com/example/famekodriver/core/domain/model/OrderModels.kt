@@ -87,5 +87,7 @@ data class RideEstimateResponse(
     val isAvailableInRegion: Boolean = true,
     val availabilityStatus: String = "AVAILABLE", // AVAILABLE, BUSY, UNAVAILABLE
     val hasAirportToll: Boolean = false,
-    val tollFee: Double = 0.0
+    val tollFee: Double = 0.0,
+    val baseFareWithoutSurge: Double = fare,
+    val isDemandSurgeApplied: Boolean = false
 )

@@ -24,7 +24,7 @@ fun RideHailingSheetContent(
                 estimates = viewModel.rideEstimates,
                 activeServiceMode = viewModel.activeServiceMode,
                 discountRate = viewModel.discountRate,
-                peakMultiplier = viewModel.pricingConfig?.peakMultiplier ?: 1.0,
+                isDemandPricingActive = viewModel.isDemandPricingActive,
                 selectedType = viewModel.selectedVehicleType,
                 onTypeSelected = { type, _ -> viewModel.setVehicleType(type) },
                 onConfirm = { 

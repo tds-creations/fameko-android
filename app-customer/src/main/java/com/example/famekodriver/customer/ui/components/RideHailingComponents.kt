@@ -157,7 +157,7 @@ fun ServiceSelectionSheet(
     estimates: List<RideEstimateResponse>,
     activeServiceMode: ServiceType,
     discountRate: Int,
-    peakMultiplier: Double,
+    isDemandPricingActive: Boolean = false,
     selectedType: String,
     onTypeSelected: (String, Double) -> Unit,
     onConfirm: () -> Unit,
@@ -221,7 +221,7 @@ fun ServiceSelectionSheet(
             }
         }
 
-        if (peakMultiplier > 1.0) {
+        if (isDemandPricingActive) {
             Surface(
                 color = BoltOrange.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(12.dp),

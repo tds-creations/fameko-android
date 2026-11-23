@@ -1233,8 +1233,13 @@ fun Application.configureRouting() {
                     } else null
                     
                     val eta = nearest?.pickupEtaMin?.toInt() ?: 5
+                    val unmultipliedBaseFare = max(cat.minFare, cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate))
+                    val unmultipliedTotalFare = unmultipliedBaseFare + tollFee
+
                     val baseFare = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak)
                     val totalFare = baseFare + tollFee
+
+                    val isSurgeApplied = peak > 1.0 && totalFare > (unmultipliedTotalFare + 0.01)
 
                     RideEstimateResponse(
                         serviceId = cat.serviceId,
@@ -1247,7 +1252,9 @@ fun Application.configureRouting() {
                         isAvailableInRegion = true,
                         availabilityStatus = if (nearest != null) "AVAILABLE" else "BUSY",
                         hasAirportToll = isAirportToll,
-                        tollFee = tollFee
+                        tollFee = tollFee,
+                        baseFareWithoutSurge = unmultipliedTotalFare,
+                        isDemandSurgeApplied = isSurgeApplied
                     )
                 }
             
