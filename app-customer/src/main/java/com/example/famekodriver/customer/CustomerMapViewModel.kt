@@ -1195,11 +1195,6 @@ class CustomerMapViewModel(
                             } else {
                                 isLoading = false
                             }
-
-                            if (activeServiceMode == ServiceType.PACKAGE_DELIVERY && (packageStage == 1 || packageStage == 2)) {
-                                packageStage = 3
-                                showPackageDetailsSheet = true
-                            }
                         } else {
                             isLoading = false
                         }

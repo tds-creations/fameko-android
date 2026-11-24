@@ -1295,19 +1295,10 @@ fun MainMapContent(
                                     if (viewModel.packageStage == 1) {
                                         viewModel.packageStage = 2
                                         viewModel.navigateTo(CustomerScreen.RouteSelection)
-                                    } else if (viewModel.packageStage == 3) {
-                                        viewModel.packageStage = 4
                                     }
                                 },
                                 onPrevStage = {
-                                    if (viewModel.packageStage == 4) {
-                                        viewModel.packageStage = 3
-                                    } else if (viewModel.packageStage == 3) {
-                                        viewModel.packageStage = 2
-                                        viewModel.navigateTo(CustomerScreen.RouteSelection)
-                                    } else {
-                                        viewModel.showPackageDetailsSheet = false
-                                    }
+                                    viewModel.showPackageDetailsSheet = false
                                 },
                                 isSending = viewModel.isSendingPackage,
                                 onIsSendingChange = { viewModel.isSendingPackage = it },
