@@ -141,6 +141,8 @@ class CustomerMapViewModel(
     var isOrderPlacing by mutableStateOf(false)
     var selectedVehicleType by mutableStateOf("Economy")
     var discountRate by mutableIntStateOf(0)
+    var milestoneProgress by mutableStateOf<com.example.famekodriver.core.domain.model.MilestoneProgressResponse?>(null)
+        private set
     var pricingConfig by mutableStateOf<PricingConfig?>(null)
     var scheduledRideTime by mutableStateOf<String?>(null)
         private set
@@ -342,6 +344,7 @@ class CustomerMapViewModel(
                 refreshDynamicDestinations()
             }
             orderRepository.getDiscountRate(customerId).onSuccess { discountRate = it }
+            orderRepository.getMilestoneProgress(customerId).onSuccess { milestoneProgress = it }
             rentalRepository.getRentalRates().onSuccess { rentalRates = it }
 
             // Restore active rental from backend
@@ -1216,9 +1219,9 @@ class CustomerMapViewModel(
         Log.d("PricingDiag", "Updating estimated fare for ($pLat, $pLng), Dist: $distanceKm, Dur: $durationMin, Region: $currentRegion")
         isLoading = true
         viewModelScope.launch {
-            // Be more flexible with regions: if extraction failed, the backend should handle null/empty by returning default rates
-            val regionToPass = currentRegion?.ifEmpty { null } ?: "Greater Accra" // Default to a known active region if unknown
-            orderRepository.getRideEstimates(pLat, pLng, distanceKm, durationMin, regionToPass)
+            val customerId = sessionManager.getCustomerId()
+            val regionToPass = currentRegion?.ifEmpty { null } ?: "Greater Accra"
+            orderRepository.getRideEstimates(pLat, pLng, distanceKm, durationMin, regionToPass, customerId)
                 .onSuccess { list ->
                     Log.d("PricingDiag", "Ride estimates received: ${list.size} options found.")
                     rideEstimates = list
@@ -1285,14 +1288,17 @@ class CustomerMapViewModel(
                 return@launch
             }
             
-            // The estimatedFare already includes vehicle-specific multipliers from the backend.
-            // We only need to apply the customer's personal discount rate here.
-            val finalFare = (eFare * (100 - discountRate) / 100).toInt().toDouble()
-            
+            val selectedEst = rideEstimates.find { it.serviceId == selectedVehicleType }
+            val finalFare = selectedEst?.fare ?: eFare
+            val origFare = selectedEst?.originalFare ?: eFare
+            val discType = selectedEst?.discountType ?: "NONE"
+            val discPercent = selectedEst?.discountPercent ?: 0
+            val discAmount = selectedEst?.discountAmount ?: 0.0
+
             val serviceType = if (activeServiceMode == ServiceType.PACKAGE_DELIVERY) 
                 ServiceType.PACKAGE_DELIVERY else ServiceType.RIDE_HAILING
             
-            Log.d("ConfirmOrder", "Creating order: type=$serviceType, fare=$finalFare, recipient=$recipientName")
+            Log.d("ConfirmOrder", "Creating order: type=$serviceType, fare=$finalFare, origFare=$origFare, discType=$discType")
             
             orderRepository.createOrder(
                 OrderCreateRequest(
@@ -1314,7 +1320,11 @@ class CustomerMapViewModel(
                     isFragile = if (serviceType == ServiceType.PACKAGE_DELIVERY) isFragile else false,
                     recipientName = if (serviceType == ServiceType.PACKAGE_DELIVERY) recipientName else null,
                     recipientPhone = if (serviceType == ServiceType.PACKAGE_DELIVERY) recipientPhone else null,
-                    packageNotes = if (serviceType == ServiceType.PACKAGE_DELIVERY) packageNotes else null
+                    packageNotes = if (serviceType == ServiceType.PACKAGE_DELIVERY) packageNotes else null,
+                    originalFare = origFare,
+                    discountType = discType,
+                    discountPercent = discPercent,
+                    discountAmount = discAmount
                 )
             ).onSuccess { newId ->
                 Log.d("ConfirmOrder", "Order created successfully: id=$newId")

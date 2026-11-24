@@ -215,6 +215,9 @@
     <div th:if="${showSuccess}" class="success-msg">
         <i class="fas fa-check-circle"></i> Pricing configuration updated successfully!
     </div>
+    <div th:if="${errorMessage != null}" class="error-msg" style="background-color: #FEE2E2; color: #991B1B; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; font-weight: 600;">
+        <i class="fas fa-exclamation-triangle"></i> <span th:text="${errorMessage}">Error updating configuration</span>
+    </div>
 
     <div class="card">
         <div class="card-header">
@@ -285,6 +288,27 @@
                     <input type="number" th:value="${pricing.milestoneDiscountPercent}" name="milestoneDiscount" required="required"/>
                 </div>
             </div>
+
+            <div style="padding: 10px 20px; font-weight: 700; font-size: 0.85rem; border-top: 1px solid var(--border-color); color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-percentage"></i> Everyday Customer Discount
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Enable Everyday Discount</label>
+                    <select name="everydayDiscountEnabled" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--light-bg); color: var(--dark-text); font-size: 0.85rem;">
+                        <option value="true" th:selected="${pricing.everydayDiscountEnabled}">Enabled</option>
+                        <option value="false" th:selected="${!pricing.everydayDiscountEnabled}">Disabled</option>
+                    </select>
+                    <small style="color: var(--muted-text); font-size: 0.6rem;">Automatic everyday customer discount.</small>
+                </div>
+                <div class="form-group">
+                    <label>Everyday Discount Percentage (%)</label>
+                    <input type="number" min="10" max="15" step="1" th:value="${pricing.everydayDiscountPercent}" name="everydayDiscountPercent" required="required"/>
+                    <small style="color: var(--muted-text); font-size: 0.6rem;">Must be between 10% and 15%.</small>
+                </div>
+            </div>
+
             <div style="padding: 0 20px 20px 20px">
                 <button type="submit" class="btn">Update Global Parameters</button>
             </div>

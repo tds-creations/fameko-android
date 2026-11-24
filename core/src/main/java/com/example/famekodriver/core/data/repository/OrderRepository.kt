@@ -96,8 +96,18 @@ class OrderRepository {
     suspend fun getDiscountRate(customerId: String): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val response = NetworkClient.famekoApi.getDiscountRate(customerId)
-            Result.success(response["discount_percentage"] ?: 0)
+            Result.success(response["discountRate"] ?: response["discount_percentage"] ?: 0)
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getMilestoneProgress(customerId: String): Result<com.example.famekodriver.core.domain.model.MilestoneProgressResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = NetworkClient.famekoApi.getMilestoneProgress(customerId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e("OrderRepo", "API getMilestoneProgress failed", e)
             Result.failure(e)
         }
     }
@@ -113,9 +123,9 @@ class OrderRepository {
         }
     }
 
-    suspend fun getRideEstimates(lat: Double, lng: Double, dist: Double, dur: Double, region: String? = null): Result<List<RideEstimateResponse>> = withContext(Dispatchers.IO) {
+    suspend fun getRideEstimates(lat: Double, lng: Double, dist: Double, dur: Double, region: String? = null, customerId: String? = null): Result<List<RideEstimateResponse>> = withContext(Dispatchers.IO) {
         try {
-            val response = NetworkClient.famekoApi.getRideEstimates(lat, lng, dist, dur, region)
+            val response = NetworkClient.famekoApi.getRideEstimates(lat, lng, dist, dur, region, customerId)
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)

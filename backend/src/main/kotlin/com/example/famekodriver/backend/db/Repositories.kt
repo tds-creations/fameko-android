@@ -66,9 +66,13 @@ object DatabaseRepository {
         DatabaseInitializer.getDataSource().connection.use { conn ->
             val rs = conn.createStatement().executeQuery("SELECT * FROM pricing_config LIMIT 1")
             if (rs.next()) {
+                val everydayEnabled = try { rs.getBoolean("everyday_discount_enabled") } catch (e: Exception) { true }
+                val everydayPercent = try { rs.getInt("everyday_discount_percent").let { if (it <= 0) 10 else it } } catch (e: Exception) { 10 }
                 val config = PricingConfig(
                     baseFare = rs.getDouble("base_fare"), perKmRate = rs.getDouble("per_km_rate"), perMinuteRate = rs.getDouble("per_minute_rate"),
                     minFare = rs.getDouble("min_fare"), milestoneInterval = rs.getInt("milestone_interval"), milestoneDiscountPercent = rs.getInt("milestone_discount_percent"),
+                    everydayDiscountEnabled = everydayEnabled,
+                    everydayDiscountPercent = everydayPercent,
                     peakMultiplier = rs.getDouble("peak_multiplier"), driverCommissionPercent = rs.getDouble("driver_commission_percent"),
                     dailyServiceFee = rs.getDouble("daily_service_fee"), rentalDailyRate = rs.getDouble("rental_daily_rate"), 
                     rentalCommissionPercent = rs.getDouble("rental_commission_percent"),
@@ -79,25 +83,182 @@ object DatabaseRepository {
                 return config
             }
         }
-        return PricingConfig(0.0, 0.0, 0.0, 0.0, 0, 0, 1.0, 0.0, 0.0, 0.0, 0.0, 7.5, 7.5)
+        return PricingConfig(0.0, 0.0, 0.0, 0.0, 10, 20, true, 10, 1.0, 20.0, 15.0, 50.0, -50.0, 400.0, 15.0, 7.5, 7.5)
     }
 
     fun updatePricingConfig(
         baseFare: Double?, perKmRate: Double?, perMinuteRate: Double?, minFare: Double?, 
         milestoneInterval: Int?, milestoneDiscount: Int?, driverCommission: Double?, 
         peakMultiplier: Double?, dailyServiceFee: Double?,
-        rentalOwnerComm: Double? = null, rentalGuestFee: Double? = null
+        rentalOwnerComm: Double? = null, rentalGuestFee: Double? = null,
+        everydayDiscountEnabled: Boolean? = null,
+        everydayDiscountPercent: Int? = null
     ) {
         DatabaseInitializer.getDataSource().connection.use { conn ->
-            val sql = "UPDATE pricing_config SET base_fare=COALESCE(?, base_fare), per_km_rate=COALESCE(?, per_km_rate), per_minute_rate=COALESCE(?, per_minute_rate), min_fare=COALESCE(?, min_fare), milestone_interval=COALESCE(?, milestone_interval), milestone_discount_percent=COALESCE(?, milestone_discount_percent), driver_commission_percent=COALESCE(?, driver_commission_percent), peak_multiplier=COALESCE(?, peak_multiplier), daily_service_fee=COALESCE(?, daily_service_fee), rental_owner_commission_percent=COALESCE(?, rental_owner_commission_percent), rental_customer_service_fee_percent=COALESCE(?, rental_customer_service_fee_percent)"
+            val sql = "UPDATE pricing_config SET base_fare=COALESCE(?, base_fare), per_km_rate=COALESCE(?, per_km_rate), per_minute_rate=COALESCE(?, per_minute_rate), min_fare=COALESCE(?, min_fare), milestone_interval=COALESCE(?, milestone_interval), milestone_discount_percent=COALESCE(?, milestone_discount_percent), driver_commission_percent=COALESCE(?, driver_commission_percent), peak_multiplier=COALESCE(?, peak_multiplier), daily_service_fee=COALESCE(?, daily_service_fee), rental_owner_commission_percent=COALESCE(?, rental_owner_commission_percent), rental_customer_service_fee_percent=COALESCE(?, rental_customer_service_fee_percent), everyday_discount_enabled=COALESCE(?, everyday_discount_enabled), everyday_discount_percent=COALESCE(?, everyday_discount_percent)"
             conn.prepareStatement(sql).apply {
                 setObject(1, baseFare); setObject(2, perKmRate); setObject(3, perMinuteRate); setObject(4, minFare)
                 setObject(5, milestoneInterval); setObject(6, milestoneDiscount); setObject(7, driverCommission); setObject(8, peakMultiplier); setObject(9, dailyServiceFee)
                 setObject(10, rentalOwnerComm); setObject(11, rentalGuestFee)
+                setObject(12, everydayDiscountEnabled); setObject(13, everydayDiscountPercent)
                 executeUpdate()
             }
         }
         RedisManager.delete("config:pricing")
+    }
+
+    fun getCustomerMilestoneProgress(customerId: Int): com.example.famekodriver.core.domain.model.MilestoneProgressResponse {
+        val config = getPricingConfig()
+        val interval = if (config.milestoneInterval <= 0) 10 else config.milestoneInterval
+        val milestoneDiscount = if (config.milestoneDiscountPercent <= 0) 20 else config.milestoneDiscountPercent
+
+        var completedRides = 0
+        var unlockedRewards = 0
+        var redeemedRewards = 0
+
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            val rsM = conn.prepareStatement("SELECT completed_rides, unlocked_rewards, redeemed_rewards FROM customer_milestones WHERE customer_id = ?").apply {
+                setInt(1, customerId)
+            }.executeQuery()
+
+            if (rsM.next()) {
+                completedRides = rsM.getInt("completed_rides")
+                unlockedRewards = rsM.getInt("unlocked_rewards")
+                redeemedRewards = rsM.getInt("redeemed_rewards")
+            } else {
+                val rsCount = conn.prepareStatement("""
+                    SELECT COUNT(*) FROM deliveries d 
+                    JOIN orders o ON d.order_id = o.id 
+                    WHERE o.customer_id = ? AND (d.status = 'COMPLETED' OR d.status = 'DELIVERED') AND (d.service_type IS NULL OR d.service_type = 'RIDE_HAILING')
+                """.trimIndent()).apply {
+                    setInt(1, customerId)
+                }.executeQuery()
+
+                if (rsCount.next()) {
+                    completedRides = rsCount.getInt(1)
+                }
+                unlockedRewards = completedRides / interval
+                redeemedRewards = 0
+
+                conn.prepareStatement("""
+                    INSERT INTO customer_milestones (customer_id, completed_rides, unlocked_rewards, redeemed_rewards)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT (customer_id) DO UPDATE SET
+                        completed_rides = EXCLUDED.completed_rides,
+                        unlocked_rewards = EXCLUDED.unlocked_rewards
+                """.trimIndent()).apply {
+                    setInt(1, customerId)
+                    setInt(2, completedRides)
+                    setInt(3, unlockedRewards)
+                    setInt(4, redeemedRewards)
+                    executeUpdate()
+                }
+            }
+        }
+
+        val availableRewards = (unlockedRewards - redeemedRewards).coerceAtLeast(0)
+        val remainder = completedRides % interval
+        val ridesRemaining = if (availableRewards > 0) 0 else (interval - remainder)
+
+        return com.example.famekodriver.core.domain.model.MilestoneProgressResponse(
+            customerId = customerId,
+            completedRides = completedRides,
+            milestoneInterval = interval,
+            milestoneDiscountPercent = milestoneDiscount,
+            availableRewards = availableRewards,
+            ridesRemaining = ridesRemaining,
+            isRewardAvailable = availableRewards > 0,
+            everydayDiscountEnabled = config.everydayDiscountEnabled,
+            everydayDiscountPercent = config.everydayDiscountPercent
+        )
+    }
+
+    fun recordCompletedRideAndMilestone(customerId: Int, orderId: Int) {
+        val config = getPricingConfig()
+        val interval = if (config.milestoneInterval <= 0) 10 else config.milestoneInterval
+
+        DatabaseInitializer.getDataSource().connection.use { conn ->
+            conn.autoCommit = false
+            try {
+                val rsOrder = conn.prepareStatement("SELECT discount_type FROM orders WHERE id = ?").apply {
+                    setInt(1, orderId)
+                }.executeQuery()
+
+                var isMilestoneOrder = false
+                if (rsOrder.next()) {
+                    isMilestoneOrder = rsOrder.getString("discount_type")?.equals("MILESTONE", ignoreCase = true) == true
+                }
+
+                var completedRides = 0
+                var unlockedRewards = 0
+                var redeemedRewards = 0
+
+                val rsM = conn.prepareStatement("SELECT completed_rides, unlocked_rewards, redeemed_rewards FROM customer_milestones WHERE customer_id = ?").apply {
+                    setInt(1, customerId)
+                }.executeQuery()
+
+                if (rsM.next()) {
+                    completedRides = rsM.getInt("completed_rides")
+                    unlockedRewards = rsM.getInt("unlocked_rewards")
+                    redeemedRewards = rsM.getInt("redeemed_rewards")
+                } else {
+                    val rsCount = conn.prepareStatement("SELECT COUNT(*) FROM deliveries d JOIN orders o ON d.order_id = o.id WHERE o.customer_id = ? AND (d.status = 'COMPLETED' OR d.status = 'DELIVERED') AND (d.service_type IS NULL OR d.service_type = 'RIDE_HAILING')").apply {
+                        setInt(1, customerId)
+                    }.executeQuery()
+                    if (rsCount.next()) completedRides = rsCount.getInt(1)
+                    unlockedRewards = completedRides / interval
+                }
+
+                completedRides += 1
+                val newUnlocked = completedRides / interval
+                if (newUnlocked > unlockedRewards) {
+                    unlockedRewards = newUnlocked
+                }
+                if (isMilestoneOrder) {
+                    redeemedRewards += 1
+                }
+
+                val upsertSql = """
+                    INSERT INTO customer_milestones (customer_id, completed_rides, unlocked_rewards, redeemed_rewards, updated_at)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT (customer_id) DO UPDATE SET
+                        completed_rides = EXCLUDED.completed_rides,
+                        unlocked_rewards = EXCLUDED.unlocked_rewards,
+                        redeemed_rewards = EXCLUDED.redeemed_rewards,
+                        updated_at = CURRENT_TIMESTAMP
+                """.trimIndent()
+                conn.prepareStatement(upsertSql).apply {
+                    setInt(1, customerId)
+                    setInt(2, completedRides)
+                    setInt(3, unlockedRewards)
+                    setInt(4, redeemedRewards)
+                    executeUpdate()
+                }
+
+                if (isMilestoneOrder) {
+                    val rewardCode = "MS-${customerId}-${orderId}-${System.currentTimeMillis()}"
+                    conn.prepareStatement("""
+                        INSERT INTO milestone_rewards (reward_code, customer_id, milestone_number, discount_percent, status, order_id, redeemed_at)
+                        VALUES (?, ?, ?, ?, 'REDEEMED', ?, CURRENT_TIMESTAMP)
+                        ON CONFLICT DO NOTHING
+                    """.trimIndent()).apply {
+                        setString(1, rewardCode)
+                        setInt(2, customerId)
+                        setInt(3, completedRides)
+                        setInt(4, config.milestoneDiscountPercent)
+                        setInt(5, orderId)
+                        executeUpdate()
+                    }
+                }
+
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                println("Error in recordCompletedRideAndMilestone: ${e.message}")
+            } finally {
+                conn.autoCommit = true
+            }
+        }
     }
 
     fun updateRentalRate(type: String, rate: Double) {
@@ -1793,7 +1954,13 @@ object DatabaseRepository {
                 conn.prepareStatement("UPDATE deliveries SET status = ? WHERE id = ?").apply { setString(1, status); setInt(2, deliveryId); executeUpdate() }
                 conn.prepareStatement("UPDATE orders SET status = ? WHERE id = ?").apply { setString(1, status); setInt(2, orderId); executeUpdate() }
                 
-                if (status == "DELIVERED" && driverId != 0) {
+                if ((status == "DELIVERED" || status == "COMPLETED") && driverId != 0) {
+                    val rsCust = conn.prepareStatement("SELECT customer_id FROM orders WHERE id = ?").apply { setInt(1, orderId) }.executeQuery()
+                    if (rsCust.next()) {
+                        val custId = rsCust.getInt(1)
+                        recordCompletedRideAndMilestone(custId, orderId)
+                    }
+
                     // Record in Redis for temporary 24h today's tracking
                     RedisManager.recordDriverEarningsToday(driverId.toString(), earnings)
 
@@ -2115,44 +2282,50 @@ object DatabaseRepository {
             try {
                 val isScheduled = !req.scheduledTime.isNullOrBlank()
                 val initialStatus = if (isScheduled) "SCHEDULED" else "PENDING"
+                val origFare = req.originalFare ?: req.estimatedFare
+                val discType = req.discountType ?: "NONE"
+                val discPercent = req.discountPercent ?: 0
+                val discAmount = req.discountAmount ?: 0.0
                 
-                val orderSql = "INSERT INTO orders (customer_id, total_amount, status, pickup_location, dropoff_location, verification_pin, scheduled_time, recipient_name, recipient_phone, package_category, package_weight_size, is_fragile, package_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                val orderSql = "INSERT INTO orders (customer_id, total_amount, original_fare, discount_type, discount_percent, discount_amount, status, pickup_location, dropoff_location, verification_pin, scheduled_time, recipient_name, recipient_phone, package_category, package_weight_size, is_fragile, package_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                 val orderStmt = conn.prepareStatement(orderSql)
                 orderStmt.setInt(1, req.customerId.toInt())
                 orderStmt.setDouble(2, req.estimatedFare)
-                orderStmt.setString(3, initialStatus)
-                orderStmt.setString(4, req.pickupLocation)
-                orderStmt.setString(5, req.dropOffLocation)
-                orderStmt.setString(6, pin)
+                orderStmt.setDouble(3, origFare)
+                orderStmt.setString(4, discType)
+                orderStmt.setInt(5, discPercent)
+                orderStmt.setDouble(6, discAmount)
+                orderStmt.setString(7, initialStatus)
+                orderStmt.setString(8, req.pickupLocation)
+                orderStmt.setString(9, req.dropOffLocation)
+                orderStmt.setString(10, pin)
                 
                 if (isScheduled) {
                     try {
                         val formatted = req.scheduledTime!!.replace("T", " ")
                         val finalTime = if (formatted.length == 16) "$formatted:00" else formatted
-                        orderStmt.setTimestamp(7, Timestamp.valueOf(finalTime))
+                        orderStmt.setTimestamp(11, Timestamp.valueOf(finalTime))
                     } catch (e: Exception) {
-                        orderStmt.setNull(7, java.sql.Types.TIMESTAMP)
+                        orderStmt.setNull(11, java.sql.Types.TIMESTAMP)
                     }
                 } else {
-                    orderStmt.setNull(7, java.sql.Types.TIMESTAMP)
+                    orderStmt.setNull(11, java.sql.Types.TIMESTAMP)
                 }
 
-                orderStmt.setString(8, req.recipientName)
-                orderStmt.setString(9, req.recipientPhone)
-                orderStmt.setString(10, req.packageCategory)
-                orderStmt.setString(11, req.packageWeightSize)
-                orderStmt.setBoolean(12, req.isFragile)
-                orderStmt.setString(13, req.packageNotes)
+                orderStmt.setString(12, req.recipientName)
+                orderStmt.setString(13, req.recipientPhone)
+                orderStmt.setString(14, req.packageCategory)
+                orderStmt.setString(15, req.packageWeightSize)
+                orderStmt.setBoolean(16, req.isFragile)
+                orderStmt.setString(17, req.packageNotes)
                 
                 val rs = orderStmt.executeQuery()
                 if (rs.next()) {
                     val orderId = rs.getInt(1)
                     
-                    // 2. Create Delivery
                     val requestedCategory = req.requestedVehicleType ?: "Economy"
                     var commissionPercent = 15.0 // Default
                     
-                    // Fetch commission from ride_categories
                     val catSql = "SELECT driver_commission_percent FROM ride_categories WHERE service_id = ?"
                     conn.prepareStatement(catSql).apply {
                         setString(1, requestedCategory)
@@ -2161,13 +2334,9 @@ object DatabaseRepository {
                             commissionPercent = rsCat.getDouble(1)
                         }
                     }
-                    val driverEarnings = if (req.serviceType == ServiceType.RENTAL) {
-                        req.estimatedFare * (1.0 - (commissionPercent / 100.0))
-                    } else {
-                        req.estimatedFare
-                    }
+                    val driverEarnings = origFare * (1.0 - (commissionPercent / 100.0))
 
-                    val deliverySql = "INSERT INTO deliveries (order_id, pickup_location, dropoff_location, status, service_type, estimated_earnings, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
+                    val deliverySql = "INSERT INTO deliveries (order_id, pickup_location, dropoff_location, status, service_type, estimated_earnings, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_km, original_fare, discount_type, discount_percent, discount_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id"
                     val delStmt = conn.prepareStatement(deliverySql)
                     delStmt.setInt(1, orderId)
                     delStmt.setString(2, req.pickupLocation)
@@ -2177,6 +2346,13 @@ object DatabaseRepository {
                     delStmt.setDouble(6, driverEarnings) 
                     delStmt.setDouble(7, req.pickupLat)
                     delStmt.setDouble(8, req.pickupLng)
+                    delStmt.setDouble(9, req.dropOffLat)
+                    delStmt.setDouble(10, req.dropOffLng)
+                    delStmt.setDouble(11, req.distanceKm)
+                    delStmt.setDouble(12, origFare)
+                    delStmt.setString(13, discType)
+                    delStmt.setInt(14, discPercent)
+                    delStmt.setDouble(15, discAmount)
                     delStmt.setDouble(9, req.dropOffLat)
                     delStmt.setDouble(10, req.dropOffLng)
                     delStmt.setDouble(11, req.distanceKm)

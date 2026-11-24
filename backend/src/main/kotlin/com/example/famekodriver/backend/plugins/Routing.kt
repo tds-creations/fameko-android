@@ -393,18 +393,32 @@ fun Application.configureRouting() {
                     val principal = call.principal<AdminPrincipal>()!!
                     if (principal.role != "SUPERADMIN") return@get call.respondRedirect("/admin/dashboard")
                     val config = DatabaseRepository.getPricingConfig()
-                    call.respond(ThymeleafContent("admin_pricing", mapOf(
+                    val errorMessage = when (call.parameters["error"]) {
+                        "invalid_everyday_discount" -> "Everyday Customer Discount must be between 10% and 15%."
+                        else -> null
+                    }
+                    val model = mutableMapOf<String, Any>(
                         "pricing" to config,
                         "rentalRates" to DatabaseRepository.getRentalRates(),
                         "rideCategories" to DatabaseRepository.getRideCategories(),
                         "activePage" to "pricing",
                         "admin" to principal,
                         "showSuccess" to (call.parameters["success"] == "true")
-                    )))
+                    )
+                    if (errorMessage != null) model["errorMessage"] = errorMessage
+                    call.respond(ThymeleafContent("admin_pricing", model))
                 }
 
                 post("/pricing/update") {
                     val p = call.receiveParameters()
+                    val everydayEnabled = p["everydayDiscountEnabled"] == "true" || p["everydayDiscountEnabled"] == "on"
+                    val everydayPercent = p["everydayDiscountPercent"]?.toIntOrNull()
+
+                    if (everydayPercent != null && (everydayPercent < 10 || everydayPercent > 15)) {
+                        call.respondRedirect("/admin/pricing?error=invalid_everyday_discount")
+                        return@post
+                    }
+
                     DatabaseRepository.updatePricingConfig(
                         baseFare = p["baseFare"]?.toDoubleOrNull(),
                         perKmRate = p["perKmRate"]?.toDoubleOrNull(),
@@ -416,7 +430,9 @@ fun Application.configureRouting() {
                         peakMultiplier = p["peakMultiplier"]?.toDoubleOrNull(),
                         dailyServiceFee = p["dailyServiceFee"]?.toDoubleOrNull(),
                         rentalOwnerComm = p["rentalOwnerCommission"]?.toDoubleOrNull(),
-                        rentalGuestFee = p["rentalCustomerFee"]?.toDoubleOrNull()
+                        rentalGuestFee = p["rentalCustomerFee"]?.toDoubleOrNull(),
+                        everydayDiscountEnabled = everydayEnabled,
+                        everydayDiscountPercent = everydayPercent
                     )
                     call.respondRedirect("/admin/pricing?success=true")
                 }
@@ -959,6 +975,27 @@ fun Application.configureRouting() {
             call.respond(DatabaseRepository.getCustomerTrips(customerId))
         }
 
+        get("/customer/milestone-progress/{customerId}") {
+            val customerId = call.parameters["customerId"]?.toIntOrNull()
+            if (customerId == null) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid customer ID")
+                return@get
+            }
+            val progress = DatabaseRepository.getCustomerMilestoneProgress(customerId)
+            call.respond(progress)
+        }
+
+        get("/customer/discount-rate/{customerId}") {
+            val customerId = call.parameters["customerId"]?.toIntOrNull()
+            if (customerId == null) {
+                call.respond(mapOf("discountRate" to 0))
+                return@get
+            }
+            val progress = DatabaseRepository.getCustomerMilestoneProgress(customerId)
+            val activeRate = if (progress.isRewardAvailable) progress.milestoneDiscountPercent else if (progress.everydayDiscountEnabled) progress.everydayDiscountPercent else 0
+            call.respond(mapOf("discountRate" to activeRate))
+        }
+
         post("/customer/saved-places") {
             try {
                 val req = call.receive<SavedPlace>()
@@ -1212,6 +1249,7 @@ fun Application.configureRouting() {
             val dropOffLoc = p["dropOffLocation"] ?: p["dropoff"] ?: ""
             val dropLat = p["dropLat"]?.toDoubleOrNull() ?: p["dropOffLat"]?.toDoubleOrNull() ?: 0.0
             val dropLng = p["dropLng"]?.toDoubleOrNull() ?: p["dropOffLng"]?.toDoubleOrNull() ?: 0.0
+            val customerId = p["customerId"]?.toIntOrNull() ?: p["customer_id"]?.toIntOrNull()
 
             val config = DatabaseRepository.getPricingConfig()
             val peak = config.peakMultiplier
@@ -1219,10 +1257,24 @@ fun Application.configureRouting() {
                                 com.example.famekodriver.core.domain.model.TollUtils.isAirportTollZone(dropOffLoc, dropLat, dropLng)
             val tollFee = if (isAirportToll) config.airportTollFee else 0.0
 
+            var appliedDiscountType = "NONE"
+            var appliedDiscountPercent = 0
+
+            if (customerId != null) {
+                val progress = DatabaseRepository.getCustomerMilestoneProgress(customerId)
+                if (progress.availableRewards > 0) {
+                    appliedDiscountType = "MILESTONE"
+                    appliedDiscountPercent = config.milestoneDiscountPercent
+                }
+            }
+            if (appliedDiscountType == "NONE" && config.everydayDiscountEnabled) {
+                appliedDiscountType = "EVERYDAY"
+                appliedDiscountPercent = config.everydayDiscountPercent.coerceIn(10, 15)
+            }
+
             val categories = DatabaseRepository.getRideCategories()
             val estimates = categories
                 .filter { cat ->
-                    // Set distance limits for specific vehicle types
                     if (cat.serviceId.equals("Pragya", ignoreCase = true) && dist > 10.0) return@filter false
                     if (cat.serviceId.equals("Bicycle", ignoreCase = true) && dist > 5.0) return@filter false
                     true
@@ -1234,18 +1286,24 @@ fun Application.configureRouting() {
                     
                     val eta = nearest?.pickupEtaMin?.toInt() ?: 5
                     val unmultipliedBaseFare = max(cat.minFare, cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate))
-                    val unmultipliedTotalFare = unmultipliedBaseFare + tollFee
+                    val unmultipliedTotalFare = java.math.BigDecimal(unmultipliedBaseFare + tollFee).setScale(2, java.math.RoundingMode.HALF_UP).toDouble()
 
-                    val baseFare = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak)
-                    val totalFare = baseFare + tollFee
+                    val baseFareWithSurge = max(cat.minFare, (cat.baseFare + (dist * cat.perKmRate) + (dur * cat.perMinuteRate)) * peak)
+                    val baseOriginalFare = java.math.BigDecimal(baseFareWithSurge).setScale(2, java.math.RoundingMode.HALF_UP).toDouble()
 
-                    val isSurgeApplied = peak > 1.0 && totalFare > (unmultipliedTotalFare + 0.01)
+                    val isSurgeApplied = peak > 1.0 && baseOriginalFare > (unmultipliedBaseFare + 0.01)
+
+                    val discountAmount = java.math.BigDecimal(baseOriginalFare * (appliedDiscountPercent / 100.0)).setScale(2, java.math.RoundingMode.HALF_UP).toDouble()
+                    val discountedBaseFare = baseOriginalFare - discountAmount
+
+                    val finalTotalFare = java.math.BigDecimal(discountedBaseFare + tollFee).setScale(2, java.math.RoundingMode.HALF_UP).toDouble()
+                    val totalOriginalFare = java.math.BigDecimal(baseOriginalFare + tollFee).setScale(2, java.math.RoundingMode.HALF_UP).toDouble()
 
                     RideEstimateResponse(
                         serviceId = cat.serviceId,
                         name = cat.name,
                         description = cat.description ?: "",
-                        fare = totalFare,
+                        fare = finalTotalFare,
                         pickupEtaMin = eta,
                         icon = cat.icon ?: "car",
                         serviceType = cat.serviceType,
@@ -1254,7 +1312,11 @@ fun Application.configureRouting() {
                         hasAirportToll = isAirportToll,
                         tollFee = tollFee,
                         baseFareWithoutSurge = unmultipliedTotalFare,
-                        isDemandSurgeApplied = isSurgeApplied
+                        isDemandSurgeApplied = isSurgeApplied,
+                        originalFare = totalOriginalFare,
+                        discountType = appliedDiscountType,
+                        discountPercent = appliedDiscountPercent,
+                        discountAmount = discountAmount
                     )
                 }
             

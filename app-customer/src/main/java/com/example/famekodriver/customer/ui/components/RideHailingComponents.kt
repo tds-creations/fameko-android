@@ -164,7 +164,8 @@ fun ServiceSelectionSheet(
     onScheduleClick: () -> Unit,
     isPlacing: Boolean,
     isLoading: Boolean = false,
-    onUnavailableClick: (String) -> Unit = {}
+    onUnavailableClick: (String) -> Unit = {},
+    milestoneProgress: com.example.famekodriver.core.domain.model.MilestoneProgressResponse? = null
 ) {
     val filteredEstimates = estimates.filter { estimate ->
         when (activeServiceMode) {
@@ -184,17 +185,75 @@ fun ServiceSelectionSheet(
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-        if (discountRate > 0) {
+        val activeDiscountEstimate = estimates.firstOrNull { it.discountAmount > 0 }
+        val effectiveDiscountRate = activeDiscountEstimate?.discountPercent ?: discountRate
+        val isMilestone = activeDiscountEstimate?.discountType == "MILESTONE" || (milestoneProgress?.isRewardAvailable == true)
+
+        if (effectiveDiscountRate > 0) {
             Surface(
-                color = FamekoBlue,
+                color = if (isMilestone) Color(0xFF10B981) else FamekoBlue,
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 modifier = Modifier.fillMaxWidth().offset(y = (-8).dp)
             ) {
                 Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("$discountRate% promo applied", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                    Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.White, modifier = Modifier.size(16.dp).padding(start = 4.dp))
+                    Text(
+                        if (isMilestone) "🎉 MILESTONE REWARD UNLOCKED ($effectiveDiscountRate% OFF)" else "$effectiveDiscountRate% Everyday Discount Applied",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        if (milestoneProgress != null) {
+            val total = if (milestoneProgress.milestoneInterval > 0) milestoneProgress.milestoneInterval else 10
+            val currentCompleted = milestoneProgress.completedRides % total
+            val progressFloat = (currentCompleted.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+
+            Surface(
+                color = Color(0xFFECFDF5),
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (milestoneProgress.isRewardAvailable) "🎉 MILESTONE REWARD UNLOCKED!" else "Milestone Loyalty Progress",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color(0xFF065F46)
+                        )
+                        Text(
+                            text = "$currentCompleted/$total rides",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color(0xFF047857)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { progressFloat },
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                        color = Color(0xFF10B981),
+                        trackColor = Color(0xFFD1FAE5)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (milestoneProgress.isRewardAvailable)
+                            "Your ${milestoneProgress.milestoneDiscountPercent}% milestone reward will automatically apply to your next ride!"
+                        else
+                            "${milestoneProgress.ridesRemaining} more ${if (milestoneProgress.ridesRemaining == 1) "ride" else "rides"} to unlock your ${milestoneProgress.milestoneDiscountPercent}% reward",
+                        fontSize = 11.sp,
+                        color = Color(0xFF047857)
+                    )
                 }
             }
         }
@@ -324,8 +383,10 @@ fun ServiceItem(
     val status = estimate.availabilityStatus
     val backgroundColor = if (isSelected) Color.Transparent else Color.Transparent
     
-    val finalFare = (estimate.fare * (100 - discountRate) / 100).toInt()
-    val originalFare = estimate.fare.toInt()
+    val hasDiscount = estimate.discountAmount > 0.0 || (discountRate > 0 && estimate.originalFare > estimate.fare)
+    val displayFinalFare = String.format("%.2f", estimate.fare)
+    val displayOriginalFare = String.format("%.2f", estimate.originalFare)
+    val displaySavings = String.format("%.2f", estimate.discountAmount)
 
     Surface(
         onClick = {
@@ -376,6 +437,21 @@ fun ServiceItem(
                     if (estimate.name == "Comfort") {
                          Icon(Icons.Default.KeyboardDoubleArrowUp, null, tint = Color.Gray, modifier = Modifier.size(16.dp).padding(start = 4.dp))
                     }
+                    if (hasDiscount) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            color = if (estimate.discountType == "MILESTONE") Color(0xFF10B981) else Color(0xFF2563EB),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = if (estimate.discountType == "MILESTONE") "${estimate.discountPercent}% REWARD" else "${estimate.discountPercent}% OFF",
+                                color = Color.White,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("${estimate.pickupEtaMin} min", fontSize = 13.sp, color = Color.Gray)
@@ -384,7 +460,14 @@ fun ServiceItem(
                     Text(" 4", fontSize = 13.sp, color = Color.Gray)
                 }
                 
-                if (estimate.pickupEtaMin <= 5) {
+                if (hasDiscount) {
+                    Text(
+                        "You save GH₵$displaySavings",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF059669)
+                    )
+                } else if (estimate.pickupEtaMin <= 5) {
                     Spacer(Modifier.height(4.dp))
                     Surface(
                         color = FamekoBlue,
@@ -396,13 +479,13 @@ fun ServiceItem(
             }
             
             Column(horizontalAlignment = Alignment.End) {
-                Text("GH₵$finalFare", fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltDark)
-                if (discountRate > 0) {
+                Text("GH₵$displayFinalFare", fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltDark)
+                if (hasDiscount) {
                     Text(
-                        text = "GH₵$originalFare",
+                        text = "GH₵$displayOriginalFare",
                         style = TextStyle(
                             color = Color.Gray,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             textDecoration = TextDecoration.LineThrough
                         )
                     )

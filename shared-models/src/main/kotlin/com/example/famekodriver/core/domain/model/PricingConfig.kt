@@ -8,6 +8,8 @@ data class PricingConfig(
     val minFare: Double,
     val milestoneInterval: Int,
     val milestoneDiscountPercent: Int,
+    val everydayDiscountEnabled: Boolean = true,
+    val everydayDiscountPercent: Int = 10,
     val peakMultiplier: Double,
     val airportTollFee: Double = 20.0,
 

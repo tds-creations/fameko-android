@@ -45,7 +45,11 @@ data class OrderCreateRequest(
     val isFragile: Boolean = false,
     val recipientName: String? = null,
     val recipientPhone: String? = null,
-    val packageNotes: String? = null
+    val packageNotes: String? = null,
+    val originalFare: Double? = null,
+    val discountType: String? = null,
+    val discountPercent: Int? = null,
+    val discountAmount: Double? = null
 )
 
 data class OrderStatusResponse(
@@ -67,6 +71,10 @@ data class OrderStatusResponse(
     val verificationPin: String? = null,
     val deliveryId: String? = null,
     val fare: Double? = null,
+    val originalFare: Double? = null,
+    val discountType: String? = null,
+    val discountPercent: Int? = null,
+    val discountAmount: Double? = null,
     val pickupLocation: String? = null,
     val dropOffLocation: String? = null,
     val pickupLat: Double? = null,
@@ -89,5 +97,22 @@ data class RideEstimateResponse(
     val hasAirportToll: Boolean = false,
     val tollFee: Double = 0.0,
     val baseFareWithoutSurge: Double = fare,
-    val isDemandSurgeApplied: Boolean = false
+    val isDemandSurgeApplied: Boolean = false,
+    val originalFare: Double = fare,
+    val discountType: String = "NONE", // NONE, EVERYDAY, MILESTONE
+    val discountPercent: Int = 0,
+    val discountAmount: Double = 0.0
 )
+
+data class MilestoneProgressResponse(
+    val customerId: Int,
+    val completedRides: Int,
+    val milestoneInterval: Int,
+    val milestoneDiscountPercent: Int,
+    val availableRewards: Int,
+    val ridesRemaining: Int,
+    val isRewardAvailable: Boolean,
+    val everydayDiscountEnabled: Boolean = true,
+    val everydayDiscountPercent: Int = 10
+)
+

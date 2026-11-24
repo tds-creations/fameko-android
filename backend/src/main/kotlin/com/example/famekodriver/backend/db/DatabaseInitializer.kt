@@ -170,6 +170,8 @@ object DatabaseInitializer {
                 min_fare NUMERIC(12, 2) DEFAULT 0.0,
                 milestone_interval INTEGER DEFAULT 0,
                 milestone_discount_percent INTEGER DEFAULT 0,
+                everyday_discount_enabled BOOLEAN DEFAULT TRUE,
+                everyday_discount_percent INTEGER DEFAULT 10,
                 driver_commission_percent DOUBLE PRECISION DEFAULT 0.0,
                 peak_multiplier DOUBLE PRECISION DEFAULT 1.0,
                 daily_service_fee NUMERIC(12, 2) DEFAULT 0.0,
@@ -233,10 +235,37 @@ object DatabaseInitializer {
             )
             """.trimIndent(),
             """
+            CREATE TABLE IF NOT EXISTS customer_milestones (
+                customer_id INTEGER PRIMARY KEY REFERENCES customers(id),
+                completed_rides INTEGER DEFAULT 0,
+                unlocked_rewards INTEGER DEFAULT 0,
+                redeemed_rewards INTEGER DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """.trimIndent(),
+            """
+            CREATE TABLE IF NOT EXISTS milestone_rewards (
+                id SERIAL PRIMARY KEY,
+                reward_code TEXT UNIQUE NOT NULL,
+                customer_id INTEGER REFERENCES customers(id) NOT NULL,
+                milestone_number INTEGER NOT NULL,
+                discount_percent INTEGER NOT NULL,
+                status TEXT DEFAULT 'AVAILABLE',
+                order_id INTEGER REFERENCES orders(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reserved_at TIMESTAMP,
+                redeemed_at TIMESTAMP
+            )
+            """.trimIndent(),
+            """
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
                 customer_id INTEGER REFERENCES customers(id) NOT NULL,
                 total_amount NUMERIC(12, 2) NOT NULL,
+                original_fare NUMERIC(12, 2),
+                discount_type TEXT DEFAULT 'NONE',
+                discount_percent INTEGER DEFAULT 0,
+                discount_amount NUMERIC(12, 2) DEFAULT 0.0,
                 status TEXT DEFAULT 'Pending',
                 pickup_location TEXT,
                 dropoff_location TEXT,
@@ -254,6 +283,10 @@ object DatabaseInitializer {
                 status TEXT DEFAULT 'PENDING',
                 service_type TEXT DEFAULT 'RIDE_HAILING',
                 estimated_earnings NUMERIC(12, 2) DEFAULT 0.0,
+                original_fare NUMERIC(12, 2),
+                discount_type TEXT DEFAULT 'NONE',
+                discount_percent INTEGER DEFAULT 0,
+                discount_amount NUMERIC(12, 2) DEFAULT 0.0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """.trimIndent(),
@@ -507,7 +540,19 @@ object DatabaseInitializer {
             "ALTER TABLE rentals ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'PENDING';",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC(12, 2) DEFAULT 0.0;",
             "ALTER TABLE customers ADD COLUMN IF NOT EXISTS rewards_points INTEGER DEFAULT 0;",
-            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION DEFAULT 4.90;"
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION DEFAULT 4.90;",
+            "ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS everyday_discount_enabled BOOLEAN DEFAULT TRUE;",
+            "ALTER TABLE pricing_config ADD COLUMN IF NOT EXISTS everyday_discount_percent INTEGER DEFAULT 10;",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS original_fare NUMERIC(12, 2);",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_type TEXT DEFAULT 'NONE';",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT 0;",
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12, 2) DEFAULT 0.0;",
+            "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS original_fare NUMERIC(12, 2);",
+            "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS discount_type TEXT DEFAULT 'NONE';",
+            "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT 0;",
+            "ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12, 2) DEFAULT 0.0;",
+            "CREATE INDEX IF NOT EXISTS idx_milestone_rewards_customer ON milestone_rewards(customer_id, status);",
+            "CREATE INDEX IF NOT EXISTS idx_customer_milestones_cust ON customer_milestones(customer_id);"
         )
         conn.createStatement().use { stmt ->
             migrations.forEach { 

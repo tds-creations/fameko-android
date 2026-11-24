@@ -36,7 +36,8 @@ fun RideHailingSheetContent(
                 }, 
                 onScheduleClick = onScheduleClick,
                 isPlacing = viewModel.isOrderPlacing,
-                isLoading = viewModel.isLoading
+                isLoading = viewModel.isLoading,
+                milestoneProgress = viewModel.milestoneProgress
             )
         }
         CustomerSheetState.SEARCHING_FOR_DRIVER -> {

@@ -303,6 +303,11 @@ interface FamekoApiService {
         @Path("customerId") customerId: String
     ): Map<String, Int>
 
+    @GET("customer/milestone-progress/{customerId}")
+    suspend fun getMilestoneProgress(
+        @Path("customerId") customerId: String
+    ): com.example.famekodriver.core.domain.model.MilestoneProgressResponse
+
     @GET("customer/support/tickets/{customerId}")
     suspend fun getSupportTickets(
         @Path("customerId") customerId: String
@@ -318,7 +323,8 @@ interface FamekoApiService {
         @Field("lng") lng: Double,
         @Field("dist") distance: Double,
         @Field("dur") duration: Double,
-        @Field("region") region: String? = null
+        @Field("region") region: String? = null,
+        @Field("customerId") customerId: String? = null
     ): List<RideEstimateResponse>
 
     @GET("rentals/vehicles")
