@@ -958,16 +958,18 @@ fun MainMapContent(
             status == "PENDING" -> CustomerSheetState.SEARCHING_FOR_DRIVER
             status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
             hasConfirmedOrder -> CustomerSheetState.ON_TRIP
-            viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
             
-            // Priority: Picking/Typing State (Higher priority than selecting service to allow editing)
+            // Priority: Picking/Typing State
             viewModel.isSearchMode -> CustomerSheetState.PICKING_ADDRESS
             
-            // Priority: Pricing Card (Only if we have a route and NOT actively searching/typing)
+            // Priority: Pricing Card (When route is present AND not currently entering stage 4 package details)
             (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
-                viewModel.polylinePoints.isNotEmpty() -> CustomerSheetState.SELECTING_SERVICE
+                viewModel.polylinePoints.isNotEmpty() && !viewModel.showPackageDetailsSheet -> CustomerSheetState.SELECTING_SERVICE
+            
+            // Package Details Modal (Intent picker stage 1 or Recipient details stage 4)
+            viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
             
             // Fallback Picking State
             viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty() -> CustomerSheetState.PICKING_ADDRESS

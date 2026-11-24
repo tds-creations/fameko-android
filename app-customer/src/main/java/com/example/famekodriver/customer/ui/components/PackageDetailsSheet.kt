@@ -169,14 +169,16 @@ fun PackageDetailsSheet(
 
 
         else -> {
-            // --- STAGE 4: Recipient Details & Confirm Order Sheet (Screenshot 4) ---
+            // --- STAGE 4: Recipient Details & Confirm Order Sheet ---
             val isDetailsComplete = recipientName.trim().isNotEmpty() && recipientPhone.trim().isNotEmpty()
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White)
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
