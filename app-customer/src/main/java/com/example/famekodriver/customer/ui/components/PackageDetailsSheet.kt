@@ -280,7 +280,7 @@ fun PackageDetailsSheet(
                     colors = ButtonDefaults.buttonColors(containerColor = DispatchGreen),
                     enabled = isDetailsComplete
                 ) {
-                    Text("Continue to Vehicle Selection", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Continue to Review", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }

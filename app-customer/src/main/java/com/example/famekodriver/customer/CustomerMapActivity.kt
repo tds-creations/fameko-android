@@ -960,18 +960,14 @@ fun MainMapContent(
             hasConfirmedOrder -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
             
-            // Step 4: Pricing & Vehicle Selection (Only when route is present AND in Step 4)
-            viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY && 
-                viewModel.polylinePoints.isNotEmpty() && 
-                viewModel.deliveryStep == CustomerMapViewModel.DeliveryBookingStep.VEHICLE_AND_PRICING_SELECTION -> CustomerSheetState.SELECTING_SERVICE
-
-            viewModel.activeServiceMode == ServiceType.RIDE_HAILING && 
-                viewModel.polylinePoints.isNotEmpty() && !viewModel.showPackageDetailsSheet -> CustomerSheetState.SELECTING_SERVICE
-
-            // Package Details Modal (Step 2 Intent picker stage 1, Step 5 Contacts stage 4, Step 6 Review stage 5)
+            // Priority 1: Package Details Modal (Stage 1 Intent, Stage 4 Contacts, Stage 5 Review)
             viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
+
+            // Priority 2: Pricing Card (When route is present and NOT showing package details modal)
+            (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
+                viewModel.polylinePoints.isNotEmpty() -> CustomerSheetState.SELECTING_SERVICE
             
-            // Picking/Typing Address State
+            // Priority 3: Address Picking State
             viewModel.isSearchMode -> CustomerSheetState.PICKING_ADDRESS
             
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
@@ -1307,8 +1303,10 @@ fun MainMapContent(
                                 onPrevStage = {
                                     if (viewModel.packageStage == 5) {
                                         viewModel.packageStage = 4
+                                        viewModel.deliveryStep = CustomerMapViewModel.DeliveryBookingStep.RECIPIENT_CONTACT_AND_PACKAGE_OPTIONS
                                     } else {
                                         viewModel.showPackageDetailsSheet = false
+                                        viewModel.deliveryStep = CustomerMapViewModel.DeliveryBookingStep.VEHICLE_AND_PRICING_SELECTION
                                     }
                                 },
                                 isSending = viewModel.isSendingPackage,
