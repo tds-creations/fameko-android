@@ -960,15 +960,19 @@ fun MainMapContent(
             hasConfirmedOrder -> CustomerSheetState.ON_TRIP
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
             
-            // Priority 1: Package Details Sheet (Stage 1 Intent, Stage 4 Contacts, Stage 5 Review)
+            // Step 4: Pricing & Vehicle Selection (Only when route is present AND in Step 4)
+            viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY && 
+                viewModel.polylinePoints.isNotEmpty() && 
+                viewModel.deliveryStep == CustomerMapViewModel.DeliveryBookingStep.VEHICLE_AND_PRICING_SELECTION -> CustomerSheetState.SELECTING_SERVICE
+
+            viewModel.activeServiceMode == ServiceType.RIDE_HAILING && 
+                viewModel.polylinePoints.isNotEmpty() && !viewModel.showPackageDetailsSheet -> CustomerSheetState.SELECTING_SERVICE
+
+            // Package Details Modal (Step 2 Intent picker stage 1, Step 5 Contacts stage 4, Step 6 Review stage 5)
             viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
             
-            // Priority 2: Picking/Typing Address State
+            // Picking/Typing Address State
             viewModel.isSearchMode -> CustomerSheetState.PICKING_ADDRESS
-            
-            // Priority 3: Pricing Card (When route is calculated AND not currently showing package details sheet)
-            (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
-                viewModel.polylinePoints.isNotEmpty() -> CustomerSheetState.SELECTING_SERVICE
             
             viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             
@@ -1295,10 +1299,9 @@ fun MainMapContent(
                                 stage = viewModel.packageStage,
                                 onNextStage = {
                                     if (viewModel.packageStage == 1) {
-                                        viewModel.packageStage = 2
-                                        viewModel.navigateTo(CustomerScreen.RouteSelection)
+                                        viewModel.selectDeliveryIntent(viewModel.isSendingPackage)
                                     } else if (viewModel.packageStage == 4) {
-                                        viewModel.packageStage = 5
+                                        viewModel.advanceToDeliveryReview()
                                     }
                                 },
                                 onPrevStage = {
@@ -1351,10 +1354,7 @@ fun MainMapContent(
                                 selectedPaymentMethod = viewModel.selectedPaymentMethod,
                                 onPaymentMethodChange = { viewModel.selectedPaymentMethod = it },
                                 onConfirm = {
-                                    viewModel.confirmOrder()
-                                    viewModel.showPackageDetailsSheet = false
-                                    viewModel.packageStage = 1
-                                    viewModel.activeServiceMode = ServiceType.PACKAGE_DELIVERY
+                                    viewModel.submitDeliveryOrder()
                                     viewModel.navigateTo(CustomerScreen.MainMap)
                                 },
                                 onBack = {

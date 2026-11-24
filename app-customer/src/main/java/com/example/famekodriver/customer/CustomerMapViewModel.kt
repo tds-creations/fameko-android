@@ -192,7 +192,18 @@ class CustomerMapViewModel(
     var isReverseGeocodingMapPicker by mutableStateOf(false)
     private var mapPickerReverseGeocodeJob: Job? = null
 
-    // --- Package Delivery State ---
+    // --- Package Delivery State & Step Machine ---
+    enum class DeliveryBookingStep {
+        DELIVERY_SERVICE_SELECTED,
+        DELIVERY_INTENT_SELECTED,
+        ROUTE_SELECTION,
+        VEHICLE_AND_PRICING_SELECTION,
+        RECIPIENT_CONTACT_AND_PACKAGE_OPTIONS,
+        DELIVERY_REVIEW,
+        ORDER_SUBMISSION_AND_DRIVER_MATCHING
+    }
+
+    var deliveryStep by mutableStateOf(DeliveryBookingStep.DELIVERY_SERVICE_SELECTED)
     var isSendingPackage by mutableStateOf(true)
     var packageStage by mutableIntStateOf(1)
     var packageCategory by mutableStateOf("Send Motorbike")
@@ -206,6 +217,36 @@ class CustomerMapViewModel(
     var ghanaPostGpsMatch by mutableStateOf("")
     var selectedPaymentMethod by mutableStateOf("Cash")
     var showPackageDetailsSheet by mutableStateOf(false)
+
+    fun selectDeliveryIntent(isSending: Boolean) {
+        isSendingPackage = isSending
+        deliveryStep = DeliveryBookingStep.ROUTE_SELECTION
+        showPackageDetailsSheet = false
+        isSearchMode = true
+        navigateTo(CustomerScreen.RouteSelection)
+    }
+
+    fun advanceToRecipientContacts() {
+        if (selectedVehicleType.isNotBlank()) {
+            deliveryStep = DeliveryBookingStep.RECIPIENT_CONTACT_AND_PACKAGE_OPTIONS
+            packageStage = 4
+            showPackageDetailsSheet = true
+        }
+    }
+
+    fun advanceToDeliveryReview() {
+        if (recipientName.trim().isNotBlank() && recipientPhone.trim().isNotBlank()) {
+            deliveryStep = DeliveryBookingStep.DELIVERY_REVIEW
+            packageStage = 5
+            showPackageDetailsSheet = true
+        }
+    }
+
+    fun submitDeliveryOrder() {
+        deliveryStep = DeliveryBookingStep.ORDER_SUBMISSION_AND_DRIVER_MATCHING
+        showPackageDetailsSheet = false
+        confirmOrder()
+    }
     
     val savedPlaces: StateFlow<List<SavedPlace>> = savedPlaceRepository.savedPlaces
     private val _savedPlacesUiState = MutableStateFlow<SavedPlacesUiState>(SavedPlacesUiState.Loading)
@@ -853,18 +894,20 @@ class CustomerMapViewModel(
         rideEstimates = emptyList()
         
         if (mode == ServiceType.PACKAGE_DELIVERY) {
-            selectedVehicleType = "Okada" // Valid default for delivery
+            deliveryStep = DeliveryBookingStep.DELIVERY_INTENT_SELECTED
+            selectedVehicleType = "Okada"
             packageCategory = "Send Motorbike"
             packageStage = 1
             showPackageDetailsSheet = true
+            isSearchMode = false
+            navigateTo(CustomerScreen.MainMap)
         } else if (mode == ServiceType.RIDE_HAILING) {
             selectedVehicleType = "Economy"
             showPackageDetailsSheet = false
         }
         
-        if (mode != ServiceType.RENTAL) {
+        if (mode != ServiceType.RENTAL && mode != ServiceType.PACKAGE_DELIVERY) {
             isSearchMode = true
-            // We stay on MainMap so the top floating search bar is visible
             navigateTo(CustomerScreen.MainMap)
         }
     }
@@ -1194,6 +1237,11 @@ class CustomerMapViewModel(
                                 updateEstimatedFare()
                             } else {
                                 isLoading = false
+                            }
+
+                            if (activeServiceMode == ServiceType.PACKAGE_DELIVERY) {
+                                deliveryStep = DeliveryBookingStep.VEHICLE_AND_PRICING_SELECTION
+                                showPackageDetailsSheet = false
                             }
                         } else {
                             isLoading = false

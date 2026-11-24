@@ -29,8 +29,7 @@ fun RideHailingSheetContent(
                 onTypeSelected = { type, _ -> viewModel.setVehicleType(type) },
                 onConfirm = { 
                     if (viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) {
-                        viewModel.packageStage = 5
-                        viewModel.showPackageDetailsSheet = true
+                        viewModel.advanceToRecipientContacts()
                     } else {
                         viewModel.confirmOrder()
                     }
