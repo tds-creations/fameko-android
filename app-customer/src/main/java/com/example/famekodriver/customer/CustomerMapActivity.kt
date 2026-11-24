@@ -1247,7 +1247,6 @@ fun MainMapContent(
                                 onServiceSelected = { 
                                     viewModel.setServiceMode(it)
                                     if (it == ServiceType.RENTAL) viewModel.navigateTo(CustomerScreen.FleetBrowse) 
-                                    else if (it == ServiceType.PACKAGE_DELIVERY) viewModel.navigateTo(CustomerScreen.PackageDispatchSetup)
                                     else viewModel.navigateTo(CustomerScreen.MainMap) 
                                 },
                                 onScheduleClick = onScheduleClick,
