@@ -384,9 +384,9 @@ fun ServiceItem(
     val backgroundColor = if (isSelected) Color.Transparent else Color.Transparent
     
     val hasDiscount = estimate.discountAmount > 0.0 || (discountRate > 0 && estimate.originalFare > estimate.fare)
-    val displayFinalFare = String.format("%.2f", estimate.fare)
-    val displayOriginalFare = String.format("%.2f", estimate.originalFare)
-    val displaySavings = String.format("%.2f", estimate.discountAmount)
+    val displayFinalFare = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(estimate.fare)
+    val displayOriginalFare = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(estimate.originalFare)
+    val displaySavings = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(estimate.discountAmount)
 
     Surface(
         onClick = {
@@ -462,7 +462,7 @@ fun ServiceItem(
                 
                 if (hasDiscount) {
                     Text(
-                        "You save GH₵$displaySavings",
+                        "You save $displaySavings",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF059669)
@@ -479,10 +479,10 @@ fun ServiceItem(
             }
             
             Column(horizontalAlignment = Alignment.End) {
-                Text("GH₵$displayFinalFare", fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltDark)
+                Text(displayFinalFare, fontWeight = FontWeight.Black, fontSize = 20.sp, color = BoltDark)
                 if (hasDiscount) {
                     Text(
-                        text = "GH₵$displayOriginalFare",
+                        text = displayOriginalFare,
                         style = TextStyle(
                             color = Color.Gray,
                             fontSize = 13.sp,

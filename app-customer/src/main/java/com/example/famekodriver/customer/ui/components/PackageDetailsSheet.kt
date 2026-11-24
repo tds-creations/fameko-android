@@ -263,7 +263,7 @@ fun PackageDetailsSheet(
                                     )
                                 }
                             }
-                            Text("GH₵ ${String.format(java.util.Locale.US, "%.0f", finalDisplayPrice)}", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
+                            Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(finalDisplayPrice), fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
                         }
                     }
                 }
@@ -339,7 +339,7 @@ fun PackageDetailsSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(category, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                        Text("GH₵ ${String.format(java.util.Locale.US, "%.0f", finalSummaryPrice)}", fontWeight = FontWeight.Black, fontSize = 14.sp, color = DispatchGreen)
+                        Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(finalSummaryPrice), fontWeight = FontWeight.Black, fontSize = 14.sp, color = DispatchGreen)
                     }
                 }
 

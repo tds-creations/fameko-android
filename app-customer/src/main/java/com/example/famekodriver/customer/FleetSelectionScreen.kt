@@ -430,8 +430,9 @@ fun CustomerVehicleCard(
                 ) {
                     Column {
                         Text("Daily Rate", fontSize = 11.sp, color = Color.Gray)
+                        val rateVal = rate.toString().toDoubleOrNull()
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("GH₵ $rate", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
+                            Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(rateVal), fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color(0xFF0F172A))
                             Text("/ day", fontSize = 12.sp, color = Color.Gray)
                         }
                     }
@@ -515,7 +516,7 @@ fun FilterSheetContent(
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, Color(0xFFBFDBFE))
                 ) {
-                    Text("Up to GH₵ ${currentMaxPrice.toInt()}/ day", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                    Text("Up to ${com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(currentMaxPrice.toDouble())} / day", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB), modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
                 }
             }
 

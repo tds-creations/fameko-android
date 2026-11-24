@@ -52,7 +52,8 @@ fun VehicleDetailsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("₵$dailyRate", fontWeight = FontWeight.Black, fontSize = 24.sp, color = BoltDark)
+                        val dailyRateVal = dailyRate.toDoubleOrNull()
+                        Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(dailyRateVal), fontWeight = FontWeight.Black, fontSize = 24.sp, color = BoltDark)
                         Text("per day", fontSize = 12.sp, color = Color.Gray)
                     }
                     Button(

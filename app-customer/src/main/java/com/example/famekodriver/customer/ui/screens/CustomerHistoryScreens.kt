@@ -114,7 +114,8 @@ fun CustomerHistoryScreen(
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { 
                                 Text(trip["date"]?.toString()?.split(" ")?.firstOrNull() ?: "N/A", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("GHS ${trip["amount"].toString().toDoubleOrNull()?.toInt() ?: 0}", fontWeight = FontWeight.ExtraBold, color = BoltGreen)
+                                    val amountVal = trip["amount"].toString().toDoubleOrNull()
+                                    Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(amountVal), fontWeight = FontWeight.ExtraBold, color = BoltGreen)
                                     Spacer(Modifier.width(8.dp))
                                     IconButton(onClick = {
                                         val tripId = (trip["id"] as? Double)?.toInt() ?: (trip["id"] as? Int) ?: 0

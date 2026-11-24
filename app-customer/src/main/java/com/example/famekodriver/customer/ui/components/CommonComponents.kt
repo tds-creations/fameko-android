@@ -44,7 +44,7 @@ fun TripSummaryDialog(
                 Icon(Icons.Default.CheckCircle, null, tint = BoltGreen, modifier = Modifier.size(64.dp))
                 Spacer(Modifier.height(16.dp))
                 Text("Total Fare", fontSize = 16.sp, color = Color.Gray)
-                Text("₵${fare.toInt()}", fontSize = 36.sp, fontWeight = FontWeight.Black, color = BoltDark)
+                Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(fare), fontSize = 36.sp, fontWeight = FontWeight.Black, color = BoltDark)
                 Spacer(Modifier.height(8.dp))
                 Text("Payment completed via cash/wallet", fontSize = 12.sp, color = Color.Gray)
             }

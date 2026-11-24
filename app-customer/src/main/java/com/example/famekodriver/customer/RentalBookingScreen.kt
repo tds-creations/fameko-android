@@ -72,7 +72,7 @@ fun RentalBookingScreen(
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = FamekoBlue)
                     ) {
-                        Text("Confirm GH₵${total.toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                        Text("Confirm ${com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(total)}", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                     }
                 }
             }
@@ -204,13 +204,13 @@ fun RentalBookingScreen(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        PriceRow("Daily Rate", "GH₵${dailyRate.toInt()}")
+                        PriceRow("Daily Rate", com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(dailyRate))
                         PriceRow("Duration", "$selectedDays days")
-                        PriceRow("Service Fee (5%)", "GH₵${serviceFee.toInt()}")
+                        PriceRow("Service Fee (5%)", com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(serviceFee))
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.3f))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Total", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("GH₵${total.toInt()}", fontWeight = FontWeight.Black, fontSize = 18.sp, color = FamekoBlue)
+                            Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(total), fontWeight = FontWeight.Black, fontSize = 18.sp, color = FamekoBlue)
                         }
                     }
                 }

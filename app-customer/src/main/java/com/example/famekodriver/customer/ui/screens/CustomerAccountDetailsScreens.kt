@@ -399,7 +399,7 @@ fun CustomerPaymentScreen(onBack: () -> Unit) {
             Column(modifier = Modifier.padding(16.dp)) {
                 PaymentMethodItem(icon = Icons.Default.Money, title = "Cash", isSelected = true)
                 HorizontalDivider(color = Color(0xFFF1F5F9))
-                PaymentMethodItem(icon = Icons.Default.Wallet, title = "Fameko Balance", subtitle = "₵142.50")
+                PaymentMethodItem(icon = Icons.Default.Wallet, title = "Fameko Balance", subtitle = "GH₵143")
             }
         }
         

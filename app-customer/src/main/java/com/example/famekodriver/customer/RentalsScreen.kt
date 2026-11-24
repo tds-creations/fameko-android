@@ -331,7 +331,7 @@ fun RentalsScreen(
                                 ) {
                                     Column {
                                         Text("Total Paid", fontSize = 11.sp, color = Color.Gray)
-                                        Text("GH₵ ${String.format(Locale.getDefault(), "%.2f", totalPrice)}", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
+                                        Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(totalPrice), fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color(0xFF0F172A))
                                     }
 
                                     Button(

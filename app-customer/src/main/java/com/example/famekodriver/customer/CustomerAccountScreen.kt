@@ -57,7 +57,7 @@ fun CustomerAccountScreen(
                 profilePicUrl = profile["profile_picture"]?.toString()
                 
                 val balanceVal = profile["wallet_balance"]?.toString()?.toDoubleOrNull() ?: 0.0
-                famekoPayBalance = String.format(Locale.US, "%.2f", balanceVal)
+                famekoPayBalance = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(balanceVal)
                 
                 val ptsVal = profile["rewards_points"]?.toString()?.toIntOrNull() ?: 0
                 rewardsPoints = "$ptsVal Pts"
@@ -236,7 +236,7 @@ fun CustomerAccountScreen(
                             Column {
                                 Text("FAMEKO PAY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
                                 Spacer(Modifier.height(1.dp))
-                                Text("GH₵ $famekoPayBalance", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF0F172A))
+                                Text(famekoPayBalance, fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF0F172A))
                             }
                         }
                     }

@@ -765,7 +765,7 @@ fun AutoRotatingDestinationCard(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (item?.estimatedFare != null) "GH₵ ${item.estimatedFare.toInt()}" else "GH₵ 42",
+                            text = if (item?.estimatedFare != null) com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(item.estimatedFare) else "GH₵42",
                             fontWeight = FontWeight.Black,
                             fontSize = 14.sp,
                             color = Color(0xFF059669)

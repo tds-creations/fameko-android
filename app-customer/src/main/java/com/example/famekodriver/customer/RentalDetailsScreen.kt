@@ -242,7 +242,8 @@ fun RentalDetailsScreen(
                         
                         DetailRowFixed(Icons.Default.DirectionsCar, "Vehicle", "$vehicleName ($vehicleModel)")
                         DetailRowFixed(Icons.Default.Timer, "Duration", "$duration Hours")
-                        DetailRowFixed(Icons.Default.Payments, "Total Price", "GH₵$totalPrice")
+                        val totalVal = totalPrice.toString().toDoubleOrNull()
+                        DetailRowFixed(Icons.Default.Payments, "Total Price", com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(totalVal))
                         
                         HorizontalDivider(color = BoltLightGray, thickness = 0.5.dp)
                         
