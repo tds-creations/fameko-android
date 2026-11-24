@@ -985,10 +985,14 @@ fun MainMapContent(
             CustomerSheetState.ON_TRIP,
             CustomerSheetState.TIMED_OUT,
             CustomerSheetState.ENTERING_PACKAGE_DETAILS -> {
-                sheetScaffoldState.bottomSheetState.expand()
+                if (sheetScaffoldState.bottomSheetState.currentValue != SheetValue.Expanded) {
+                    sheetScaffoldState.bottomSheetState.expand()
+                }
             }
             else -> {
-                sheetScaffoldState.bottomSheetState.partialExpand()
+                if (sheetScaffoldState.bottomSheetState.currentValue != SheetValue.PartiallyExpanded) {
+                    sheetScaffoldState.bottomSheetState.partialExpand()
+                }
             }
         }
     }

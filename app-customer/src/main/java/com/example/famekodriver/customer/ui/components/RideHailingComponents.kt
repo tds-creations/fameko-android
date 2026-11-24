@@ -167,11 +167,13 @@ fun ServiceSelectionSheet(
     onUnavailableClick: (String) -> Unit = {},
     milestoneProgress: com.example.famekodriver.core.domain.model.MilestoneProgressResponse? = null
 ) {
-    val filteredEstimates = estimates.filter { estimate ->
-        when (activeServiceMode) {
-            ServiceType.RIDE_HAILING -> estimate.serviceType.equals("RIDE_HAILING", ignoreCase = true)
-            ServiceType.PACKAGE_DELIVERY -> estimate.serviceType.equals("PACKAGE_DELIVERY", ignoreCase = true)
-            else -> true
+    val filteredEstimates = remember(estimates, activeServiceMode) {
+        estimates.filter { estimate ->
+            when (activeServiceMode) {
+                ServiceType.RIDE_HAILING -> estimate.serviceType.equals("RIDE_HAILING", ignoreCase = true)
+                ServiceType.PACKAGE_DELIVERY -> estimate.serviceType.equals("PACKAGE_DELIVERY", ignoreCase = true)
+                else -> true
+            }
         }
     }
     
@@ -185,9 +187,9 @@ fun ServiceSelectionSheet(
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-        val activeDiscountEstimate = estimates.firstOrNull { it.discountAmount > 0 }
-        val effectiveDiscountRate = activeDiscountEstimate?.discountPercent ?: discountRate
-        val isMilestone = activeDiscountEstimate?.discountType == "MILESTONE" || (milestoneProgress?.isRewardAvailable == true)
+        val activeDiscountEstimate = remember(estimates) { estimates.firstOrNull { it.discountAmount > 0 } }
+        val effectiveDiscountRate = remember(activeDiscountEstimate, discountRate) { activeDiscountEstimate?.discountPercent ?: discountRate }
+        val isMilestone = remember(activeDiscountEstimate, milestoneProgress) { activeDiscountEstimate?.discountType == "MILESTONE" || (milestoneProgress?.isRewardAvailable == true) }
 
         if (effectiveDiscountRate > 0) {
             Surface(
@@ -258,7 +260,7 @@ fun ServiceSelectionSheet(
             }
         }
         
-        val hasAirportToll = estimates.any { it.hasAirportToll }
+        val hasAirportToll = remember(estimates) { estimates.any { it.hasAirportToll } }
 
         if (hasAirportToll) {
             Surface(
@@ -309,7 +311,7 @@ fun ServiceSelectionSheet(
                     }
                 }
             } else {
-                items(filteredEstimates) { estimate ->
+                items(filteredEstimates, key = { it.serviceId }) { estimate ->
                     ServiceItem(
                         estimate = estimate,
                         isSelected = selectedType == estimate.serviceId,

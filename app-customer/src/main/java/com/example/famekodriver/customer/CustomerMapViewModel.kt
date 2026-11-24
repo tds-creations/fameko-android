@@ -250,6 +250,14 @@ class CustomerMapViewModel(
     private var dropOffSearchJob: Job? = null
     private var routeJob: Job? = null
     private var lastRouteCalcLatLng: LatLng? = null
+    private var pricingEstimatesJob: Job? = null
+    private var lastEstimatesLat: Double? = null
+    private var lastEstimatesLng: Double? = null
+    private var lastEstimatesDropLat: Double? = null
+    private var lastEstimatesDropLng: Double? = null
+    private var lastEstimatesDist: Double? = null
+    private var lastEstimatesDur: Double? = null
+    private var lastEstimatesCustomerId: String? = null
 
     init {
         loadInitialData()
@@ -295,7 +303,7 @@ class CustomerMapViewModel(
                     orderRepository.getPricingConfig().onSuccess { newConfig ->
                         if (newConfig != pricingConfig) {
                             pricingConfig = newConfig
-                            updateEstimatedFare()
+                            updateEstimatedFare(forceRefresh = true)
                         }
                     }
                 }
@@ -675,6 +683,14 @@ class CustomerMapViewModel(
         rentalPickupLat = null
         rentalPickupLng = null
         isOrderPlacing = false
+        lastEstimatesLat = null
+        lastEstimatesLng = null
+        lastEstimatesDropLat = null
+        lastEstimatesDropLng = null
+        lastEstimatesDist = null
+        lastEstimatesDur = null
+        lastEstimatesCustomerId = null
+        pricingEstimatesJob?.cancel()
         
         val status = orderStatusData?.status
         if (status == "CANCELLED" || status == "DELIVERED") {
@@ -1138,9 +1154,8 @@ class CustomerMapViewModel(
     }
 
     private fun performRouteCalculation(pLat: Double, pLng: Double, dLat: Double, dLng: Double, isUpdate: Boolean = false) {
-        if (!isUpdate) {
+        if (!isUpdate && rideEstimates.isEmpty()) {
             isLoading = true
-            rideEstimates = emptyList()
         }
         
         val waypoints = stops.indices.mapNotNull { idx -> 
@@ -1206,45 +1221,60 @@ class CustomerMapViewModel(
         }
     }
 
-    private fun updateEstimatedFare() {
+    private fun updateEstimatedFare(forceRefresh: Boolean = false) {
         val pLat = pickupLat
         val pLng = pickupLng
+        val dLat = dropOffLat
+        val dLng = dropOffLng
         
-        // Safety: Don't poll if route was cleared or locations are missing
-        if (pLat == null || pLng == null || dropOffLat == null) {
+        if (pLat == null || pLng == null || dLat == null) {
             isLoading = false
             return
         }
-        
-        Log.d("PricingDiag", "Updating estimated fare for ($pLat, $pLng), Dist: $distanceKm, Dur: $durationMin, Region: $currentRegion")
-        isLoading = true
-        viewModelScope.launch {
-            val customerId = sessionManager.getCustomerId()
+
+        val customerId = sessionManager.getCustomerId()
+
+        if (!forceRefresh && rideEstimates.isNotEmpty() &&
+            pLat == lastEstimatesLat && pLng == lastEstimatesLng &&
+            dLat == lastEstimatesDropLat && dLng == lastEstimatesDropLng &&
+            distanceKm == lastEstimatesDist && durationMin == lastEstimatesDur &&
+            customerId == lastEstimatesCustomerId
+        ) {
+            return
+        }
+
+        lastEstimatesLat = pLat
+        lastEstimatesLng = pLng
+        lastEstimatesDropLat = dLat
+        lastEstimatesDropLng = dLng
+        lastEstimatesDist = distanceKm
+        lastEstimatesDur = durationMin
+        lastEstimatesCustomerId = customerId
+
+        pricingEstimatesJob?.cancel()
+        pricingEstimatesJob = viewModelScope.launch {
             val regionToPass = currentRegion?.ifEmpty { null } ?: "Greater Accra"
+            if (rideEstimates.isEmpty()) {
+                isLoading = true
+            }
+
             orderRepository.getRideEstimates(pLat, pLng, distanceKm, durationMin, regionToPass, customerId)
                 .onSuccess { list ->
                     Log.d("PricingDiag", "Ride estimates received: ${list.size} options found.")
-                    rideEstimates = list
                     if (list.isNotEmpty()) {
-                        // Find the selected vehicle in the new list
+                        rideEstimates = list
                         val currentSelected = list.find { it.serviceId == selectedVehicleType }
-                        
                         if (currentSelected != null) {
                             estimatedFare = currentSelected.fare
                             pickupEtaMin = currentSelected.pickupEtaMin.toDouble()
-                            Log.d("PricingDiag", "Selected vehicle $selectedVehicleType found: fare=${currentSelected.fare}")
                         } else {
-                            // If current selection is unavailable, pick the first available one
                             val firstAvailable = list.firstOrNull()
                             if (firstAvailable != null) {
                                 selectedVehicleType = firstAvailable.serviceId
                                 estimatedFare = firstAvailable.fare
                                 pickupEtaMin = firstAvailable.pickupEtaMin.toDouble()
-                                Log.d("PricingDiag", "Current selection unavailable, switched to ${firstAvailable.serviceId}: fare=${firstAvailable.fare}")
                             }
                         }
-                    } else {
-                        Log.w("PricingDiag", "Ride estimates list is empty from backend!")
                     }
                     isLoading = false
                 }
