@@ -168,8 +168,8 @@ fun PackageDetailsSheet(
 
 
 
-        else -> {
-            // --- STAGE 4: Recipient Details & Confirm Order Sheet ---
+        4 -> {
+            // --- STAGE 4: Contact Details (Recipient & Sender Info) ---
             val isDetailsComplete = recipientName.trim().isNotEmpty() && recipientPhone.trim().isNotEmpty()
 
             Column(
@@ -189,27 +189,8 @@ fun PackageDetailsSheet(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Column {
-                        Text("Confirm pickup spot", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0F172A))
-                        Text("Drag map or edit address to set pickup", fontSize = 12.sp, color = Color(0xFF64748B))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Vehicle & Fare Summary Pill
-                val finalSummaryPrice = if (discountRate > 0) basePrice * (100 - discountRate) / 100 else basePrice
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFF1F5F9)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(category, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                        Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(finalSummaryPrice), fontWeight = FontWeight.Black, fontSize = 14.sp, color = DispatchGreen)
+                        Text(if (isSending) "Recipient Contact Details" else "Sender Contact Details", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0F172A))
+                        Text("Enter contact details for package handoff", fontSize = 12.sp, color = Color(0xFF64748B))
                     }
                 }
 
@@ -291,18 +272,181 @@ fun PackageDetailsSheet(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Confirm Order Button
+                // Continue Button
+                Button(
+                    onClick = onNextStage,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = DispatchGreen),
+                    enabled = isDetailsComplete
+                ) {
+                    Text("Continue to Vehicle Selection", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+
+        else -> {
+            // --- STAGE 5: Complete Delivery Review & Confirmation Summary ---
+            val selectedEst = rideEstimates.find { it.serviceId.equals(category, true) || it.name.equals(category, true) } ?: rideEstimates.firstOrNull()
+            val finalFare = selectedEst?.fare ?: basePrice
+            val origFare = selectedEst?.originalFare ?: basePrice
+            val discAmount = selectedEst?.discountAmount ?: 0.0
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onPrevStage) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A))
+                        }
+                        Text("Review Delivery Order", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0F172A))
+                    }
+                    Surface(
+                        color = DispatchLightGreen,
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text(
+                            text = if (isSending) "📦 SEND" else "🎁 RECEIVE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DispatchGreen,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Route Summary Card
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF8FAFC),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.MyLocation, contentDescription = null, tint = DispatchGreen, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(if (isSending) "Pickup Spot" else "Collection Spot", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                Text(pickupAddress.ifEmpty { "Pickup Spot" }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(if (isSending) "Delivery Spot" else "Destination", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                Text(dropOffAddress.ifEmpty { "Dropoff Spot" }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Details Summary
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFF8FAFC),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(if (isSending) "Recipient Contact:" else "Sender Contact:", fontSize = 12.sp, color = Color.Gray)
+                            Text("$recipientName • $recipientPhone", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Vehicle Category:", fontSize = 12.sp, color = Color.Gray)
+                            Text(category, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DispatchGreen)
+                        }
+                        if (isFragile || isOtpRequired) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Security Options:", fontSize = 12.sp, color = Color.Gray)
+                                Text(
+                                    listOfNotNull(
+                                        if (isOtpRequired) "4-Digit OTP" else null,
+                                        if (isFragile) "Fragile Item" else null
+                                    ).joinToString(" • "),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Total Fare Summary
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = DispatchLightGreen,
+                    border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Total Estimated Fare", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF065F46))
+                            if (discAmount > 0.0) {
+                                Text("Discount savings applied", fontSize = 10.sp, color = Color(0xFF047857))
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (discAmount > 0.0) {
+                                Text(
+                                    com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(origFare),
+                                    fontSize = 14.sp,
+                                    color = Color.Gray,
+                                    style = androidx.compose.ui.text.TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+                                )
+                            }
+                            Text(
+                                com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(finalFare),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                color = DispatchGreen
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Confirm & Place Order Button
                 Button(
                     onClick = onConfirm,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DispatchGreen),
-                    enabled = isDetailsComplete && !isPlacing
+                    enabled = !isPlacing
                 ) {
                     if (isPlacing) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
                     } else {
-                        Text("Confirm order", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Confirm & Place Order", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }

@@ -958,18 +958,19 @@ fun MainMapContent(
             status == "PENDING" -> CustomerSheetState.SEARCHING_FOR_DRIVER
             status == "SCHEDULED" -> CustomerSheetState.RIDE_SCHEDULED
             hasConfirmedOrder -> CustomerSheetState.ON_TRIP
-            viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             viewModel.activeRental != null -> CustomerSheetState.ACTIVE_RENTAL
             
-            // Priority: Picking/Typing State
+            // Priority 1: Package Details Sheet (Stage 1 Intent, Stage 4 Contacts, Stage 5 Review)
+            viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
+            
+            // Priority 2: Picking/Typing Address State
             viewModel.isSearchMode -> CustomerSheetState.PICKING_ADDRESS
             
-            // Priority: Pricing Card (When route is present AND not currently entering stage 4 package details)
+            // Priority 3: Pricing Card (When route is calculated AND not currently showing package details sheet)
             (viewModel.activeServiceMode == ServiceType.RIDE_HAILING || viewModel.activeServiceMode == ServiceType.PACKAGE_DELIVERY) && 
-                viewModel.polylinePoints.isNotEmpty() && !viewModel.showPackageDetailsSheet -> CustomerSheetState.SELECTING_SERVICE
+                viewModel.polylinePoints.isNotEmpty() -> CustomerSheetState.SELECTING_SERVICE
             
-            // Package Details Modal (Intent picker stage 1 or Recipient details stage 4)
-            viewModel.showPackageDetailsSheet -> CustomerSheetState.ENTERING_PACKAGE_DETAILS
+            viewModel.currentScreen == CustomerScreen.Landing -> CustomerSheetState.LANDING
             
             // Fallback Picking State
             viewModel.pickupLocation.isNotEmpty() || viewModel.dropOffLocation.isNotEmpty() -> CustomerSheetState.PICKING_ADDRESS
@@ -1296,10 +1297,16 @@ fun MainMapContent(
                                     if (viewModel.packageStage == 1) {
                                         viewModel.packageStage = 2
                                         viewModel.navigateTo(CustomerScreen.RouteSelection)
+                                    } else if (viewModel.packageStage == 4) {
+                                        viewModel.packageStage = 5
                                     }
                                 },
                                 onPrevStage = {
-                                    viewModel.showPackageDetailsSheet = false
+                                    if (viewModel.packageStage == 5) {
+                                        viewModel.packageStage = 4
+                                    } else {
+                                        viewModel.showPackageDetailsSheet = false
+                                    }
                                 },
                                 isSending = viewModel.isSendingPackage,
                                 onIsSendingChange = { viewModel.isSendingPackage = it },
