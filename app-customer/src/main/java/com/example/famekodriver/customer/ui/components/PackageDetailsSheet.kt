@@ -82,12 +82,13 @@ fun PackageDetailsSheet(
 
     when (stage) {
         1 -> {
-            // --- STAGE 1: Intent Modal ("Send" vs "Receive" - Screenshot 1) ---
+            // --- STAGE 1: Intent Modal ("Send" vs "Receive") ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White)
-                    .padding(20.dp)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .navigationBarsPadding()
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -107,7 +108,7 @@ fun PackageDetailsSheet(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Do you want to send or receive items?", fontSize = 14.sp, color = Color(0xFF64748B))
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -117,7 +118,7 @@ fun PackageDetailsSheet(
                     Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .height(140.dp)
+                            .height(115.dp)
                             .clickable {
                                 onIsSendingChange(true)
                                 onNextStage()
@@ -127,13 +128,13 @@ fun PackageDetailsSheet(
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
                         Column(
-                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                            modifier = Modifier.fillMaxSize().padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Text("📦", fontSize = 42.sp)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Send", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            Text("📦", fontSize = 34.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Send a package", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
                     }
 
@@ -141,7 +142,7 @@ fun PackageDetailsSheet(
                     Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .height(140.dp)
+                            .height(115.dp)
                             .clickable {
                                 onIsSendingChange(false)
                                 onNextStage()
@@ -151,17 +152,17 @@ fun PackageDetailsSheet(
                         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                     ) {
                         Column(
-                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                            modifier = Modifier.fillMaxSize().padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Text("🎁", fontSize = 42.sp)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Receive", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            Text("🎁", fontSize = 34.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Receive a package", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(72.dp))
             }
         }
 
