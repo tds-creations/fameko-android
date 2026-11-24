@@ -222,7 +222,7 @@
                     <div id="simulationResults" style="display:none">
                         <div class="result-item">
                             <span class="result-label">Estimated Revenue</span>
-                            <span class="result-value" id="resRevenue">₵0.00</span>
+                            <span class="result-value" id="resRevenue">GH₵0</span>
                         </div>
                         <div class="result-item">
                             <span class="result-label">Average ETA</span>
@@ -387,7 +387,7 @@
                 document.getElementById('simPlaceholder').style.display = 'none';
                 document.getElementById('simulationResults').style.display = 'block';
 
-                document.getElementById('resRevenue').innerText = '₵' + data.estimatedRevenue.toFixed(2);
+                document.getElementById('resRevenue').innerText = 'GH₵' + Math.round(data.estimatedRevenue);
                 document.getElementById('resETA').innerText = data.averageETA.toFixed(1) + ' min';
                 document.getElementById('resCoverage').innerText = data.demandCoverage.toFixed(0) + '%';
                 document.getElementById('resSurge').innerText = data.recommendedSurge.toFixed(1) + 'x';
@@ -436,7 +436,7 @@
                 data: {
                     labels: reportData.revenueTrend.map(r => r.date),
                     datasets: [{
-                        label: 'Daily Revenue (₵)',
+                        label: 'Daily Revenue (GH₵)',
                         data: reportData.revenueTrend.map(r => r.total),
                         backgroundColor: '#28A745',
                         borderRadius: 6

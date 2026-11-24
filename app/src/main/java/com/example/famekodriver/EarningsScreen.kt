@@ -135,7 +135,7 @@ fun EarningsScreen(
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text("GH₵ ", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
                                 Text(
-                                    String.format(Locale.US, "%.2f", viewModel.stats.earningsToday),
+                                    com.example.famekodriver.core.utils.CurrencyUtils.formatWholeCediAmount(viewModel.stats.earningsToday).toString(),
                                     color = Color.White,
                                     fontSize = 38.sp,
                                     fontWeight = FontWeight.Black
@@ -281,8 +281,8 @@ fun EarningsScreen(
                             ModernStatCard(
                                 title = "LIFETIME",
                                 label = "Life Earnings",
-                                value = "GH₵ ${String.format(Locale.US, "%.2f", viewModel.stats.totalEarnings)}",
-                                subtitle = "↑ +GH₵ ${String.format(Locale.US, "%.2f", viewModel.stats.earningsToday)} today",
+                                value = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(viewModel.stats.totalEarnings),
+                                subtitle = "↑ +${com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(viewModel.stats.earningsToday)} today",
                                 subtitleColor = Color(0xFF059669),
                                 icon = Icons.Default.AccountBalanceWallet,
                                 iconColor = Color(0xFF10B981),

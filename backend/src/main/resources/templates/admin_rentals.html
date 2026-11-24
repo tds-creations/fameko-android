@@ -267,7 +267,7 @@
                             <td>
                                 <span th:class="'status-badge status-' + ${r['status']}" th:text="${r['status']}">PENDING</span>
                             </td>
-                            <td style="font-weight: 800" th:text="${'₵' + r['total_price']}">₵400</td>
+                            <td style="font-weight: 800" th:text="${'GH₵' + #numbers.formatDecimal(r['total_price'], 1, 0)}">GH₵400</td>
                             <td style="font-size: 0.75rem" th:text="${r['created_at'] != null and #strings.length(r['created_at']) >= 16 ? #strings.substring(r['created_at'], 0, 16) : r['created_at']}">2023-01-01</td>
                             <td>
                                 <div th:if="${r['status'] == 'PENDING'}" style="display: flex; gap: 5px;">

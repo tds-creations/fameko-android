@@ -217,7 +217,7 @@
                         <tr>
                             <th>Driver</th>
                             <th>Phone</th>
-                            <th>Amount (GHS)</th>
+                            <th>Amount (GH₵)</th>
                             <th>Type</th>
                             <th>Reference</th>
                             <th>Date Submitted</th>
@@ -230,7 +230,7 @@
                                 <div style="font-weight:700; color: var(--dark-text)" th:text="${t.driver_name}">Driver Name</div>
                             </td>
                             <td th:text="${t.driver_phone}">Phone</td>
-                            <td style="font-weight: 800; color: var(--secondary-color)" th:text="${'₵' + t.amount}">₵50</td>
+                            <td style="font-weight: 800; color: var(--secondary-color)" th:text="${'GH₵' + #numbers.formatDecimal(t.amount, 1, 0)}">GH₵50</td>
                             <td>
                                 <span th:class="${'status-badge ' + (t.payment_type == 'DAILY_FEE' ? 'badge-fee' : 'badge-topup')}" th:text="${t.payment_type}">DAILY_FEE</span>
                             </td>

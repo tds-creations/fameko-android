@@ -70,7 +70,7 @@ fun AdminDashboardScreen(
                     StatItem("Online Now", s.onlineDrivers.toString(), Icons.Default.Sensors, Color(0xFF38A169)),
                     StatItem("Live Orders", s.liveDeliveries.toString(), Icons.Default.LocalShipping, Color(0xFF805AD5)),
                     StatItem("Pending Apps", s.pendingDrivers.toString(), Icons.Default.HourglassEmpty, Color(0xFFDD6B20)),
-                    StatItem("Revenue (₵)", "%.2f".format(s.totalRevenue), Icons.Default.Payments, Color(0xFF38A169)),
+                    StatItem("Revenue (GH₵)", com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(s.totalRevenue), Icons.Default.Payments, Color(0xFF38A169)),
                     StatItem("Active SOS", s.activeSOS.toString(), Icons.Default.Warning, Color.Red)
                 )
 

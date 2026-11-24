@@ -234,19 +234,19 @@
                 <input type="hidden" th:value="${cat.serviceId}" name="serviceId"/>
                 <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
                     <div class="form-group">
-                        <label>Base Fare (GHS)</label>
+                        <label>Base Fare (GH₵)</label>
                         <input type="number" step="0.01" th:value="${cat.baseFare}" name="baseFare" required="required"/>
                     </div>
                     <div class="form-group">
-                        <label>Rate Per KM (GHS)</label>
+                        <label>Rate Per KM (GH₵)</label>
                         <input type="number" step="0.01" th:value="${cat.perKmRate}" name="perKmRate" required="required"/>
                     </div>
                     <div class="form-group">
-                        <label>Rate Per Min (GHS)</label>
+                        <label>Rate Per Min (GH₵)</label>
                         <input type="number" step="0.01" th:value="${cat.perMinuteRate}" name="perMinuteRate" required="required"/>
                     </div>
                     <div class="form-group">
-                        <label>Min Fare (GHS)</label>
+                        <label>Min Fare (GH₵)</label>
                         <input type="number" step="0.01" th:value="${cat.minFare}" name="minFare" required="required"/>
                     </div>
                     <div class="form-group">
@@ -275,7 +275,7 @@
                     <small style="color: var(--muted-text); font-size: 0.6rem;">Applies to all categories.</small>
                 </div>
                 <div class="form-group">
-                    <label>Daily Service Fee (GHS)</label>
+                    <label>Daily Service Fee (GH₵)</label>
                     <input type="number" step="0.01" th:value="${pricing.dailyServiceFee}" name="dailyServiceFee" required="required"/>
                     <small style="color: var(--muted-text); font-size: 0.6rem;">Driver online fee.</small>
                 </div>
@@ -341,7 +341,7 @@
 
             <div class="form-grid">
                 <div th:each="rate : ${rentalRates}" class="form-group">
-                    <label th:text="${rate['vehicle_type']} + ' (GHS / Day)'"></label>
+                    <label th:text="${rate['vehicle_type']} + ' (GH₵ / Day)'"></label>
                     <input type="number" step="0.01" th:value="${rate['daily_rate']}" th:name="'rate_' + ${rate['vehicle_type']}" required="required"/>
                 </div>
             </div>

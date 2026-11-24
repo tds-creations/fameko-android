@@ -873,7 +873,7 @@ fun MapScreen(
                                 Text("TODAY'S EARNINGS", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                                 Spacer(Modifier.height(2.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("GH₵ ${String.format(Locale.US, "%.2f", viewModel.driverStats.earningsToday)}", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
+                                    Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(viewModel.driverStats.earningsToday), fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFF0F172A))
                                     Spacer(Modifier.width(4.dp))
                                     Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
                                 }
@@ -1518,7 +1518,7 @@ fun DeliveryControlSheet(
                     Text("Est. Fare: ", fontSize = 13.sp, color = Color.Gray)
                     val fareVal = delivery.totalFare ?: delivery.estimatedEarnings
                     Text(
-                        text = "GH₵ ${String.format(Locale.US, "%.2f", fareVal)}",
+                        text = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(fareVal),
                         fontWeight = FontWeight.Black,
                         fontSize = 17.sp,
                         color = Color(0xFF0F172A)
@@ -1884,7 +1884,7 @@ fun TopMapStatusBar(
                     color = Color(0xFF94A3B8)
                 )
                 Text(
-                    text = "GH₵ ${String.format(Locale.US, "%.2f", earningsToday)}",
+                    text = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(earningsToday),
                     fontWeight = FontWeight.Black,
                     fontSize = 13.sp,
                     color = Color(0xFF10B981)
@@ -1943,7 +1943,7 @@ fun IncomingRequestSheet(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = "GH₵ ${String.format(Locale.getDefault(), "%.2f", request.estimatedEarnings)}",
+                            text = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(request.estimatedEarnings),
                             fontSize = 26.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF0F172A)
@@ -2287,7 +2287,7 @@ fun IncomingRequestSheet(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                text = "GH₵ ${String.format(Locale.getDefault(), "%.2f", request.estimatedEarnings)}",
+                                text = com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(request.estimatedEarnings),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,

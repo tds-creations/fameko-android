@@ -273,12 +273,12 @@ fun FleetOwnerMenuScreen(
                         ) {
                             Column {
                                 Text("TODAY'S GROSS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF047857), letterSpacing = 0.5.sp)
-                                Text("GH₵ ${String.format(Locale.getDefault(), "%.2f", todayGross)}", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF065F46))
+                                Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(todayGross), fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF065F46))
                             }
 
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("WEEKLY ROLLING GROSS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF047857), letterSpacing = 0.5.sp)
-                                Text("GH₵ ${String.format(Locale.getDefault(), "%.2f", weeklyGross)}", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF065F46))
+                                Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(weeklyGross), fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF065F46))
                             }
                         }
 

@@ -1128,7 +1128,7 @@ fun AdminOrderCard(
                         Text(status, fontSize = 10.sp, fontWeight = FontWeight.Black, color = statusColor, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
                     }
                 }
-                Text("GH₵ %.2f".format(amount), fontWeight = FontWeight.Black, fontSize = 17.sp, color = Color(0xFF0F172A))
+                Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(amount), fontWeight = FontWeight.Black, fontSize = 17.sp, color = Color(0xFF0F172A))
             }
 
             Spacer(Modifier.height(8.dp))

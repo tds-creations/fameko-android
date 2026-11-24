@@ -109,7 +109,7 @@ fun RideHistoryScreen(onBack: () -> Unit) {
                     Text("Pickup: ${delivery.pickupLocation}")
                     Text("Dropoff: ${delivery.dropOffLocation}")
                     Text("Distance: ${String.format(Locale.US, "%.1f", delivery.distanceKm)} km")
-                    Text("Earnings: GH₵ ${String.format(Locale.US, "%.2f", delivery.estimatedEarnings)}", fontWeight = FontWeight.Black, color = Color(0xFF10B981))
+                    Text("Earnings: ${com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(delivery.estimatedEarnings)}", fontWeight = FontWeight.Black, color = Color(0xFF10B981))
                     Text("Customer: ${delivery.customerName ?: "Customer"} (${delivery.customerPhone ?: "No phone"})")
                 }
             },
@@ -227,7 +227,7 @@ fun RideHistoryScreen(onBack: () -> Unit) {
                                 Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
                                     Text("Net Earnings", fontSize = 11.sp, color = Color.Gray)
                                     Spacer(Modifier.height(2.dp))
-                                    Text("GH₵ ${String.format(Locale.US, "%.2f", totalEarnings)}", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color(0xFF34D399))
+                                    Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(totalEarnings), fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color(0xFF34D399))
                                     Spacer(Modifier.height(2.dp))
                                     Text("Payout ready", fontSize = 10.sp, color = Color.Gray)
                                 }
@@ -237,7 +237,7 @@ fun RideHistoryScreen(onBack: () -> Unit) {
                                 Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
                                     Text("Avg Fare", fontSize = 11.sp, color = Color.Gray)
                                     Spacer(Modifier.height(2.dp))
-                                    Text("GH₵ ${String.format(Locale.US, "%.2f", avgFare)}", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color.White)
+                                    Text(com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(avgFare), fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color.White)
                                     Spacer(Modifier.height(2.dp))
                                     Text("per trip", fontSize = 10.sp, color = Color.Gray)
                                 }
@@ -338,7 +338,7 @@ fun RideHistoryItem(delivery: Delivery, onClick: () -> Unit) {
                     }
                 }
                 Text(
-                    "GHS ${String.format(Locale.US, "%.2f", delivery.estimatedEarnings)}",
+                    com.example.famekodriver.core.utils.CurrencyUtils.formatCedi(delivery.estimatedEarnings),
                     fontWeight = FontWeight.Black,
                     fontSize = 16.sp,
                     color = Color(0xFF10B981)
