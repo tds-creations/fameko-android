@@ -499,28 +499,42 @@ fun ServiceItem(
 
 @Composable
 fun SearchingSheetContent(viewModel: CustomerMapViewModel, onCancel: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) { 
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .navigationBarsPadding()
+            .padding(bottom = 16.dp)
+    ) { 
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(4.dp), color = BoltGreen)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
         
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Finding your driver...", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text("Finding your driver...", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = BoltDark)
             if (viewModel.retryAttempt > 0) {
                 Spacer(Modifier.width(8.dp))
                 Badge(containerColor = BoltGreen, contentColor = Color.White) {
-                    Text("Retry ${viewModel.retryAttempt}/${viewModel.maxRetryAttempts}", modifier = Modifier.padding(horizontal = 4.dp))
+                    Text("Retry ${viewModel.retryAttempt}/${viewModel.maxRetryAttempts}", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                 }
             }
         }
         
+        Spacer(Modifier.height(4.dp))
         Text(viewModel.searchMessage, color = Color.Gray, fontSize = 14.sp)
         if (viewModel.retryAttempt > 0) {
+            Spacer(Modifier.height(2.dp))
             Text("Search radius: ${String.format(Locale.US, "%.1f", viewModel.searchRadiusKm)} km", color = BoltGreen, fontSize = 12.sp, fontWeight = FontWeight.Medium)
         }
 
-        Spacer(Modifier.height(32.dp))
-        OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(12.dp)) { 
-            Text("Cancel Request", color = Color.Red, fontWeight = FontWeight.Bold) 
+        Spacer(Modifier.height(20.dp))
+        OutlinedButton(
+            onClick = onCancel,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, Color(0xFFFCA5A5))
+        ) { 
+            Text("Cancel Request", color = Color(0xFFDC2626), fontWeight = FontWeight.Bold, fontSize = 16.sp) 
         } 
     }
 }
